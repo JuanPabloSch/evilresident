@@ -279,7 +279,16 @@ function drawRoom() {
       ctx.fillRect(obj.x, obj.y, 4, 4);       // Cabeza
       ctx.fillRect(obj.x + 3, obj.y + 1, 5, 2); // Cuerpo
       ctx.fillRect(obj.x + 7, obj.y + 3, 2, 2); // Dientes
-      
+     
+      } else if (obj.type === "column") {
+      // Columna de la mansión (Base, cuerpo con sombras y capitel)
+      ctx.fillStyle = "#221108"; // Sombra base
+      ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
+      ctx.fillStyle = "#5c341d"; // Madera/Piedra base
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = PALETTE.trim; // Detalle dorado/moldura
+      ctx.fillRect(obj.x + 1, obj.y + 1, obj.w - 2, 2);
+      ctx.fillRect(obj.x + 1, obj.y + obj.h - 3, obj.w - 2, 2);
       } else if (obj.type === "tigerStatue") {
       // Pedestal
       ctx.fillStyle = "#3d3a3a";

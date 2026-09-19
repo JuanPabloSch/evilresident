@@ -103,7 +103,8 @@ bar: {
       // Puerta inferior -> Tea Room
       { id: "southPassage", x: 20, y: 152, w: 40, h: 14, targetRoom: "teaRoom", spawnX: 185, spawnY: 110 },
       // Puerta superior izquierda
-      { id: "northWest", x: 16, y: 20, w: 10, h: 25, targetRoom: "centralCorridor", spawnX: 35, spawnY: 35 },
+      // Dentro de centralCorridor -> doors:
+      { id: "northWest", x: 16, y: 40, w: 8, h: 25, targetRoom: "westStairway1F", spawnX: 240, spawnY: 45 },
       
       // NUEVA: Puerta a mitad de altura en la pared izquierda (mirando hacia afuera)
       { id: "midWest", x: 16, y: 90, w: 8, h: 25, targetRoom: "keepersBedroom", spawnX: 250, spawnY: 50 },
@@ -229,6 +230,41 @@ tigerStatueRoom: {
       // Hierbas Verdes 'g' (dos macetas)
       { type: "greenHerb", x: 190, y: 152, w: 10, h: 10 },
       { type: "greenHerb", x: 210, y: 152, w: 10, h: 10 }
+    ]
+  },
+  westStairway1F: {
+    name: "West Stairway 1F",
+    floorType: "wood",
+    bounds: { minX: 30, maxX: 270, minY: 30, maxY: 170 },
+    corridorPoly: [
+      { x: 30, y: 30, w: 230, h: 40 },   // Pasillo superior (Norte)
+      { x: 30, y: 70, w: 50, h: 60 },    // Pasillo oeste (donde está la columna 'c' y ventanas)
+      { x: 30, y: 130, w: 230, h: 40 }   // Pasillo inferior (Sur, con escaleras y save room)
+    ],
+    doors: [
+      // Puerta 'p' superior derecha -> Conecta con la puerta superior izquierda del centralCorridor (northWest)
+      { id: "doorToCentral", x: 252, y: 35, w: 8, h: 25, targetRoom: "centralCorridor", spawnX: 35, spawnY: 45 },
+
+      // Puerta 'p' en la pared sur del pasillo norte -> Lleva a vacantRoom (próximamente)
+      { id: "doorToVacant", x: 200, y: 62, w: 25, h: 8, targetRoom: "westStairway1F", spawnX: 200, spawnY: 50 },
+
+      // Puerta 'p' en el pasillo sur -> Lleva a Mansion Save Room (próximamente)
+      { id: "doorToSaveRoom", x: 130, y: 130, w: 25, h: 8, targetRoom: "westStairway1F", spawnX: 130, spawnY: 145 }
+    ],
+    interactables: [
+      // Columna 'c' (bloque circular/cuadrado sólido)
+      { type: "column", x: 50, y: 85, w: 14, h: 14, solid: true },
+
+      // Ventanas en la pared izquierda
+      { type: "window", x: 30, y: 50, w: 4, h: 20 },
+      { type: "window", x: 30, y: 100, w: 4, h: 20 },
+
+      // Escaleras a la derecha en el pasillo sur (peldaños verticales)
+      { type: "stairsVertical", x: 180, y: 130, w: 75, h: 40 },
+
+      // Zombis 'z'
+      { type: "zombie", x: 140, y: 42, w: 12, h: 14 }, // Zombi norte
+      { type: "zombie", x: 45, y: 142, w: 12, h: 14 }   // Zombi sur
     ]
   }
 };
