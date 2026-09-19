@@ -10,7 +10,7 @@ const ROOMS = {
       { id: "eastBottom", x: 296, y: 120, w: 12, h: 30, targetRoom: "mainHall", spawnX: 230, spawnY: 140 }
     ],
     interactables: [
-      { type: "stairs", x: 120, y: 24, w: 80, h: 40 },
+      { type: "stairsHorizontal", x: 120, y: 25, w: 80, h: 90},
       { type: "balconyLeft", x: 18, y: 24, w: 102, h: 24 },
       { type: "balconyRight", x: 200, y: 24, w: 102, h: 24 },
       { type: "typewriter", x: 80, y: 54, w: 26, h: 20, solid: true }
@@ -50,7 +50,7 @@ diningRoom: {
       { id: "southDining", x: 130, y: 134, w: 30, h: 12, targetRoom: "diningRoom", spawnX: 75, spawnY: 35 },
       { id: "northDoor1", x: 175, y: 94, w: 30, h: 12, targetRoom: "centralCorridor", spawnX: 35, spawnY: 135 },
       { id: "northDoor2", x: 250, y: 94, w: 24, h: 12, targetRoom: "bar", spawnX: 245, spawnY: 130 },
-      { id: "eastDoor", x: 292, y: 105, w: 12, h: 30, targetRoom: "teaRoom", spawnX: 270, spawnY: 115 }
+      { id: "eastDoor", x: 290, y: 110, w: 10, h: 30, targetRoom: "elevatorStairway", spawnX: 225, spawnY: 132 },
     ],
     interactables: [
       { type: "kenneth", x: 35, y: 30, w: 16, h: 12, solid: true },
@@ -91,11 +91,9 @@ bar: {
     name: "Central Corridor 1F",
     floorType: "wood",
     bounds: { minX: 20, maxX: 300, minY: 20, maxY: 170 },
-    // Muro invisible en el hueco interno de la L
     walls: [
       { x: 60, y: 70, w: 200, h: 100 }
     ],
-    // Corredor en L con la punta derecha extendida hacia abajo
     corridorPoly: [
       { x: 20, y: 20, w: 40, h: 150 },   // Pasillo vertical izquierdo
       { x: 20, y: 20, w: 260, h: 50 },   // Pasillo horizontal superior
@@ -106,14 +104,39 @@ bar: {
       { id: "southPassage", x: 20, y: 152, w: 40, h: 14, targetRoom: "teaRoom", spawnX: 185, spawnY: 110 },
       // Puerta superior izquierda
       { id: "northWest", x: 16, y: 20, w: 10, h: 25, targetRoom: "centralCorridor", spawnX: 35, spawnY: 35 },
-      // Puerta intermedia (orientada a la derecha en la pared vertical)
+      
+      // NUEVA: Puerta a mitad de altura en la pared izquierda (mirando hacia afuera)
+      { id: "midWest", x: 16, y: 90, w: 8, h: 25, targetRoom: "centralCorridor", spawnX: 35, spawnY: 100 },
+      
+      // Puerta intermedia (pared derecha del pasillo vertical)
       { id: "middleNiche", x: 56, y: 80, w: 8, h: 25, targetRoom: "centralCorridor", spawnX: 40, spawnY: 90 },
-      // Puerta derecha (movida al nicho extendido y mirando a la izquierda)
+      // Puerta derecha
       { id: "eastArm", x: 256, y: 80, w: 8, h: 25, targetRoom: "centralCorridor", spawnX: 270, spawnY: 90 }
     ],
     interactables: [
       { type: "zombie", x: 30, y: 120, w: 12, h: 14 },
       { type: "zombie", x: 140, y: 24, w: 12, h: 14 }
+    ]
+  },
+  elevatorStairway: {
+    name: "Elevator Stairway 1F",
+    bounds: { minX: 40, maxX: 260, minY: 30, maxY: 160 },
+    walls: [
+      { x: 40, y: 70, w: 170, h: 90 } // Pared interna de la "L"
+    ],
+    corridorPoly: [
+      { x: 40, y: 30, w: 220, h: 40 },  // Tramo horizontal (con escalera)
+      { x: 210, y: 30, w: 50, h: 130 }  // Bajada vertical
+    ],
+    doors: [
+      // Puerta inferior (pared izquierda) -> Vuelve a la Tea Room
+      { id: "westDoorToTea", x: 206, y: 120, w: 8, h: 25, targetRoom: "teaRoom", spawnX: 250, spawnY: 125 },
+      // Puerta arriba a la izquierda (al final de las escaleras) -> Sube a Kitchen 2F
+      { id: "stairsToKitchen", x: 36, y: 38, w: 8, h: 24, targetRoom: "elevatorStairway", spawnX: 50, spawnY: 48 }
+    ],
+    interactables: [
+      // Objeto interactivo visual para dibujar las escaleras en el canvas
+      { type: "stairsVertical", x: 40, y: 30, w: 170, h: 40 }
     ]
   }
 };

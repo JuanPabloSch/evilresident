@@ -178,18 +178,36 @@ function drawRoom() {
   ctx.fillStyle = PALETTE.door;
   room.doors.forEach((d) => ctx.fillRect(d.x, d.y, d.w, d.h));
 
-  // 3. Dibujar Muebles y Elementos Específicos
+// 3. Dibujar Muebles y Elementos Específicos
   room.interactables.forEach((obj) => {
-    if (obj.type === "stairs") {
+    if (obj.type === "stairs" || obj.type === "stairsVertical") {
+      // Escalera con peldaños VERTICALES (para Elevator Stairway)
       ctx.fillStyle = PALETTE.stairs;
       ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
       ctx.strokeStyle = PALETTE.shadow;
+      ctx.lineWidth = 2;
+      for (let x = obj.x + 8; x < obj.x + obj.w; x += 10) {
+        ctx.beginPath();
+        ctx.moveTo(x, obj.y);
+        ctx.lineTo(x, obj.y + obj.h);
+        ctx.stroke();
+      }
+    } else if (obj.type === "stairsHorizontal") {
+      // Escalera con peldaños HORIZONTALES (para Main Hall)
+      ctx.fillStyle = PALETTE.stairs;
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.strokeStyle = PALETTE.shadow;
+      ctx.lineWidth = 2;
       for (let y = obj.y + 4; y < obj.y + obj.h; y += 8) {
         ctx.beginPath();
         ctx.moveTo(obj.x, y);
         ctx.lineTo(obj.x + obj.w, y);
         ctx.stroke();
       }
+    } else if (obj.type === "balconyLeft" || obj.type === "balconyRight") {
+      ctx.fillStyle = "#4a2912";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      
     } else if (obj.type === "balconyLeft" || obj.type === "balconyRight") {
       ctx.fillStyle = "#4a2912";
       ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
@@ -211,6 +229,7 @@ function drawRoom() {
         ctx.lineTo(rx, railingY);
         ctx.stroke();
       }
+      
     } else if (obj.type === "typewriter") {
       ctx.fillStyle = "#3e2213";
       ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
