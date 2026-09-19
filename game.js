@@ -35,6 +35,19 @@ tileCtx.strokeRect(0, 0, 16, 16);
 tileCtx.fillStyle = "#25482b";
 tileCtx.fillRect(7, 7, 2, 2);
 const floorPattern = ctx.createPattern(tileCanvas, "repeat");
+// --- PATRÓN DE PISO DE MADERA ---
+const woodTileCanvas = document.createElement("canvas");
+woodTileCanvas.width = 16;
+woodTileCanvas.height = 16;
+const woodCtx = woodTileCanvas.getContext("2d");
+woodCtx.fillStyle = "#4a2912";
+woodCtx.fillRect(0, 0, 16, 16);
+woodCtx.strokeStyle = "#2c170a";
+woodCtx.lineWidth = 1;
+woodCtx.strokeRect(0, 0, 16, 16);
+woodCtx.fillStyle = "#3a1f0d";
+woodCtx.fillRect(0, 7, 16, 2);
+const woodFloorPattern = ctx.createPattern(woodTileCanvas, "repeat");
 
 // --- ESTADO DEL JUEGO ---
 let currentRoom = "mainHall";
@@ -127,16 +140,20 @@ function update() {
 function drawRoom() {
   const room = ROOMS[currentRoom];
 
+  // 1. Decidir qué textura de piso usar para esta habitación
+  const currentFloorPattern = room.floorType === "wood" ? woodFloorPattern : floorPattern;
+
   // Fondo negro base
   ctx.fillStyle = PALETTE.shadow;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-  // 1. Dibujar el mapa (Pasillo Custom o Cuarto Rectangular)
+  // 2. Dibujar la estructura (Pasillos custom o Cuartos rectangulares)
   if (room.corridorPoly) {
     ctx.fillStyle = PALETTE.wall;
     room.corridorPoly.forEach((p) => ctx.fillRect(p.x - 4, p.y - 4, p.w + 8, p.h + 8));
 
-    ctx.fillStyle = floorPattern;
+    // Aca usamos el piso seleccionado (madera o baldosas)
+    ctx.fillStyle = currentFloorPattern; 
     room.corridorPoly.forEach((p) => ctx.fillRect(p.x, p.y, p.w, p.h));
 
     ctx.strokeStyle = PALETTE.trim;
@@ -146,13 +163,16 @@ function drawRoom() {
     ctx.fillStyle = PALETTE.wall;
     ctx.fillRect(12, 12, WIDTH - 24, HEIGHT - 24);
 
-    ctx.fillStyle = floorPattern;
+    // Y aca también
+    ctx.fillStyle = currentFloorPattern; 
     ctx.fillRect(18, 24, WIDTH - 36, HEIGHT - 42);
 
     ctx.strokeStyle = PALETTE.trim;
     ctx.lineWidth = 2;
     ctx.strokeRect(18, 24, WIDTH - 36, HEIGHT - 42);
   }
+
+  // (El resto de la función sigue igual hacia abajo con las puertas e interactables...)
 
   // 2. Dibujar Puertas
   ctx.fillStyle = PALETTE.door;

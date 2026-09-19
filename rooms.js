@@ -48,7 +48,7 @@ diningRoom: {
     ],
     doors: [
       { id: "southDining", x: 130, y: 134, w: 30, h: 12, targetRoom: "diningRoom", spawnX: 75, spawnY: 35 },
-      { id: "northDoor1", x: 180, y: 94, w: 24, h: 12, targetRoom: "teaRoom", spawnX: 180, spawnY: 110 },
+      { id: "northDoor1", x: 175, y: 94, w: 30, h: 12, targetRoom: "centralCorridor", spawnX: 35, spawnY: 135 },
       { id: "northDoor2", x: 250, y: 94, w: 24, h: 12, targetRoom: "bar", spawnX: 245, spawnY: 130 },
       { id: "eastDoor", x: 292, y: 105, w: 12, h: 30, targetRoom: "teaRoom", spawnX: 270, spawnY: 115 }
     ],
@@ -85,6 +85,35 @@ bar: {
       // Elementos del pasillo secreto
       { type: "emblem", x: 122, y: 20, w: 4, h: 10 },
       { type: "window", x: 154, y: 20, w: 4, h: 16 }
+    ]
+  },
+  centralCorridor: {
+    name: "Central Corridor 1F",
+    floorType: "wood",
+    bounds: { minX: 20, maxX: 300, minY: 20, maxY: 170 },
+    // Muro invisible en el hueco interno de la L
+    walls: [
+      { x: 60, y: 70, w: 200, h: 100 }
+    ],
+    // Corredor en L con la punta derecha extendida hacia abajo
+    corridorPoly: [
+      { x: 20, y: 20, w: 40, h: 150 },   // Pasillo vertical izquierdo
+      { x: 20, y: 20, w: 260, h: 50 },   // Pasillo horizontal superior
+      { x: 260, y: 20, w: 30, h: 100 }   // Extremo derecho estirado hacia abajo
+    ],
+    doors: [
+      // Puerta inferior -> Tea Room
+      { id: "southPassage", x: 20, y: 152, w: 40, h: 14, targetRoom: "teaRoom", spawnX: 185, spawnY: 110 },
+      // Puerta superior izquierda
+      { id: "northWest", x: 16, y: 20, w: 10, h: 25, targetRoom: "centralCorridor", spawnX: 35, spawnY: 35 },
+      // Puerta intermedia (orientada a la derecha en la pared vertical)
+      { id: "middleNiche", x: 56, y: 80, w: 8, h: 25, targetRoom: "centralCorridor", spawnX: 40, spawnY: 90 },
+      // Puerta derecha (movida al nicho extendido y mirando a la izquierda)
+      { id: "eastArm", x: 256, y: 80, w: 8, h: 25, targetRoom: "centralCorridor", spawnX: 270, spawnY: 90 }
+    ],
+    interactables: [
+      { type: "zombie", x: 30, y: 120, w: 12, h: 14 },
+      { type: "zombie", x: 140, y: 24, w: 12, h: 14 }
     ]
   }
 };
