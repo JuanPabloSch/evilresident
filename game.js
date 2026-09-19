@@ -205,13 +205,11 @@ function drawRoom() {
         ctx.stroke();
       }
     } else if (obj.type === "balconyLeft" || obj.type === "balconyRight") {
-      ctx.fillStyle = "#4a2912";
-      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-      
-    } else if (obj.type === "balconyLeft" || obj.type === "balconyRight") {
+      // Piso del balcón superior
       ctx.fillStyle = "#4a2912";
       ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
 
+      // Pasamanos / Baranda horizontal
       const railingY = 48;
       ctx.strokeStyle = PALETTE.trim;
       ctx.lineWidth = 2;
@@ -220,6 +218,7 @@ function drawRoom() {
       ctx.lineTo(obj.x + obj.w, railingY);
       ctx.stroke();
 
+      // Barrotes/Barras VERTICALES del balcón
       ctx.lineWidth = 1;
       const startX = obj.type === "balconyLeft" ? 24 : 204;
       const endX = obj.type === "balconyLeft" ? 116 : 296;
@@ -230,6 +229,63 @@ function drawRoom() {
         ctx.stroke();
       }
       
+      } else if (obj.type === "bed") {
+      // Cama (Estructura de madera, sábanas y almohada)
+      ctx.fillStyle = "#3e2213";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#e0e0e0"; // Sábana blanca
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+      ctx.fillStyle = "#ffffff"; // Almohada
+      ctx.fillRect(obj.x + 4, obj.y + 4, 10, obj.h - 8);
+      ctx.fillStyle = "#a82e2e"; // Manta/Cobija
+      ctx.fillRect(obj.x + 16, obj.y + 2, obj.w - 18, obj.h - 4);
+
+    } else if (obj.type === "handgunAmmo") {
+      // Cargador / Caja de munición de pistola (Verde/Amarillo retro)
+      ctx.fillStyle = "#2d5a27";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#d89a42";
+      ctx.fillRect(obj.x + 2, obj.y + 1, obj.w - 4, 2);
+
+    } else if (obj.type === "desk") {
+      // Escritorio de madera
+      ctx.fillStyle = "#221108";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = PALETTE.wood;
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+      ctx.strokeStyle = PALETTE.trim;
+      ctx.strokeRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+
+    } else if (obj.type === "keepersDiary") {
+      // Libro / Diario del Cuidador (Rojo/Marrón)
+      ctx.fillStyle = "#701c1c";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#f0f0f0"; // Hojas visibles al costado
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+      ctx.fillStyle = "#701c1c"; // Tapa
+      ctx.fillRect(obj.x + 4, obj.y + 2, obj.w - 6, obj.h - 4);
+
+    } else if (obj.type === "mirror") {
+      // Espejo en la pared (Marco de madera, cristal plateado/azul)
+      ctx.fillStyle = PALETTE.trim;
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#a2c4c9";
+      ctx.fillRect(obj.x + 1, obj.y + 2, obj.w - 2, obj.h - 4);
+
+    } else if (obj.type === "closetDoor") {
+      // Marco / Puerta del armario
+      ctx.fillStyle = "#221108";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = PALETTE.trim;
+      ctx.fillRect(obj.x + 1, obj.y + 4, obj.w - 2, obj.h - 8);
+
+    } else if (obj.type === "shotgunShells") {
+      // Cartuchos de escopeta (Caja roja brillante)
+      ctx.fillStyle = "#b81d1d";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#d89a42"; // Detalle dorado/bronce
+      ctx.fillRect(obj.x + 1, obj.y + 1, 3, obj.h - 2);
+    
     } else if (obj.type === "typewriter") {
       ctx.fillStyle = "#3e2213";
       ctx.fillRect(obj.x, obj.y, obj.w, obj.h);

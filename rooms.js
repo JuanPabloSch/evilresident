@@ -6,13 +6,13 @@ const ROOMS = {
       // Puerta Oeste -> Va al Dining Room
       { id: "west", x: 12, y: 75, w: 12, h: 40, targetRoom: "diningRoom", spawnX: 280, spawnY: 90 },
       // Puertas Este (Pared derecha)
-      { id: "eastTop", x: 296, y: 45, w: 12, h: 30, targetRoom: "mainHall", spawnX: 230, spawnY: 140 },
+      { id: "eastTop", x: 296, y: 55, w: 12, h: 30, targetRoom: "mainHall", spawnX: 230, spawnY: 140 },
       { id: "eastBottom", x: 296, y: 120, w: 12, h: 30, targetRoom: "mainHall", spawnX: 230, spawnY: 140 }
     ],
     interactables: [
       { type: "stairsHorizontal", x: 120, y: 25, w: 80, h: 90},
-      { type: "balconyLeft", x: 18, y: 24, w: 102, h: 24 },
-      { type: "balconyRight", x: 200, y: 24, w: 102, h: 24 },
+      { type: "balconyLeft", x: 18, y: 24, w: 102, h: 30, solid: true },
+    { type: "balconyRight", x: 200, y: 24, w: 102, h: 30, solid: true },
       { type: "typewriter", x: 80, y: 54, w: 26, h: 20, solid: true }
     ]
   },
@@ -106,7 +106,7 @@ bar: {
       { id: "northWest", x: 16, y: 20, w: 10, h: 25, targetRoom: "centralCorridor", spawnX: 35, spawnY: 35 },
       
       // NUEVA: Puerta a mitad de altura en la pared izquierda (mirando hacia afuera)
-      { id: "midWest", x: 16, y: 90, w: 8, h: 25, targetRoom: "centralCorridor", spawnX: 35, spawnY: 100 },
+      { id: "midWest", x: 16, y: 90, w: 8, h: 25, targetRoom: "keepersBedroom", spawnX: 250, spawnY: 50 },
       
       // Puerta intermedia (pared derecha del pasillo vertical)
       { id: "middleNiche", x: 56, y: 80, w: 8, h: 25, targetRoom: "centralCorridor", spawnX: 40, spawnY: 90 },
@@ -138,5 +138,45 @@ bar: {
       // Objeto interactivo visual para dibujar las escaleras en el canvas
       { type: "stairsVertical", x: 40, y: 30, w: 170, h: 40 }
     ]
-  }
+  },
+  keepersBedroom: {
+    name: "Keeper's Bedroom",
+    floorType: "wood",
+    bounds: { minX: 30, maxX: 270, minY: 30, maxY: 180 },
+    // Muros para formar el corte del nicho del closet abajo a la izquierda
+    walls: [
+      { x: 30, y: 30, w: 50, h: 100 } // Bloque superior izquierdo fuera del cuarto
+    ],
+    corridorPoly: [
+      { x: 80, y: 30, w: 190, h: 150 },  // Habitación principal
+      { x: 30, y: 130, w: 50, h: 50 }    // Closet / Armario (esquina inferior izquierda)
+    ],
+    doors: [
+      // Puerta 'p' arriba a la derecha -> Vuelve al Central Corridor (puerta midWest)
+      { id: "doorToCentral", x: 262, y: 40, w: 8, h: 25, targetRoom: "centralCorridor", spawnX: 35, spawnY: 100 }
+    ],
+    interactables: [
+      // Cama 'b' (arriba a la izquierda)
+      { type: "bed", x: 100, y: 45, w: 50, h: 25, solid: true },
+      // Cargador de pistola (arriba de la cama)
+      { type: "handgunAmmo", x: 118, y: 36, w: 12, h: 6 },
+      
+      // Escritorio 'm' (abajo a la derecha)
+      { type: "desk", x: 210, y: 105, w: 35, h: 50, solid: true },
+      // Keeper's Diary 'kd' (sobre el escritorio)
+      { type: "keepersDiary", x: 220, y: 110, w: 14, h: 10 },
+
+      // Espejo 'e' (en la pared izquierda)
+      { type: "mirror", x: 76, y: 90, w: 4, h: 20 },
+
+      // Puerta de closet 'pc'
+      { type: "closetDoor", x: 76, y: 130, w: 4, h: 25, solid: true },
+
+      // DENTRO DEL CLOSET:
+      // Shotgun Shells 'sh'
+      { type: "shotgunShells", x: 55, y: 148, w: 10, h: 8 },
+      // Zombie 'z'
+      { type: "zombie", x: 35, y: 145, w: 12, h: 14 }
+    ]
+  }  
 };
