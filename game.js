@@ -289,6 +289,16 @@ function drawRoom() {
       ctx.fillStyle = PALETTE.trim; // Detalle dorado/moldura
       ctx.fillRect(obj.x + 1, obj.y + 1, obj.w - 2, 2);
       ctx.fillRect(obj.x + 1, obj.y + obj.h - 3, obj.w - 2, 2);
+
+} else if (obj.type === "brokenShotgun") {
+      // Escopeta Rota (Cañón de metal con culata de madera tallada)
+      ctx.fillStyle = "#5c341d"; // Culata de madera
+      ctx.fillRect(obj.x, obj.y + 3, 6, 4);
+      ctx.fillStyle = "#707070"; // Cañón doble/cuerpo gris de metal
+      ctx.fillRect(obj.x + 6, obj.y + 2, 14, 3);
+      ctx.fillStyle = "#221108"; // Grieta / Detalle de rotura en el cañón
+      ctx.fillRect(obj.x + 12, obj.y + 2, 2, 3);
+
       } else if (obj.type === "tigerStatue") {
       // Pedestal
       ctx.fillStyle = "#3d3a3a";
@@ -417,10 +427,97 @@ function drawRoom() {
       ctx.fillStyle = PALETTE.emblem;
       ctx.fillRect(obj.x + 1, obj.y + 8, 4, 6);
     } else if (obj.type === "clock") {
-      ctx.fillStyle = PALETTE.clock;
+      // 1. Estructura base de madera caoba
+      ctx.fillStyle = "#3a1e0b"; // Madera oscura
       ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-      ctx.fillStyle = "#e0e0e0";
-      ctx.fillRect(obj.x + 5, obj.y + 2, 6, 4);
+
+      // Copete / Remate superior del reloj
+      ctx.fillStyle = "#5c341d";
+      ctx.fillRect(obj.x + 1, obj.y + 1, obj.w - 2, 3);
+      ctx.fillStyle = "#ffd700"; // Detalle dorado superior
+      ctx.fillRect(obj.x + (obj.w / 2) - 2, obj.y, 4, 2);
+
+      // 2. Esfera del Reloj (Blanca redonda/cuadrada arriba)
+      ctx.fillStyle = "#f5f5dc"; // Blanco marfil
+      ctx.fillRect(obj.x + 3, obj.y + 4, obj.w - 6, 8);
+      
+      // Agujas del reloj
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(obj.x + (obj.w / 2) - 1, obj.y + 7, 2, 2); // Centro
+      ctx.fillRect(obj.x + (obj.w / 2), obj.y + 5, 1, 3);     // Minutero
+      ctx.fillRect(obj.x + (obj.w / 2) - 2, obj.y + 7, 2, 1); // Horario
+
+      // 3. Gabinete de Cristal central (Péndulo)
+      ctx.fillStyle = "#1a0e05"; // Fondo oscuro tras el cristal
+      ctx.fillRect(obj.x + 3, obj.y + 14, obj.w - 6, obj.h - 18);
+      ctx.strokeStyle = "#8b5a2b"; // Marco de madera
+      ctx.strokeRect(obj.x + 3, obj.y + 14, obj.w - 6, obj.h - 18);
+
+      // Péndulo de Bronce / Dorado
+      ctx.strokeStyle = "#ffd700"; // Varilla
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(obj.x + (obj.w / 2), obj.y + 14);
+      ctx.lineTo(obj.x + (obj.w / 2) + 2, obj.y + obj.h - 8);
+      ctx.stroke();
+
+      ctx.fillStyle = "#ffd700"; // Disco / Lenteja del péndulo
+      ctx.fillRect(obj.x + (obj.w / 2), obj.y + obj.h - 9, 4, 4);
+
+      // 4. Base del Reloj
+      ctx.fillStyle = "#261307";
+      ctx.fillRect(obj.x, obj.y + obj.h - 3, obj.w, 3);
+
+      } else if (obj.type === "bedVertical") {
+      // Cama Orientación Vertical (Madera, sábanas y almohada superior)
+      ctx.fillStyle = "#3e2213";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#e0e0e0"; // Sábana base
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+      ctx.fillStyle = "#ffffff"; // Almohada arriba
+      ctx.fillRect(obj.x + 4, obj.y + 4, obj.w - 8, 8);
+      ctx.fillStyle = "#a82e2e"; // Manta roja abajo
+      ctx.fillRect(obj.x + 2, obj.y + 16, obj.w - 4, obj.h - 18);
+
+    } else if (obj.type === "itemChest") {
+      // Baúl de Ítems / Cajón clásico de RE (Madera reforzada con herrajes de metal)
+      ctx.fillStyle = "#221108";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#5c341d";
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+      // Cierre / Candelado de bronce
+      ctx.fillStyle = "#ffd700";
+      ctx.fillRect(obj.x + (obj.w / 2) - 3, obj.y + (obj.h / 2) - 2, 6, 4);
+      ctx.fillStyle = "#8c8585"; // Esquinas de metal
+      ctx.fillRect(obj.x + 2, obj.y + 2, 3, 3);
+      ctx.fillRect(obj.x + obj.w - 5, obj.y + 2, 3, 3);
+
+    } else if (obj.type === "shelfVertical") {
+      // Estantería orientada en vertical
+      ctx.fillStyle = "#221108";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = PALETTE.wood;
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+      // Estantes horizontales
+      ctx.fillStyle = PALETTE.trim;
+      ctx.fillRect(obj.x + 2, obj.y + 16, obj.w - 4, 2);
+      ctx.fillRect(obj.x + 2, obj.y + 32, obj.w - 4, 2);
+
+    } else if (obj.type === "serum") {
+      // Frasco de Suero (Medicina en frasco de vidrio cristalino/azul)
+      ctx.fillStyle = "#4682b4";
+      ctx.fillRect(obj.x, obj.y + 2, obj.w, obj.h - 2);
+      ctx.fillStyle = "#e0e0e0"; // Tapa/Goteo
+      ctx.fillRect(obj.x + 2, obj.y, 4, 2);
+
+    } else if (obj.type === "inkRibbon") {
+      // Cinta de Tinta / Ink Ribbon (Cinta negra con carretes rojos/dorados)
+      ctx.fillStyle = "#1a1a1a";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#b81d1d"; // Carretes
+      ctx.fillRect(obj.x + 1, obj.y + 2, 2, 4);
+      ctx.fillRect(obj.x + 5, obj.y + 2, 2, 4);
+
     } else if (obj.type === "kenneth") {
       // --- KENNETH BURNS (Tirado boca abajo, herido) ---
       // Sombra

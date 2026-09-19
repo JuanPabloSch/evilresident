@@ -246,10 +246,10 @@ tigerStatueRoom: {
       { id: "doorToCentral", x: 252, y: 35, w: 8, h: 25, targetRoom: "centralCorridor", spawnX: 35, spawnY: 45 },
 
       // Puerta 'p' en la pared sur del pasillo norte -> Lleva a vacantRoom (próximamente)
-      { id: "doorToVacant", x: 200, y: 62, w: 25, h: 8, targetRoom: "westStairway1F", spawnX: 200, spawnY: 50 },
+      { id: "doorToVacant", x: 190, y: 62, w: 25, h: 8, targetRoom: "vacantRoom", spawnX: 150, spawnY: 75 },
 
       // Puerta 'p' en el pasillo sur -> Lleva a Mansion Save Room (próximamente)
-      { id: "doorToSaveRoom", x: 130, y: 130, w: 25, h: 8, targetRoom: "westStairway1F", spawnX: 130, spawnY: 145 }
+      { id: "doorToSaveRoom", x: 130, y: 130, w: 25, h: 8, targetRoom: "mansionSaveRoom", spawnX: 150, spawnY: 100 },
     ],
     interactables: [
       // Columna 'c' (bloque circular/cuadrado sólido)
@@ -266,5 +266,61 @@ tigerStatueRoom: {
       { type: "zombie", x: 140, y: 42, w: 12, h: 14 }, // Zombi norte
       { type: "zombie", x: 45, y: 142, w: 12, h: 14 }   // Zombi sur
     ]
-  }
+  },
+  vacantRoom: {
+    name: "Vacant Room",
+    floorType: "wood",
+    // Habitación pequeña y alargada
+    bounds: { minX: 100, maxX: 200, minY: 50, maxY: 140 },
+    corridorPoly: [
+      { x: 100, y: 50, w: 100, h: 90 }
+    ],
+    doors: [
+      // Puerta arriba para volver a West Stairway 1F
+      { id: "doorToStairway", x: 135, y: 50, w: 30, h: 8, targetRoom: "westStairway1F", spawnX: 200, spawnY: 15 }
+    ],
+    interactables: [
+      // Estantería en la pared superior derecha
+      { type: "shelf", x: 170, y: 58, w: 25, h: 15, solid: true },
+
+      // Escopeta rota / que no funciona (sobre la mesa/estante)
+      { type: "brokenShotgun", x: 110, y: 70, w: 20, h: 8 },
+
+      // Clip (munición de pistola)
+      { type: "handgunAmmo", x: 175, y: 110, w: 10, h: 6 },
+
+      // Shells (cartuchos de escopeta)
+      { type: "shotgunShells", x: 120, y: 115, w: 10, h: 8 }
+    ]
+  },
+// 1. DENTRO DE mansionSaveRoom:
+  mansionSaveRoom: {
+    name: "Mansion Save Room",
+    floorType: "wood",
+    bounds: { minX: 90, maxX: 210, minY: 50, maxY: 150 },
+    corridorPoly: [
+      { x: 90, y: 50, w: 120, h: 100 }
+    ],
+    doors: [
+      // Puerta ABAJO para salir hacia West Stairway 1F
+      { id: "doorToStairway", x: 140, y: 142, w: 25, h: 8, targetRoom: "westStairway1F", spawnX: 140, spawnY: 140 }
+    ],
+    interactables: [
+      // Cama 'b' (vertical a la izquierda)
+      { type: "bedVertical", x: 98, y: 60, w: 25, h: 50, solid: true },
+
+      // Baúl de ítems / Cajón 'c' (arriba al centro)
+      { type: "itemChest", x: 132, y: 60, w: 30, h: 18, solid: true },
+
+      // Estantería 's' (vertical a la derecha)
+      { type: "shelfVertical", x: 180, y: 85, w: 20, h: 50, solid: true },
+
+      // Suero 'se'
+      { type: "serum", x: 185, y: 90, w: 8, h: 10 },
+
+      // Ink Ribbon 'i'
+      { type: "inkRibbon", x: 185, y: 120, w: 8, h: 8 }
+    ]
+  },
+
 };
