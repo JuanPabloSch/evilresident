@@ -228,7 +228,83 @@ function drawRoom() {
         ctx.lineTo(rx, railingY);
         ctx.stroke();
       }
+      } else if (obj.type === "monsterPlant") {
+      // Planta Monstruo (Planta 42 / Tentáculos)
+      ctx.fillStyle = "#1e4d2b"; // Base tallo verde oscuro
+      ctx.fillRect(obj.x + 10, obj.y, 15, obj.h);
+
+      // Núcleo / Flor carnívora central
+      ctx.fillStyle = "#800020";
+      ctx.fillRect(obj.x + 5, obj.y + 25, 25, 30);
+      ctx.fillStyle = "#d84e1b";
+      ctx.fillRect(obj.x + 10, obj.y + 30, 15, 20);
+
+      // Tentáculos que se extienden
+      ctx.fillStyle = "#2d7a42";
+      ctx.fillRect(obj.x, obj.y + 10, 10, 4);
+      ctx.fillRect(obj.x + 25, obj.y + 5, 10, 4);
+      ctx.fillRect(obj.x - 5, obj.y + 50, 12, 5);
+      ctx.fillRect(obj.x + 28, obj.y + 60, 12, 5);
+
+    } else if (obj.type === "waterPump") {
+      // Motor / Sistema de Bombeo de Químico 'f'
+      ctx.fillStyle = "#4a4e52";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#2b2e31";
+      ctx.fillRect(obj.x + 3, obj.y + 3, obj.w - 6, obj.h - 6);
       
+      // Tapa del depósito / Filtro químico (Verde radioactivo)
+      ctx.fillStyle = "#32cd32";
+      ctx.fillRect(obj.x + 6, obj.y + 6, 12, 8);
+      ctx.fillStyle = "#d89a42"; // Válvula de bronce
+      ctx.fillRect(obj.x + obj.w - 12, obj.y + 8, 8, 8);
+
+    } else if (obj.type === "greenHerb") {
+      // Hierba Verde 'g' (Maceta con hoja verde)
+      ctx.fillStyle = "#5c341d"; // Maceta
+      ctx.fillRect(obj.x + 2, obj.y + 5, 6, 5);
+      ctx.fillStyle = "#228b22"; // Planta verde
+      ctx.fillRect(obj.x, obj.y, 10, 6);
+
+    } else if (obj.type === "blueHerb") {
+      // Hierba Azul 'b' (Maceta con hoja azul)
+      ctx.fillStyle = "#5c341d"; // Maceta
+      ctx.fillRect(obj.x + 2, obj.y + 5, 6, 5);
+      ctx.fillStyle = "#4169e1"; // Planta azul
+      ctx.fillRect(obj.x, obj.y, 10, 6);
+
+    } else if (obj.type === "armorKey") {
+      // Llave de la Armadura
+      ctx.fillStyle = "#ffd700"; // Dorado brillante
+      ctx.fillRect(obj.x, obj.y, 4, 4);       // Cabeza
+      ctx.fillRect(obj.x + 3, obj.y + 1, 5, 2); // Cuerpo
+      ctx.fillRect(obj.x + 7, obj.y + 3, 2, 2); // Dientes
+      
+      } else if (obj.type === "tigerStatue") {
+      // Pedestal
+      ctx.fillStyle = "#3d3a3a";
+      ctx.fillRect(obj.x, obj.y + 11, obj.w, 11);
+      ctx.fillStyle = "#595454";
+      ctx.fillRect(obj.x + 2, obj.y + 12, obj.w - 4, 9);
+
+      // Cuerpo del Tigre (Bronce/Dorado)
+      ctx.fillStyle = "#b8860b";
+      ctx.fillRect(obj.x + 4, obj.y + 3, 22, 9);   // Lomo
+      ctx.fillRect(obj.x + 9, obj.y, 12, 6);       // Cabeza
+      ctx.fillRect(obj.x + 8, obj.y - 2, 2, 2);    // Oreja izq
+      ctx.fillRect(obj.x + 19, obj.y - 2, 2, 2);   // Oreja der
+
+      // Rayas
+      ctx.fillStyle = "#5c4002";
+      ctx.fillRect(obj.x + 7, obj.y + 4, 2, 5);
+      ctx.fillRect(obj.x + 14, obj.y + 5, 2, 5);
+      ctx.fillRect(obj.x + 21, obj.y + 4, 2, 5);
+
+      // Gemas en los ojos
+      ctx.fillStyle = "#20b2aa"; // Gema Azul
+      ctx.fillRect(obj.x + 11, obj.y + 2, 2, 2);
+      ctx.fillStyle = "#dc143c"; // Gema Roja
+      ctx.fillRect(obj.x + 17, obj.y + 2, 2, 2);
       } else if (obj.type === "bed") {
       // Cama (Estructura de madera, sábanas y almohada)
       ctx.fillStyle = "#3e2213";

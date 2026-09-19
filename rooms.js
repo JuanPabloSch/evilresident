@@ -109,9 +109,11 @@ bar: {
       { id: "midWest", x: 16, y: 90, w: 8, h: 25, targetRoom: "keepersBedroom", spawnX: 250, spawnY: 50 },
       
       // Puerta intermedia (pared derecha del pasillo vertical)
-      { id: "middleNiche", x: 56, y: 80, w: 8, h: 25, targetRoom: "centralCorridor", spawnX: 40, spawnY: 90 },
+     // Dentro de centralCorridor -> doors:
+  { id: "middleNiche", x: 56, y: 80, w: 8, h: 25, targetRoom: "tigerStatueRoom", spawnX: 135, spawnY: 105 },
       // Puerta derecha
-      { id: "eastArm", x: 256, y: 80, w: 8, h: 25, targetRoom: "centralCorridor", spawnX: 270, spawnY: 90 }
+      // Dentro de centralCorridor -> doors:
+  { id: "eastArm", x: 256, y: 80, w: 8, h: 25, targetRoom: "greenhouse", spawnX: 230, spawnY: 50 },
     ],
     interactables: [
       { type: "zombie", x: 30, y: 120, w: 12, h: 14 },
@@ -178,5 +180,55 @@ bar: {
       // Zombie 'z'
       { type: "zombie", x: 35, y: 145, w: 12, h: 14 }
     ]
-  }  
+  },
+tigerStatueRoom: {
+    name: "Tiger Statue Room",
+    floorType: "wood",
+    // Límites estrictos para el jugador
+    bounds: { minX: 115, maxX: 165, minY: 65, maxY: 125 },
+    // Dibuja el cuarto pequeño en pantalla en lugar de ocupar todo el canvas
+    corridorPoly: [
+      { x: 110, y: 60, w: 60, h: 70 }
+    ],
+    doors: [
+      // Puerta abajo para volver -> spawnX: 40 ubica al jugador dentro del pasillo vertical
+      { id: "doorToCentral", x: 125, y: 122, w: 30, h: 8, targetRoom: "centralCorridor", spawnX: 40, spawnY: 92 }
+    ],
+    interactables: [
+      { type: "tigerStatue", x: 125, y: 65, w: 30, h: 22, solid: true }
+    ]
+  },
+  greenhouse: {
+    name: "Greenhouse / Botanical Room",
+    floorType: "wood",
+    bounds: { minX: 30, maxX: 260, minY: 30, maxY: 170 },
+    corridorPoly: [
+      { x: 30, y: 30, w: 180, h: 140 },  // Área principal izquierda
+      { x: 210, y: 30, w: 50, h: 140 }   // Nicho derecho (entrada arriba, motor y macetas abajo)
+    ],
+    doors: [
+      // Puerta 'p' arriba a la derecha -> Vuelve a centralCorridor (eastArm)
+      { id: "doorToCentral", x: 220, y: 30, w: 25, h: 8, targetRoom: "centralCorridor", spawnX: 240, spawnY: 90 }
+    ],
+    interactables: [
+      // Ventana 'v' en la pared izquierda
+      { type: "window", x: 30, y: 70, w: 4, h: 30 },
+
+      // Planta Monstruo 'mp' (bloquea la zona izquierda)
+      { type: "monsterPlant", x: 60, y: 50, w: 35, h: 80, solid: true },
+
+      // Llave de la Armadura cerca de la ventana (detrás de la planta)
+      { type: "armorKey", x: 42, y: 80, w: 8, h: 6 },
+
+      // Fuente/Motor de la bomba 'f'
+      { type: "waterPump", x: 215, y: 75, w: 40, h: 25, solid: true },
+
+      // Hierba Azul 'b'
+      { type: "blueHerb", x: 170, y: 152, w: 10, h: 10 },
+
+      // Hierbas Verdes 'g' (dos macetas)
+      { type: "greenHerb", x: 190, y: 152, w: 10, h: 10 },
+      { type: "greenHerb", x: 210, y: 152, w: 10, h: 10 }
+    ]
+  }
 };
