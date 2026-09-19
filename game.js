@@ -1,0 +1,429 @@
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const WIDTH = canvas.width;
+const HEIGHT = canvas.height;
+
+const PLAYER_WIDTH = 12;
+const PLAYER_HEIGHT = 16;
+const WALK_SPEED = 1.3;
+
+const PALETTE = {
+  wall: "#6b3f26",
+  floor: "#1a3721",
+  trim: "#d89a42",
+  shadow: "#070707",
+  door: "#221108",
+  stairs: "#9b724c",
+  wood: "#5c341d",
+  fireplace: "#3b1e10",
+  fire: "#d84e1b",
+  emblem: "#d89a42",
+  clock: "#3e2213"
+};
+
+// --- PATRÓN DE PISO ---
+const tileCanvas = document.createElement("canvas");
+tileCanvas.width = 16;
+tileCanvas.height = 16;
+const tileCtx = tileCanvas.getContext("2d");
+tileCtx.fillStyle = PALETTE.floor;
+tileCtx.fillRect(0, 0, 16, 16);
+tileCtx.strokeStyle = "#132818";
+tileCtx.lineWidth = 1;
+tileCtx.strokeRect(0, 0, 16, 16);
+tileCtx.fillStyle = "#25482b";
+tileCtx.fillRect(7, 7, 2, 2);
+const floorPattern = ctx.createPattern(tileCanvas, "repeat");
+
+// --- ESTADO DEL JUEGO ---
+let currentRoom = "mainHall";
+
+let player = {
+  x: 230,
+  y: 140,
+  dx: 0,
+  dy: 0,
+  isMoving: false,
+  animFrame: 0,
+  animTimer: 0
+};
+
+const keys = new Set();
+window.addEventListener("keydown", (e) => keys.add(e.key.length === 1 ? e.key.toLowerCase() : e.key));
+window.addEventListener("keyup", (e) => keys.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key));
+
+function checkCollision(rect1, rect2) {
+  return (
+    rect1.x < rect2.x + rect2.w &&
+    rect1.x + rect1.w > rect2.x &&
+    rect1.y < rect2.y + rect2.h &&
+    rect1.y + rect1.h > rect2.y
+  );
+}
+
+function update() {
+  const room = ROOMS[currentRoom];
+  player.dx = 0;
+  player.dy = 0;
+
+  if (keys.has("ArrowLeft") || keys.has("a")) player.dx -= WALK_SPEED;
+  if (keys.has("ArrowRight") || keys.has("d")) player.dx += WALK_SPEED;
+  if (keys.has("ArrowUp") || keys.has("w")) player.dy -= WALK_SPEED;
+  if (keys.has("ArrowDown") || keys.has("s")) player.dy += WALK_SPEED;
+
+  player.isMoving = player.dx !== 0 || player.dy !== 0;
+
+  if (player.isMoving) {
+    player.animTimer++;
+    if (player.animTimer % 10 === 0) {
+      player.animFrame = player.animFrame === 0 ? 1 : 0;
+    }
+  } else {
+    player.animFrame = 0;
+  }
+
+  let nextX = Math.max(room.bounds.minX, Math.min(room.bounds.maxX - PLAYER_WIDTH, player.x + player.dx));
+  let nextY = Math.max(room.bounds.minY, Math.min(room.bounds.maxY - PLAYER_HEIGHT, player.y + player.dy));
+
+  let playerRectX = { x: nextX, y: player.y, w: PLAYER_WIDTH, h: PLAYER_HEIGHT };
+  let playerRectY = { x: player.x, y: nextY, w: PLAYER_WIDTH, h: PLAYER_HEIGHT };
+
+  let canMoveX = true;
+  let canMoveY = true;
+
+  // Colisión con objetos
+  room.interactables.forEach((obj) => {
+    if (obj.solid) {
+      if (checkCollision(playerRectX, obj)) canMoveX = false;
+      if (checkCollision(playerRectY, obj)) canMoveY = false;
+    }
+  });
+
+  // Colisión con muros especiales (si la habitación los tiene, como la Tea Room)
+  if (room.walls) {
+    room.walls.forEach((wall) => {
+      if (checkCollision(playerRectX, wall)) canMoveX = false;
+      if (checkCollision(playerRectY, wall)) canMoveY = false;
+    });
+  }
+
+  if (canMoveX) player.x = nextX;
+  if (canMoveY) player.y = nextY;
+
+  // Transiciones de puertas
+  const playerRect = { x: player.x, y: player.y, w: PLAYER_WIDTH, h: PLAYER_HEIGHT };
+  room.doors.forEach((door) => {
+    if (checkCollision(playerRect, door)) {
+      currentRoom = door.targetRoom;
+      player.x = door.spawnX;
+      player.y = door.spawnY;
+      const titleElem = document.getElementById("room-title");
+      if (titleElem) titleElem.innerText = ROOMS[currentRoom].name;
+    }
+  });
+}
+
+function drawRoom() {
+  const room = ROOMS[currentRoom];
+
+  // Fondo negro base
+  ctx.fillStyle = PALETTE.shadow;
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+  // 1. Dibujar el mapa (Pasillo Custom o Cuarto Rectangular)
+  if (room.corridorPoly) {
+    ctx.fillStyle = PALETTE.wall;
+    room.corridorPoly.forEach((p) => ctx.fillRect(p.x - 4, p.y - 4, p.w + 8, p.h + 8));
+
+    ctx.fillStyle = floorPattern;
+    room.corridorPoly.forEach((p) => ctx.fillRect(p.x, p.y, p.w, p.h));
+
+    ctx.strokeStyle = PALETTE.trim;
+    ctx.lineWidth = 2;
+    room.corridorPoly.forEach((p) => ctx.strokeRect(p.x, p.y, p.w, p.h));
+  } else {
+    ctx.fillStyle = PALETTE.wall;
+    ctx.fillRect(12, 12, WIDTH - 24, HEIGHT - 24);
+
+    ctx.fillStyle = floorPattern;
+    ctx.fillRect(18, 24, WIDTH - 36, HEIGHT - 42);
+
+    ctx.strokeStyle = PALETTE.trim;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(18, 24, WIDTH - 36, HEIGHT - 42);
+  }
+
+  // 2. Dibujar Puertas
+  ctx.fillStyle = PALETTE.door;
+  room.doors.forEach((d) => ctx.fillRect(d.x, d.y, d.w, d.h));
+
+  // 3. Dibujar Muebles y Elementos Específicos
+  room.interactables.forEach((obj) => {
+    if (obj.type === "stairs") {
+      ctx.fillStyle = PALETTE.stairs;
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.strokeStyle = PALETTE.shadow;
+      for (let y = obj.y + 4; y < obj.y + obj.h; y += 8) {
+        ctx.beginPath();
+        ctx.moveTo(obj.x, y);
+        ctx.lineTo(obj.x + obj.w, y);
+        ctx.stroke();
+      }
+    } else if (obj.type === "balconyLeft" || obj.type === "balconyRight") {
+      ctx.fillStyle = "#4a2912";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+
+      const railingY = 48;
+      ctx.strokeStyle = PALETTE.trim;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(obj.x, railingY);
+      ctx.lineTo(obj.x + obj.w, railingY);
+      ctx.stroke();
+
+      ctx.lineWidth = 1;
+      const startX = obj.type === "balconyLeft" ? 24 : 204;
+      const endX = obj.type === "balconyLeft" ? 116 : 296;
+      for (let rx = startX; rx <= endX; rx += 8) {
+        ctx.beginPath();
+        ctx.moveTo(rx, 24);
+        ctx.lineTo(rx, railingY);
+        ctx.stroke();
+      }
+    } else if (obj.type === "typewriter") {
+      ctx.fillStyle = "#3e2213";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = PALETTE.wood;
+      ctx.fillRect(obj.x + 1, obj.y + 1, obj.w - 2, obj.h - 2);
+      ctx.strokeStyle = PALETTE.trim;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(obj.x + 1, obj.y + 1, obj.w - 2, obj.h - 2);
+
+      ctx.fillStyle = "#2b2b2b";
+      ctx.fillRect(obj.x + 6, obj.y + 6, 14, 10);
+      ctx.fillStyle = "#555555";
+      ctx.fillRect(obj.x + 8, obj.y + 11, 10, 4);
+      ctx.fillStyle = "#aaaaaa";
+      ctx.fillRect(obj.x + 9, obj.y + 12, 2, 1);
+      ctx.fillRect(obj.x + 12, obj.y + 12, 2, 1);
+      ctx.fillRect(obj.x + 15, obj.y + 12, 2, 1);
+      ctx.fillStyle = "#111111";
+      ctx.fillRect(obj.x + 5, obj.y + 7, 16, 3);
+      ctx.fillStyle = "#f0f0f0";
+      ctx.fillRect(obj.x + 9, obj.y + 4, 8, 4);
+    } else if (obj.type === "table") {
+      const mx = obj.x, my = obj.y, mw = obj.w, mh = obj.h;
+      ctx.fillStyle = PALETTE.clock;
+      ctx.fillRect(100, my - 6, 16, 5);
+      ctx.fillRect(152, my - 6, 16, 5);
+      ctx.fillRect(204, my - 6, 16, 5);
+      ctx.fillRect(100, my + mh + 1, 16, 5);
+      ctx.fillRect(152, my + mh + 1, 16, 5);
+      ctx.fillRect(204, my + mh + 1, 16, 5);
+
+      ctx.fillStyle = "#3e2213";
+      ctx.fillRect(mx + 2, my + 2, mw, mh);
+      ctx.fillStyle = PALETTE.wood;
+      ctx.fillRect(mx, my, mw, mh);
+      ctx.strokeStyle = PALETTE.trim;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(mx, my, mw, mh);
+    } else if (obj.type === "fireplace") {
+      ctx.fillStyle = PALETTE.fireplace;
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = PALETTE.fire;
+      ctx.fillRect(obj.x + 2, obj.y + 22, 3, 16);
+      ctx.fillStyle = PALETTE.emblem;
+      ctx.fillRect(obj.x + 1, obj.y + 8, 4, 6);
+    } else if (obj.type === "clock") {
+      ctx.fillStyle = PALETTE.clock;
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#e0e0e0";
+      ctx.fillRect(obj.x + 5, obj.y + 2, 6, 4);
+    } else if (obj.type === "kenneth") {
+      // --- KENNETH BURNS (Tirado boca abajo, herido) ---
+      // Sombra
+      ctx.fillStyle = "rgba(0,0,0,0.4)";
+      ctx.fillRect(obj.x - 1, obj.y + 1, obj.w + 2, obj.h + 1);
+
+      // Cuerpo / Chaleco táctico (Gris/Azul)
+      ctx.fillStyle = "#2c3b4d";
+      ctx.fillRect(obj.x + 2, obj.y + 2, 12, 8);
+
+      // Brazos extendidos en el piso
+      ctx.fillStyle = "#d4a373"; // Piel
+      ctx.fillRect(obj.x, obj.y + 1, 3, 3);
+      ctx.fillRect(obj.x + 13, obj.y + 1, 3, 3);
+
+      // Cabeza
+      ctx.fillStyle = "#d4a373";
+      ctx.fillRect(obj.x + 5, obj.y, 6, 4);
+      // Pelo castaño
+      ctx.fillStyle = "#4a2e18";
+      ctx.fillRect(obj.x + 5, obj.y, 6, 2);
+
+      // Piernas (Pantalón verde oscuro)
+      ctx.fillStyle = "#1b2a1a";
+      ctx.fillRect(obj.x + 3, obj.y + 9, 4, 4);
+      ctx.fillRect(obj.x + 9, obj.y + 9, 4, 4);
+
+      // Botas negras
+      ctx.fillStyle = "#0a0a0a";
+      ctx.fillRect(obj.x + 3, obj.y + 12, 4, 2);
+      ctx.fillRect(obj.x + 9, obj.y + 12, 4, 2);
+
+      // Charco de sangre al lado de la cabeza
+      ctx.fillStyle = "#800c0c";
+      ctx.fillRect(obj.x - 2, obj.y - 1, 4, 3);
+      ctx.fillRect(obj.x - 1, obj.y + 1, 3, 2);
+
+    } else if (obj.type === "zombie") {
+      // --- ZOMBIE PRIMER ENCUENTRO (De espaldas comiendo / arrodillado) ---
+      // Sombra
+      ctx.fillStyle = "rgba(0,0,0,0.4)";
+      ctx.fillRect(obj.x - 1, obj.y + 1, obj.w + 2, obj.h + 1);
+
+      // Espalda / Traje desgarbado (Gris verdoso podrido)
+      ctx.fillStyle = "#3a4235";
+      ctx.fillRect(obj.x + 2, obj.y + 3, 8, 8);
+
+      // Cabeza pálida/grisácea calva (de espaldas)
+      ctx.fillStyle = "#8ca382";
+      ctx.fillRect(obj.x + 3, obj.y, 6, 5);
+      // Manchas de pudrición/sangre en la nuca
+      ctx.fillStyle = "#4a1212";
+      ctx.fillRect(obj.x + 5, obj.y + 3, 2, 2);
+
+      // Hombros/Brazos hacia adelante (encorvado)
+      ctx.fillStyle = "#8ca382";
+      ctx.fillRect(obj.x, obj.y + 4, 2, 5);
+      ctx.fillRect(obj.x + 10, obj.y + 4, 2, 5);
+
+      // Piernas dobladas/arrodilladas
+      ctx.fillStyle = "#222820";
+      ctx.fillRect(obj.x + 2, obj.y + 10, 3, 4);
+      ctx.fillRect(obj.x + 7, obj.y + 10, 3, 4);
+
+      // Detalles de sangre en las manos
+      ctx.fillStyle = "#990000";
+      ctx.fillRect(obj.x, obj.y + 8, 2, 2);
+      ctx.fillRect(obj.x + 10, obj.y + 8, 2, 2);
+    } else if (obj.type === "barCounter") {
+      // Barra de bebidas con sillas/banquetas
+      ctx.fillStyle = "#3e2213";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = PALETTE.wood;
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+      ctx.strokeStyle = PALETTE.trim;
+      ctx.strokeRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+
+      // Botellas de colores
+      ctx.fillStyle = "#111111";
+      ctx.fillRect(obj.x + 5, obj.y + 8, 8, obj.h - 16);
+      ctx.fillStyle = "#d84e1b"; ctx.fillRect(obj.x + 7, obj.y + 12, 4, 6);
+      ctx.fillStyle = "#88cbe8"; ctx.fillRect(obj.x + 7, obj.y + 28, 4, 6);
+      ctx.fillStyle = "#d89a42"; ctx.fillRect(obj.x + 7, obj.y + 44, 4, 6);
+
+      // Banquetas/Sillas de barra a la derecha
+      ctx.fillStyle = "#221108";
+      ctx.fillRect(obj.x + obj.w + 4, obj.y + 10, 8, 8);
+      ctx.fillRect(obj.x + obj.w + 4, obj.y + 36, 8, 8);
+      ctx.fillRect(obj.x + obj.w + 4, obj.y + 62, 8, 8);
+
+    } else if (obj.type === "piano") {
+      // Tapete/Alfombra
+      ctx.fillStyle = "#5c1b1b";
+      ctx.fillRect(obj.x - 3, obj.y - 3, obj.w + 6, obj.h + 6);
+
+      // Cuerpo del Piano
+      ctx.fillStyle = "#111111";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#2a2a2a";
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+
+      // Teclado
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(obj.x + 4, obj.y + obj.h - 6, obj.w - 8, 4);
+      ctx.fillStyle = "#000000";
+      for (let tx = obj.x + 6; tx < obj.x + obj.w - 8; tx += 4) {
+        ctx.fillRect(tx, obj.y + obj.h - 6, 2, 2);
+      }
+
+    } else if (obj.type === "shelf") {
+      // Estantería
+      ctx.fillStyle = "#3e2213";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = PALETTE.wood;
+      ctx.fillRect(obj.x + 1, obj.y + 1, obj.w - 2, obj.h - 2);
+      // Libros y Partitura
+      ctx.fillStyle = "#f0f0f0";
+      ctx.fillRect(obj.x + 50, obj.y + 3, 12, 10);
+      ctx.fillStyle = "#111111";
+      ctx.fillRect(obj.x + 53, obj.y + 5, 6, 1);
+      ctx.fillRect(obj.x + 53, obj.y + 8, 6, 1);
+
+    } else if (obj.type === "hiddenDoor") {
+      // Panel/Puerta secreta de madera en la pared superior
+      ctx.fillStyle = "#221108";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.strokeStyle = PALETTE.trim;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(obj.x, obj.y, obj.w, obj.h);
+
+    } else if (obj.type === "emblem") {
+      // Emblema en la pared izquierda del pasillo secreto
+      ctx.fillStyle = PALETTE.emblem;
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+
+    } else if (obj.type === "window") {
+      // Ventana en la pared derecha del pasillo secreto
+      ctx.fillStyle = "#88cbe8";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(obj.x, obj.y, obj.w, obj.h);
+    
+    } else if (obj.type === "window") {
+      ctx.fillStyle = "#88cbe8";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(obj.x, obj.y, obj.w, obj.h);
+    }
+    
+  });
+}
+
+function drawPlayer() {
+  const x = Math.round(player.x);
+  const y = Math.round(player.y);
+
+  ctx.fillStyle = "#2b4374";
+  ctx.fillRect(x + 2, y, 8, 3);
+  ctx.fillStyle = "#e9c39a";
+  ctx.fillRect(x + 3, y + 3, 6, 3);
+  ctx.fillStyle = "#3b5998";
+  ctx.fillRect(x + 1, y + 6, 10, 5);
+  ctx.fillStyle = "#e9c39a";
+  ctx.fillRect(x, y + 7, 2, 4);
+  ctx.fillRect(x + 10, y + 7, 2, 4);
+
+  ctx.fillStyle = "#111111";
+  if (player.animFrame === 0) {
+    ctx.fillRect(x + 2, y + 11, 3, 5);
+    ctx.fillRect(x + 7, y + 11, 3, 5);
+  } else {
+    ctx.fillRect(x + 1, y + 11, 4, 5);
+    ctx.fillRect(x + 7, y + 11, 4, 5);
+  }
+}
+
+function loop() {
+  update();
+  drawRoom();
+  drawPlayer();
+  requestAnimationFrame(loop);
+}
+
+loop();
