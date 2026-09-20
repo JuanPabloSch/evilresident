@@ -6,7 +6,7 @@ const ROOMS = {
       // Puerta Oeste -> Va al Dining Room
       { id: "west", x: 12, y: 75, w: 12, h: 40, targetRoom: "diningRoom", spawnX: 280, spawnY: 90 },
       // Puertas Este (Pared derecha)
-      { id: "eastTop", x: 296, y: 55, w: 12, h: 30, targetRoom: "mainHall", spawnX: 230, spawnY: 140 },
+      { id: "eastTop", x: 296, y: 55, w: 12, h: 30, targetRoom: "dressingRoom", spawnX: 45, spawnY: 130 },
       { id: "eastBottom", x: 296, y: 120, w: 12, h: 30, targetRoom: "mainHall", spawnX: 230, spawnY: 140 }
     ],
     interactables: [
@@ -236,35 +236,27 @@ tigerStatueRoom: {
     name: "West Stairway 1F",
     floorType: "wood",
     bounds: { minX: 30, maxX: 270, minY: 30, maxY: 170 },
+    // BLOQUE DE PARED INTERNA (Pared sólida que impide caminar por la zona negra central)
+    walls: [
+      { x: 80, y: 70, w: 180, h: 60 }
+    ],
     corridorPoly: [
-      { x: 30, y: 30, w: 230, h: 40 },   // Pasillo superior (Norte)
-      { x: 30, y: 70, w: 50, h: 60 },    // Pasillo oeste (donde está la columna 'c' y ventanas)
-      { x: 30, y: 130, w: 230, h: 40 }   // Pasillo inferior (Sur, con escaleras y save room)
+      { x: 30, y: 30, w: 230, h: 40 },   // Pasillo norte
+      { x: 30, y: 70, w: 50, h: 60 },    // Pasillo oeste
+      { x: 30, y: 130, w: 230, h: 40 }   // Pasillo sur
     ],
     doors: [
-      // Puerta 'p' superior derecha -> Conecta con la puerta superior izquierda del centralCorridor (northWest)
       { id: "doorToCentral", x: 252, y: 35, w: 8, h: 25, targetRoom: "centralCorridor", spawnX: 35, spawnY: 45 },
-
-      // Puerta 'p' en la pared sur del pasillo norte -> Lleva a vacantRoom (próximamente)
       { id: "doorToVacant", x: 190, y: 62, w: 25, h: 8, targetRoom: "vacantRoom", spawnX: 150, spawnY: 75 },
-
-      // Puerta 'p' en el pasillo sur -> Lleva a Mansion Save Room (próximamente)
-      { id: "doorToSaveRoom", x: 130, y: 130, w: 25, h: 8, targetRoom: "mansionSaveRoom", spawnX: 150, spawnY: 100 },
+      { id: "doorToSaveRoom", x: 130, y: 130, w: 25, h: 8, targetRoom: "mansionSaveRoom", spawnX: 150, spawnY: 100 }
     ],
     interactables: [
-      // Columna 'c' (bloque circular/cuadrado sólido)
       { type: "column", x: 50, y: 85, w: 14, h: 14, solid: true },
-
-      // Ventanas en la pared izquierda
       { type: "window", x: 30, y: 50, w: 4, h: 20 },
       { type: "window", x: 30, y: 100, w: 4, h: 20 },
-
-      // Escaleras a la derecha en el pasillo sur (peldaños verticales)
       { type: "stairsVertical", x: 180, y: 130, w: 75, h: 40 },
-
-      // Zombis 'z'
-      { type: "zombie", x: 140, y: 42, w: 12, h: 14 }, // Zombi norte
-      { type: "zombie", x: 45, y: 142, w: 12, h: 14 }   // Zombi sur
+      { type: "zombie", x: 140, y: 42, w: 12, h: 14 },
+      { type: "zombie", x: 45, y: 142, w: 12, h: 14 }
     ]
   },
   vacantRoom: {
@@ -322,5 +314,37 @@ tigerStatueRoom: {
       { type: "inkRibbon", x: 185, y: 120, w: 8, h: 8 }
     ]
   },
+dressingRoom: {
+    name: "Dressing Room",
+    floorType: "wood",
+    bounds: { minX: 30, maxX: 260, minY: 30, maxY: 170 },
+    corridorPoly: [
+      { x: 30, y: 30, w: 230, h: 45 },   // Área superior (pasillo norte arriba de la biblioteca)
+      { x: 30, y: 75, w: 180, h: 95 },   // Área inferior principal
+      { x: 210, y: 30, w: 50, h: 45 }    // Nicho este de la puerta derecha
+    ],
+    doors: [
+      // Puerta 'p' abajo a la izquierda -> Conecta con la puerta superior derecha de Main Hall
+      { id: "doorToMainHall", x: 30, y: 120, w: 8, h: 25, targetRoom: "mainHall", spawnX: 230, spawnY: 50 },
 
+      // Puerta 'p' a la derecha -> Para conectar a futuro con el pasillo este / Art Gallery
+      { id: "doorToEastHall", x: 252, y: 35, w: 8, h: 25, targetRoom: "dressingRoom", spawnX: 240, spawnY: 45 }
+    ],
+    interactables: [
+      // Biblioteca / Book shelf divisoria (impide el paso directo entre la puerta y la pared superior)
+      { type: "bookshelfHorizontal", x: 30, y: 70, w: 110, h: 12, solid: true },
+
+      // Espejo 'e' arriba a la izquierda (en el pasillo) + Clip 'c' al lado
+      { type: "mirror", x: 40, y: 32, w: 20, h: 6, solid: true },
+      { type: "handgunAmmo", x: 65, y: 40, w: 8, h: 6 },
+
+      // Escritorio 'e' abajo a la derecha + Shells 's' arriba del escritorio
+      { type: "desk", x: 160, y: 110, w: 30, h: 45, solid: true },
+      { type: "shotgunShells", x: 170, y: 120, w: 10, h: 8 },
+
+      // Zombis 'z'
+      { type: "zombie", x: 180, y: 40, w: 12, h: 14 },  // Zombi pasillo norte
+      { type: "zombie", x: 130, y: 140, w: 12, h: 14 }  // Zombi área inferior
+    ]
+  }
 };

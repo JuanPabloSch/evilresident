@@ -518,6 +518,29 @@ function drawRoom() {
       ctx.fillRect(obj.x + 1, obj.y + 2, 2, 4);
       ctx.fillRect(obj.x + 5, obj.y + 2, 2, 4);
 
+      } else if (obj.type === "mirror") {
+      // Espejo de Pared (Marco de madera tallada con cristal reflejante azulado)
+      ctx.fillStyle = "#5c341d";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#add8e6"; // Cristal con reflejo
+      ctx.fillRect(obj.x + 2, obj.y + 1, obj.w - 4, obj.h - 2);
+      ctx.fillStyle = "#ffffff"; // Brillo diagonal
+      ctx.fillRect(obj.x + 5, obj.y + 2, 3, 2);
+
+    } else if (obj.type === "bookshelfHorizontal") {
+      // Biblioteca / Mueble largo dividiendo el ambiente
+      ctx.fillStyle = "#221108";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = PALETTE.wood;
+      ctx.fillRect(obj.x + 1, obj.y + 1, obj.w - 2, obj.h - 2);
+      
+      // Libros variados de colores alineados en el estante
+      const bookColors = ["#8b0000", "#1e90ff", "#228b22", "#ffd700", "#4b0082"];
+      for (let i = 0; i < obj.w - 8; i += 5) {
+        ctx.fillStyle = bookColors[(i / 5) % bookColors.length];
+        ctx.fillRect(obj.x + 4 + i, obj.y + 3, 4, obj.h - 6);
+      }
+
     } else if (obj.type === "kenneth") {
       // --- KENNETH BURNS (Tirado boca abajo, herido) ---
       // Sombra
