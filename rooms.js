@@ -443,7 +443,7 @@ artRoom: {
       { id: "doorToArtRoom", x: 30, y: 130, w: 8, h: 25, targetRoom: "artRoom", spawnX: 250, spawnY: 115 },
 
       // Puerta 'p' arriba a la derecha -> Conecta con Winding Passage (próximamente)
-      { id: "doorToWinding", x: 195, y: 30, w: 25, h: 8, targetRoom: "lPassage", spawnX: 195, spawnY: 45 }
+      { id: "doorToWinding", x: 195, y: 30, w: 25, h: 8, targetRoom: "windingPassage", spawnX: 230, spawnY: 140 },
     ],
     interactables: [
       // Mesita auxiliar en el pasillo inferior
@@ -459,6 +459,51 @@ artRoom: {
       // Perros zombi 'd' (Cerberus)
       { type: "zombieDog", x: 150, y: 135, w: 16, h: 10 }, // Perro pasillo inferior
       { type: "zombieDog", x: 200, y: 80, w: 10, h: 16 }   // Perro pasillo vertical
+    ]
+  },
+windingPassage: {
+    name: "Winding Passage",
+    floorType: "wood",
+    bounds: { minX: 30, maxX: 260, minY: 30, maxY: 170 },
+
+    // PAREDES INTERNAS/BORDES QUE BLOQUEAN EL PASO
+    walls: [
+      // Pared vertical izquierda del hueco central
+      { x: 88, y: 70, w: 6, h: 90 },
+      // Pared horizontal superior del hueco central
+      { x: 88, y: 66, w: 45, h: 6 },
+      // Pared vertical derecha del hueco central
+      { x: 128, y: 70, w: 6, h: 90 },
+      // Esquina superior derecha (donde indicaste las flechas)
+      { x: 206, y: 30, w: 6, h: 42 }
+    ],
+
+    // Área caminable de la habitación
+    corridorPoly: [
+      { x: 30, y: 30, w: 180, h: 40 },    // Pasillo superior horizontal
+      { x: 30, y: 70, w: 60, h: 90 },     // Pasillo izquierdo (pbp y ptr)
+      { x: 130, y: 70, w: 130, h: 100 }   // Salón derecho (pbr, pob, plp y planta)
+    ],
+
+    doors: [
+      // plp: Puerta abajo a la derecha -> L-Passage
+      { id: "doorToLPassage", x: 200, y: 162, w: 25, h: 8, targetRoom: "lPassage", spawnX: 195, spawnY: 45 },
+
+      // pob: Puerta en el extremo derecho -> Outside Boiler
+      { id: "doorToOutsideBoiler", x: 252, y: 100, w: 8, h: 25, targetRoom: "windingPassage", spawnX: 250, spawnY: 100 },
+
+      // pbr: Puerta arriba a la derecha -> Bathroom
+      { id: "doorToBathroom", x: 220, y: 70, w: 25, h: 8, targetRoom: "windingPassage", spawnX: 220, spawnY: 85 },
+
+      // ptr: Puerta divisoria en el pasillo izquierdo -> Trap Room
+      { id: "doorToTrapRoom", x: 82, y: 90, w: 8, h: 25, targetRoom: "windingPassage", spawnX: 60, spawnY: 90 },
+
+      // pbp: Puerta abajo a la izquierda -> Back Passage
+      { id: "doorToBackPassage", x: 30, y: 110, w: 8, h: 25, targetRoom: "windingPassage", spawnX: 35, spawnY: 110 }
+    ],
+
+    interactables: [
+      { type: "greenHerb", x: 150, y: 110, w: 10, h: 10 }
     ]
   }
 };

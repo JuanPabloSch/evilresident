@@ -672,6 +672,19 @@ function drawRoom() {
         ctx.fillRect(obj.x + obj.w, obj.y + 3, 2, 4);
       }
 
+      } else if (obj.type === "greenHerb") {
+      // Planta verde de curación en maceta roja
+      ctx.fillStyle = "#8b0000"; // Maceta
+      ctx.fillRect(obj.x + 2, obj.y + 6, obj.w - 4, 4);
+
+      ctx.fillStyle = "#00ff00"; // Hojas verdes brillantes
+      ctx.fillRect(obj.x + 1, obj.y + 2, 3, 4);
+      ctx.fillRect(obj.x + 6, obj.y + 1, 3, 5);
+      ctx.fillRect(obj.x + 3, obj.y, 4, 3);
+      
+      ctx.fillStyle = "#00aa00"; // Sombra de hojas
+      ctx.fillRect(obj.x + 4, obj.y + 3, 2, 3);
+
     } else if (obj.type === "windowVertical") {
       // Ventana en pared derecha
       ctx.fillStyle = "#add8e6"; // Marco celeste
