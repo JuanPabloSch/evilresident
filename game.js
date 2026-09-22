@@ -22,7 +22,11 @@ const PALETTE = {
   clock: "#3e2213"
 };
 
-// --- PATRÓN DE PISO ---
+// ==========================================
+// 1. CREACIÓN DE PATRONES DE PISO (Fuera del bucle principal)
+// ==========================================
+
+// --- PATRÓN DE PISO ALFOMBRA/VERDE ---
 const tileCanvas = document.createElement("canvas");
 tileCanvas.width = 16;
 tileCanvas.height = 16;
@@ -35,6 +39,7 @@ tileCtx.strokeRect(0, 0, 16, 16);
 tileCtx.fillStyle = "#25482b";
 tileCtx.fillRect(7, 7, 2, 2);
 const floorPattern = ctx.createPattern(tileCanvas, "repeat");
+
 // --- PATRÓN DE PISO DE MADERA ---
 const woodTileCanvas = document.createElement("canvas");
 woodTileCanvas.width = 16;
@@ -48,6 +53,21 @@ woodCtx.strokeRect(0, 0, 16, 16);
 woodCtx.fillStyle = "#3a1f0d";
 woodCtx.fillRect(0, 7, 16, 2);
 const woodFloorPattern = ctx.createPattern(woodTileCanvas, "repeat");
+
+// --- PATRÓN DE PISO DE CEMENTO (Outside Boiler) ---
+const concreteTileCanvas = document.createElement("canvas");
+concreteTileCanvas.width = 16;
+concreteTileCanvas.height = 16;
+const concreteCtx = concreteTileCanvas.getContext("2d");
+concreteCtx.fillStyle = "#696969";
+concreteCtx.fillRect(0, 0, 16, 16);
+concreteCtx.strokeStyle = "#4d4d4d";
+concreteCtx.lineWidth = 1;
+concreteCtx.strokeRect(0, 0, 16, 16);
+concreteCtx.fillStyle = "#555555";
+concreteCtx.fillRect(7, 7, 2, 2);
+const concreteFloorPattern = ctx.createPattern(concreteTileCanvas, "repeat");
+
 
 // --- ESTADO DEL JUEGO ---
 let currentRoom = "mainHall";
@@ -141,7 +161,13 @@ function drawRoom() {
   const room = ROOMS[currentRoom];
 
   // 1. Decidir qué textura de piso usar para esta habitación
-  const currentFloorPattern = room.floorType === "wood" ? woodFloorPattern : floorPattern;
+  let currentFloorPattern = floorPattern; // Por defecto (alfombra verde)
+
+  if (room.floorType === "wood") {
+    currentFloorPattern = woodFloorPattern;
+  } else if (room.floorType === "concrete") {
+    currentFloorPattern = concreteFloorPattern;
+  }
 
   // Fondo negro base
   ctx.fillStyle = PALETTE.shadow;
@@ -228,6 +254,48 @@ function drawRoom() {
         ctx.lineTo(rx, railingY);
         ctx.stroke();
       }
+
+      room.interactables.forEach((obj) => {
+  if (obj.type === "greenHerb") {
+    // Hierba verde brillante con borde negro
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
+    ctx.fillStyle = "#00ff66";
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+
+  } else if (obj.type === "grillBoiler") {
+    // Parrilla con rejilla gris clara y brasas rojas
+    ctx.fillStyle = "#888888";
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#111111";
+    ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+    ctx.fillStyle = "#ff3300"; // Brasas rojas
+    ctx.fillRect(obj.x + 4, obj.y + 5, obj.w - 8, 4);
+
+  } else if (obj.type === "chemicalItem") {
+    // Bidón químico rojo con amarillo
+    ctx.fillStyle = "#ff0000";
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#ffff00";
+    ctx.fillRect(obj.x + 1, obj.y + 2, obj.w - 2, 4);
+
+  } else if (obj.type === "pottedPlant") {
+    // Planta decorativa: Maceta terracota clara + hojas verde brillante
+    ctx.fillStyle = "#d2691e"; // Maceta terracota clara
+    ctx.fillRect(obj.x + 1, obj.y + 4, obj.w - 2, 6);
+    ctx.fillStyle = "#00ff44"; // Hojas verde lima
+    ctx.fillRect(obj.x, obj.y, obj.w, 5);
+
+  } else if (obj.type === "zombieDog") {
+    // Perro Zombi: Borde rojizo/oscuro + ojos rojos brillantes
+    ctx.fillStyle = "#2a1508";
+    ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
+    ctx.fillStyle = "#8b4513"; // Marrón
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#ff0000"; // Ojos rojos
+    ctx.fillRect(obj.x + 2, obj.y + 2, 3, 3);
+  }
+});
       } else if (obj.type === "monsterPlant") {
       // Planta Monstruo (Planta 42 / Tentáculos)
       ctx.fillStyle = "#1e4d2b"; // Base tallo verde oscuro
@@ -298,6 +366,22 @@ function drawRoom() {
       ctx.fillRect(obj.x + 6, obj.y + 2, 14, 3);
       ctx.fillStyle = "#221108"; // Grieta / Detalle de rotura en el cañón
       ctx.fillRect(obj.x + 12, obj.y + 2, 2, 3);
+
+      } else if (obj.type === "grillBoiler") {
+    // Parrilla con rejilla gris clara y brasas rojas
+    ctx.fillStyle = "#888888";
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#111111";
+    ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+    ctx.fillStyle = "#ff3300"; // Brasas rojas
+    ctx.fillRect(obj.x + 4, obj.y + 5, obj.w - 8, 4);
+
+  } else if (obj.type === "chemicalItem") {
+    // Bidón químico rojo con amarillo
+    ctx.fillStyle = "#ff0000";
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#ffff00";
+    ctx.fillRect(obj.x + 1, obj.y + 2, obj.w - 2, 4);
 
       } else if (obj.type === "tigerStatue") {
       // Pedestal
@@ -684,6 +768,8 @@ function drawRoom() {
       
       ctx.fillStyle = "#00aa00"; // Sombra de hojas
       ctx.fillRect(obj.x + 4, obj.y + 3, 2, 3);
+
+      
 
     } else if (obj.type === "windowVertical") {
       // Ventana en pared derecha

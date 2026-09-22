@@ -490,7 +490,7 @@ windingPassage: {
       { id: "doorToLPassage", x: 200, y: 162, w: 25, h: 8, targetRoom: "lPassage", spawnX: 195, spawnY: 45 },
 
       // pob: Puerta en el extremo derecho -> Outside Boiler
-      { id: "doorToOutsideBoiler", x: 252, y: 100, w: 8, h: 25, targetRoom: "windingPassage", spawnX: 250, spawnY: 100 },
+      { id: "doorToOutsideBoiler", x: 252, y: 100, w: 8, h: 25, targetRoom: "outsideBoiler", spawnX: 215, spawnY: 145 },
 
       // pbr: Puerta arriba a la derecha -> Bathroom
       { id: "doorToBathroom", x: 220, y: 70, w: 25, h: 8, targetRoom: "windingPassage", spawnX: 220, spawnY: 85 },
@@ -504,6 +504,47 @@ windingPassage: {
 
     interactables: [
       { type: "greenHerb", x: 150, y: 110, w: 10, h: 10 }
+    ]
+  },
+outsideBoiler: {
+    name: "Outside Boiler",
+    floorType: "concrete",
+    bounds: { minX: 30, maxX: 260, minY: 30, maxY: 170 },
+
+    corridorPoly: [
+      { x: 30, y: 30, w: 220, h: 45 },   // Pasillo superior (Y: 30 a 75)
+      { x: 200, y: 75, w: 50, h: 95 }    // Pasillo vertical (X: 200 a 250)
+    ],
+
+    walls: [
+      { x: 30, y: 75, w: 170, h: 10 },
+      { x: 190, y: 75, w: 10, h: 95 }
+    ],
+
+    doors: [
+      { id: "doorToWinding", x: 200, y: 122, w: 8, h: 25, targetRoom: "windingPassage", spawnX: 21, spawnY: 100 }
+    ],
+
+    interactables: [
+      // --- PASILLO SUPERIOR ---
+      { type: "zombieDog", x: 70, y: 36, w: 16, h: 10 },
+
+      // 'par' PARRILLA: Pegada abajo pero dentro de la zona visible (x: 95, y: 52)
+      { type: "grillBoiler", x: 95, y: 48, w: 22, h: 14, solid: true },
+
+      // 'che' CHEMICAL: En medio del pasillo (x: 130, y: 40)
+      { type: "chemicalItem", x: 130, y: 42, w: 8, h: 10 },
+
+      // 'p' Planta decorativa en pared norte
+      { type: "pottedPlant", x: 155, y: 34, w: 10, h: 10, solid: true },
+
+      // Planta verde recolectable
+      { type: "greenHerb", x: 175, y: 42, w: 10, h: 10 },
+
+      // --- PASILLO VERTICAL DERECHO ---
+      { type: "pottedPlant", x: 234, y: 34, w: 10, h: 10, solid: true },
+      { type: "zombieDog", x: 220, y: 115, w: 10, h: 16 },
+      { type: "greenHerb", x: 210, y: 150, w: 10, h: 10 }
     ]
   }
 };
