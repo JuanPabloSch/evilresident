@@ -541,6 +541,50 @@ function drawRoom() {
         ctx.fillRect(obj.x + 4 + i, obj.y + 3, 4, obj.h - 6);
       }
 
+      } else if (obj.type === "smallTable") {
+      // Mesita de madera con detalle
+      ctx.fillStyle = "#3a1e0b";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = PALETTE.wood;
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+
+    } else if (obj.type === "clothesRack") {
+      // Perchero / Cambios de ropa colgados en la pared
+      ctx.fillStyle = "#221108"; // Barra / Estructura
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      
+      // Prendas colgadas de varios colores (Rojo, Azul, Verde, Blanco)
+      const clothes = ["#8b0000", "#1e3d59", "#2e5a1c", "#d9d9d9"];
+      for (let i = 0; i < obj.h - 10; i += 14) {
+        ctx.fillStyle = clothes[(i / 14) % clothes.length];
+        ctx.fillRect(obj.x + 3, obj.y + 5 + i, obj.w - 6, 10);
+      }
+
+      } else if (obj.type === "mapStatue") {
+      // Estatua de mármol/piedra con jarrón arriba
+      ctx.fillStyle = "#a8a8a8"; // Pedestal
+      ctx.fillRect(obj.x, obj.y + 8, obj.w, obj.h - 8);
+      ctx.fillStyle = "#d0d0d0";
+      ctx.fillRect(obj.x + 2, obj.y + 10, obj.w - 4, obj.h - 12);
+      
+      // Jarrón de cerámica con mapa
+      ctx.fillStyle = "#8b4513";
+      ctx.fillRect(obj.x + 5, obj.y, 12, 10);
+      ctx.fillStyle = "#d2b48c"; // Rollo de mapa asomando
+      ctx.fillRect(obj.x + 9, obj.y - 3, 4, 5);
+
+    } else if (obj.type === "stepLadder") {
+      // Escalerita metálica/madera movible
+      ctx.fillStyle = "#705030"; // Parantes laterales
+      ctx.fillRect(obj.x, obj.y, 3, obj.h);
+      ctx.fillRect(obj.x + obj.w - 3, obj.y, 3, obj.h);
+      
+      // Peldaños horizontales
+      ctx.fillStyle = "#a07040";
+      ctx.fillRect(obj.x, obj.y + 3, obj.w, 2);
+      ctx.fillRect(obj.x, obj.y + 8, obj.w, 2);
+      ctx.fillRect(obj.x, obj.y + 13, obj.w, 2);
+
     } else if (obj.type === "kenneth") {
       // --- KENNETH BURNS (Tirado boca abajo, herido) ---
       // Sombra
@@ -577,6 +621,63 @@ function drawRoom() {
       ctx.fillStyle = "#800c0c";
       ctx.fillRect(obj.x - 2, obj.y - 1, 4, 3);
       ctx.fillRect(obj.x - 1, obj.y + 1, 3, 2);
+
+     } else if (obj.type === "zombieDog") {
+      // PERRO ZOMBI / CERBERUS (Estilo Atari 2600 detallado)
+      const isHorizontal = obj.w > obj.h;
+
+      // 1. Cuerpo principal (Marrón rojizo podrido)
+      ctx.fillStyle = "#4a190f";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+
+      // 2. Detalle de lomo abierto / sangre (Línea roja central)
+      ctx.fillStyle = "#8b0000";
+      if (isHorizontal) {
+        ctx.fillRect(obj.x + 3, obj.y + 2, obj.w - 6, 2);
+      } else {
+        ctx.fillRect(obj.x + 2, obj.y + 3, 2, obj.h - 6);
+      }
+
+      // 3. Cabeza y hocico según la orientación
+      if (isHorizontal) {
+        // Mirando hacia la izquierda
+        ctx.fillStyle = "#2d0f09"; // Cabeza
+        ctx.fillRect(obj.x - 2, obj.y + 1, 5, 6);
+        
+        ctx.fillStyle = "#ff0000"; // Ojo rojo sediento de sangre
+        ctx.fillRect(obj.x, obj.y + 2, 2, 2);
+        
+        ctx.fillStyle = "#ffffff"; // Colmillos / Dientes expuestos
+        ctx.fillRect(obj.x - 2, obj.y + 5, 3, 2);
+
+        // Patas delanteras y traseras
+        ctx.fillStyle = "#2d0f09";
+        ctx.fillRect(obj.x + 2, obj.y + obj.h, 3, 3);
+        ctx.fillRect(obj.x + obj.w - 5, obj.y + obj.h, 3, 3);
+      } else {
+        // Mirando hacia arriba
+        ctx.fillStyle = "#2d0f09"; // Cabeza
+        ctx.fillRect(obj.x + 1, obj.y - 2, 8, 5);
+        
+        ctx.fillStyle = "#ff0000"; // Ojitos rojos
+        ctx.fillRect(obj.x + 2, obj.y, 2, 2);
+        ctx.fillRect(obj.x + 6, obj.y, 2, 2);
+        
+        ctx.fillStyle = "#ffffff"; // Dientes
+        ctx.fillRect(obj.x + 3, obj.y - 2, 4, 2);
+
+        // Patas a los lados
+        ctx.fillStyle = "#2d0f09";
+        ctx.fillRect(obj.x - 2, obj.y + 3, 2, 4);
+        ctx.fillRect(obj.x + obj.w, obj.y + 3, 2, 4);
+      }
+
+    } else if (obj.type === "windowVertical") {
+      // Ventana en pared derecha
+      ctx.fillStyle = "#add8e6"; // Marco celeste
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#ffffff"; // Vidrio reflejante
+      ctx.fillRect(obj.x + 1, obj.y + 2, obj.w - 2, obj.h - 4);
 
     } else if (obj.type === "zombie") {
       // --- ZOMBIE PRIMER ENCUENTRO (De espaldas comiendo / arrodillado) ---

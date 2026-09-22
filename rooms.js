@@ -7,7 +7,7 @@ const ROOMS = {
       { id: "west", x: 12, y: 75, w: 12, h: 40, targetRoom: "diningRoom", spawnX: 280, spawnY: 90 },
       // Puertas Este (Pared derecha)
       { id: "eastTop", x: 296, y: 55, w: 12, h: 30, targetRoom: "dressingRoom", spawnX: 45, spawnY: 130 },
-      { id: "eastBottom", x: 296, y: 120, w: 12, h: 30, targetRoom: "mainHall", spawnX: 230, spawnY: 140 }
+      { id: "eastBottom", x: 296, y: 120, w: 12, h: 30, targetRoom: "artRoom", spawnX: 45, spawnY: 100 }
     ],
     interactables: [
       { type: "stairsHorizontal", x: 120, y: 25, w: 80, h: 90},
@@ -328,7 +328,7 @@ dressingRoom: {
       { id: "doorToMainHall", x: 30, y: 120, w: 8, h: 25, targetRoom: "mainHall", spawnX: 230, spawnY: 50 },
 
       // Puerta 'p' a la derecha -> Para conectar a futuro con el pasillo este / Art Gallery
-      { id: "doorToEastHall", x: 252, y: 35, w: 8, h: 25, targetRoom: "dressingRoom", spawnX: 240, spawnY: 45 }
+      { id: "doorToEastHall", x: 252, y: 35, w: 8, h: 25, targetRoom: "wardrobe", spawnX: 60, spawnY: 60 },
     ],
     interactables: [
       // Biblioteca / Book shelf divisoria (impide el paso directo entre la puerta y la pared superior)
@@ -345,6 +345,120 @@ dressingRoom: {
       // Zombis 'z'
       { type: "zombie", x: 180, y: 40, w: 12, h: 14 },  // Zombi pasillo norte
       { type: "zombie", x: 130, y: 140, w: 12, h: 14 }  // Zombi área inferior
+    ]
+  },
+  wardrobe: {
+    name: "Wardrobe",
+    floorType: "wood",
+    bounds: { minX: 40, maxX: 260, minY: 40, maxY: 160 },
+    corridorPoly: [
+      { x: 40, y: 40, w: 220, h: 120 }
+    ],
+    doors: [
+      // Puerta 'p' arriba a la izquierda -> Conecta con Dressing Room
+      { id: "doorToDressing", x: 45, y: 40, w: 25, h: 8, targetRoom: "dressingRoom", spawnX: 240, spawnY: 45 },
+
+      // Puerta 'p' abajo a la izquierda -> Conecta con Wardrobe Closet (próximamente)
+      { id: "doorToCloset", x: 70, y: 152, w: 25, h: 8, targetRoom:"wardrobeCloset", spawnX: 75, spawnY: 60 },
+    ],
+    interactables: [
+      // Espejo 'e' en la pared norte
+      { type: "mirror", x: 130, y: 42, w: 24, h: 6, solid: true },
+
+      // Mueble de madera / Armario de ropa ('shel'/'clo') en la pared derecha
+      { type: "shelfVertical", x: 235, y: 55, w: 20, h: 50, solid: true },
+
+      // Ink Ribbon 'ink' en el piso/pared sur
+      { type: "inkRibbon", x: 170, y: 145, w: 8, h: 8 },
+
+      // Zombi 'z' cerca de la pared derecha / sur
+      { type: "zombie", x: 220, y: 125, w: 12, h: 14 }
+    ]
+  },
+  wardrobeCloset: {
+    name: "Wardrobe Closet",
+    floorType: "wood",
+    // Habitación estrecha estilo pasillo/vestidor
+    bounds: { minX: 60, maxX: 160, minY: 40, maxY: 160 },
+    corridorPoly: [
+      { x: 60, y: 40, w: 100, h: 120 }
+    ],
+    doors: [
+      // Puerta arriba a la izquierda para volver a Wardrobe
+      { id: "doorToWardrobe", x: 65, y: 40, w: 25, h: 8, targetRoom: "wardrobe", spawnX: 75, spawnY: 135 }
+    ],
+    interactables: [
+      // Mesita auxiliar en el piso / pared sur
+      { type: "smallTable", x: 70, y: 130, w: 22, h: 18, solid: true },
+
+      // Cambios de ropa / Perchero de pared a la derecha
+      { type: "clothesRack", x: 140, y: 55, w: 15, h: 70, solid: true }
+    ]
+  },
+artRoom: {
+    name: "Art Room",
+    floorType: "carpetGreen",
+    bounds: { minX: 30, maxX: 270, minY: 30, maxY: 170 },
+
+    // MURO DIVISORIO (Sale de la izquierda a la derecha, dejando el paso solo por el extremo derecho)
+    walls: [
+      { x: 150, y: 70, w: 85, h: 8 } // Bloquea la entrada izquierda del recoveco
+    ],
+
+    // Piso y recorrido continuo
+    corridorPoly: [
+      { x: 30, y: 70, w: 240, h: 90 },   // Salón principal
+      { x: 150, y: 30, w: 120, h: 48 }   // Recoveco norte (acceso por la derecha pegar la vuelta)
+    ],
+
+    doors: [
+      // Puerta a la izquierda -> Main Hall
+      { id: "doorToMainHall", x: 30, y: 95, w: 8, h: 25, targetRoom: "mainHall", spawnX: 230, spawnY: 130 },
+
+      // Puerta a la derecha -> L-Passage
+      { id: "doorToLPassage", x: 262, y: 115, w: 8, h: 25, targetRoom: "lPassage", spawnX: 45, spawnY: 140 },
+    ],
+
+    interactables: [
+      { type: "mapStatue", x: 105, y: 95, w: 22, h: 22, solid: true },
+      { type: "stepLadder", x: 160, y: 135, w: 18, h: 18, solid: true },
+      
+      // Ítems y zombis en el recoveco superior
+      { type: "inkRibbon", x: 165, y: 40, w: 8, h: 8 },
+      { type: "zombie", x: 200, y: 42, w: 12, h: 14 },
+      { type: "zombie", x: 230, y: 42, w: 12, h: 14 }
+    ]
+  },
+  lPassage: {
+    name: "L-Passage",
+    floorType: "wood",
+    bounds: { minX: 30, maxX: 230, minY: 30, maxY: 170 },
+    // Forma exacta en 'L': Tramo horizontal abajo y tramo vertical a la derecha
+    corridorPoly: [
+      { x: 30, y: 120, w: 200, h: 50 },  // Pasillo horizontal inferior
+      { x: 180, y: 30, w: 50, h: 140 }   // Pasillo vertical derecho
+    ],
+    doors: [
+      // Puerta 'p' a la izquierda -> Conecta con Art Room
+      { id: "doorToArtRoom", x: 30, y: 130, w: 8, h: 25, targetRoom: "artRoom", spawnX: 250, spawnY: 115 },
+
+      // Puerta 'p' arriba a la derecha -> Conecta con Winding Passage (próximamente)
+      { id: "doorToWinding", x: 195, y: 30, w: 25, h: 8, targetRoom: "lPassage", spawnX: 195, spawnY: 45 }
+    ],
+    interactables: [
+      // Mesita auxiliar en el pasillo inferior
+      { type: "smallTable", x: 80, y: 122, w: 30, h: 12, solid: true },
+
+      // Mesita auxiliar en el pasillo vertical derecho
+      { type: "smallTable", x: 182, y: 70, w: 12, h: 30, solid: true },
+
+      // Ventanas 'v' (una abajo en el piso sur y otra a la derecha en la pared este)
+      { type: "window", x: 130, y: 166, w: 25, h: 4 },
+      { type: "windowVertical", x: 226, y: 110, w: 4, h: 25 },
+
+      // Perros zombi 'd' (Cerberus)
+      { type: "zombieDog", x: 150, y: 135, w: 16, h: 10 }, // Perro pasillo inferior
+      { type: "zombieDog", x: 200, y: 80, w: 10, h: 16 }   // Perro pasillo vertical
     ]
   }
 };
