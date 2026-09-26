@@ -383,6 +383,39 @@ function drawRoom() {
     ctx.fillStyle = "#ffff00";
     ctx.fillRect(obj.x + 1, obj.y + 2, obj.w - 2, 4);
 
+    } else if (obj.type === "shower") {
+    // Ducha compacta
+    ctx.fillStyle = "#888888";
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#e0e0e0";
+    ctx.fillRect(obj.x + 1, obj.y + 1, obj.w - 2, obj.h - 2);
+    ctx.fillStyle = "#4682b4"; // Flor de ducha
+    ctx.fillRect(obj.x + 2, obj.y + 2, 4, 4);
+
+  } else if (obj.type === "toilet") {
+    // Inodoro chico
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(obj.x, obj.y, obj.w, 3); // Mochila
+    ctx.fillRect(obj.x + 1, obj.y + 3, obj.w - 2, obj.h - 3); // Taza
+    ctx.fillStyle = "#222222";
+    ctx.fillRect(obj.x + 2, obj.y + 5, obj.w - 4, 3);
+
+  } else if (obj.type === "sinkTable") {
+    // Vanitory compacto
+    ctx.fillStyle = "#654321"; // Mueble
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#ffffff"; // Pileta
+    ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+    ctx.fillStyle = "#aaaaaa"; // Canilla
+    ctx.fillRect(obj.x + (obj.w / 2) - 1, obj.y, 2, 2);
+
+  } else if (obj.type === "mirror") {
+    // Espejo chico
+    ctx.fillStyle = "#d4af37";
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#e0ffff";
+    ctx.fillRect(obj.x + 1, obj.y + 1, obj.w - 2, obj.h - 2);
+
       } else if (obj.type === "tigerStatue") {
       // Pedestal
       ctx.fillStyle = "#3d3a3a";
@@ -426,6 +459,29 @@ function drawRoom() {
       ctx.fillStyle = "#d89a42";
       ctx.fillRect(obj.x + 2, obj.y + 1, obj.w - 4, 2);
 
+      } else if (obj.type === "livingTable") {
+    // Mesa de Living: Madera fina con centro pulido
+    ctx.fillStyle = "#3a1f0d"; // Borde oscuro
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#5c3317"; // Tablero
+    ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+
+  } else if (obj.type === "bench") {
+    // Banco / Sillón: Asiento acolchado marrón oscuro con apoya brazos
+    ctx.fillStyle = "#2c170a";
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#6e3b19"; // Tapizado
+    ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+
+  } else if (obj.type === "shotgunWall") {
+    // Escopeta colgada en la pared: Soporte de madera + Cañón plateado/metálico
+    ctx.fillStyle = "#8b4513"; // Soporte en pared
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#c0c0c0"; // Cañón metálico brillante
+    ctx.fillRect(obj.x + 2, obj.y + 2, 2, obj.h - 4);
+    ctx.fillStyle = "#000000"; // Culata/Cuerpo de la escopeta
+    ctx.fillRect(obj.x + 2, obj.y + 12, 2, 6);
+
     } else if (obj.type === "desk") {
       // Escritorio de madera
       ctx.fillStyle = "#221108";
@@ -464,6 +520,162 @@ function drawRoom() {
       ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
       ctx.fillStyle = "#d89a42"; // Detalle dorado/bronce
       ctx.fillRect(obj.x + 1, obj.y + 1, 3, obj.h - 2);
+
+      } else if (obj.type === "stairsVisual") {
+    // Estructura de la escalera: Fondo de madera + peldaños horizontales y pasamanos
+    ctx.fillStyle = "#2c170a"; // Base oscura
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+
+    // Peldaños (Líneas horizontales)
+    ctx.fillStyle = "#8b4513";
+    for (let x = obj.x; x < obj.x + obj.w; x += 12) {
+      ctx.fillRect(x, obj.y, 2, obj.h); // Escalones
+    }
+
+    // Pasamanos / Baranda
+    ctx.fillStyle = "#d4af37"; // Tono dorado/madera clara
+    ctx.fillRect(obj.x, obj.y + obj.h - 2, obj.w, 2);
+    ctx.fillRect(obj.x, obj.y, obj.w, 2);
+
+    } else if (obj.type === "acidRounds") {
+    // Acid Rounds: Caja verde fluorescente/limón con letras o detalle oscuro
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
+    ctx.fillStyle = "#a6e22e"; // Verde ácido
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, 2);
+
+  } else if (obj.type === "itemChest") {
+    // Baúl de almacenamiento (Madera oscura con refuerzos dorados/metálicos)
+    ctx.fillStyle = "#2c170a";
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#5c3317";
+    ctx.fillRect(obj.x + 1, obj.y + 1, obj.w - 2, obj.h - 2);
+    ctx.fillStyle = "#d4af37"; // Cerradura y esquinas doradas
+    ctx.fillRect(obj.x + (obj.w / 2) - 1, obj.y + 2, 2, 4);
+
+  } else if (obj.type === "shotgunShells") {
+    // Cartuchos de escopeta: Caja roja con borde negro
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
+    ctx.fillStyle = "#ff2222"; // Rojo cartucho
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#d4af37"; // Base dorada
+    ctx.fillRect(obj.x, obj.y + obj.h - 2, obj.w, 2);
+
+  } else if (obj.type === "firstAidSpray") {
+    // Spray de primeros auxilios: Lata blanca con cruz o detalle verde
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
+    ctx.fillStyle = "#ffffff"; // Cuerpo blanco del spray
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#00ff66"; // Franja/cruz verde curativa
+    ctx.fillRect(obj.x + 1, obj.y + 3, obj.w - 2, 3);
+    ctx.fillStyle = "#888888"; // Tapa gris
+    ctx.fillRect(obj.x + 2, obj.y, obj.w - 4, 2);
+
+    } else if (obj.type === "window") {
+    // Ventana con marco de madera y vidrio azulado/iluminado
+    ctx.fillStyle = "#3a1f0d"; // Marco
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#87ceeb"; // Cristal translúcido/azul
+    ctx.fillRect(obj.x + 2, obj.y + 1, obj.w - 4, obj.h - 2);
+
+  } else if (obj.type === "magnumRounds") {
+    // Caja de balas Magnum (Caja azul brillante/oscura con detalles en plateado)
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
+    ctx.fillStyle = "#1e3d59"; // Azul metálico
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#c0c0c0"; // Detalle plateado/calibre
+    ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, 2);
+
+  } else if (obj.type === "coatRack") {
+    // Perchero de pie/pared de madera con ganchos
+    ctx.fillStyle = "#5c3317";
+    ctx.fillRect(obj.x + 3, obj.y, 4, obj.h); // Poste central
+    ctx.fillStyle = "#d4af37"; // Ganchos dorados
+    ctx.fillRect(obj.x, obj.y + 2, obj.w, 2);
+    ctx.fillRect(obj.x + 1, obj.y + 6, obj.w - 2, 2);
+
+  } else if (obj.type === "studyDesk") {
+    // Escritorio ejecutivo de madera oscura
+    ctx.fillStyle = "#2c170a";
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#4a2511";
+    ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+
+  } else if (obj.type === "doomBook1") {
+    // Doom Book 1: Libro antiguo de cuero oscuro con relieve/símbolo dorado
+    ctx.fillStyle = "#1a0f07"; // Encuadernación
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#d4af37"; // Símbolo o lomo dorado
+    ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+    ctx.fillStyle = "#8b0000"; // Detalle central en rojo oscuro
+    ctx.fillRect(obj.x + 4, obj.y + 4, obj.w - 8, obj.h - 8);
+
+    } else if (obj.type === "painting") {
+    // Cuadro con marco dorado y lienzo interior de color
+    ctx.fillStyle = "#d4af37"; // Marco dorado
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#3b2219"; // Lienzo interior
+    ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+    ctx.fillStyle = "#8b0000"; // Pincelada / Arte ilustrado
+    ctx.fillRect(obj.x + 4, obj.y + 4, obj.w - 8, obj.h - 8);
+
+  } else if (obj.type === "crow") {
+    // Cuervo zombi silueta oscura con ojos rojos
+    ctx.fillStyle = "#111111"; // Cuerpo plumaje negro
+    ctx.fillRect(obj.x, obj.y + 2, obj.w, obj.h - 2);
+    ctx.fillRect(obj.x + 2, obj.y, 4, 3); // Cabeza/Pico
+    ctx.fillStyle = "#ff0000"; // Ojo rojo asesino
+    ctx.fillRect(obj.x + 4, obj.y + 1, 1, 1);
+
+    } else if (obj.type === "crestRelief") {
+    // Relieve en piedra con 4 ranuras circulares/cuadradas para los emblemas
+    ctx.fillStyle = "#4a4a4a"; // Placa de piedra gris oscura
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#d4af37"; // Borde dorado
+    ctx.fillRect(obj.x + 1, obj.y + 1, obj.w - 2, obj.h - 2);
+    ctx.fillStyle = "#222222"; // 4 Huecos/Ranuras para las crestas
+    ctx.fillRect(obj.x + 3, obj.y + 3, 3, 3);
+    ctx.fillRect(obj.x + 8, obj.y + 3, 3, 3);
+    ctx.fillRect(obj.x + 13, obj.y + 3, 3, 3);
+    ctx.fillRect(obj.x + 18, obj.y + 3, 3, 3);
+
+    } else if (obj.type === "ladder") {
+    // Escalera de madera o metal apoyada
+    ctx.fillStyle = "#5c3317";
+    ctx.fillRect(obj.x, obj.y, 2, obj.h);
+    ctx.fillRect(obj.x + obj.w - 2, obj.y, 2, obj.h);
+    ctx.fillStyle = "#a0522d";
+    for (let y = obj.y + 3; y < obj.y + obj.h; y += 5) {
+      ctx.fillRect(obj.x, y, obj.w, 2);
+    }
+
+  } else if (obj.type === "shelfWithCrank") {
+    // Estante de madera de pared
+    ctx.fillStyle = "#3b1e0b";
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#6e3b19";
+    ctx.fillRect(obj.x + 1, obj.y + 1, obj.w - 2, obj.h - 2);
+
+  } else if (obj.type === "crankItem") {
+    // Square Crank: Manivela metálica dorada/bronce con empuñadura
+    ctx.fillStyle = "#d4af37"; // Bronce / Dorado
+    ctx.fillRect(obj.x, obj.y + 2, obj.w - 2, 3); // Barra
+    ctx.fillRect(obj.x + obj.w - 4, obj.y, 3, 7); // Punta cuadrada / eje
+    ctx.fillStyle = "#111111"; // Mango negro
+    ctx.fillRect(obj.x, obj.y + 1, 3, 5);
+
+  } else if (obj.type === "barrel") {
+    // Barril de madera con aros metálicos
+    ctx.fillStyle = "#5c3317"; // Madera
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#708090"; // Flejes de hierro
+    ctx.fillRect(obj.x, obj.y + 2, obj.w, 2);
+    ctx.fillRect(obj.x, obj.y + obj.h - 4, obj.w, 2);
     
     } else if (obj.type === "typewriter") {
       ctx.fillStyle = "#3e2213";

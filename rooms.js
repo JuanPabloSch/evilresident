@@ -325,7 +325,7 @@ dressingRoom: {
     ],
     doors: [
       // Puerta 'p' abajo a la izquierda -> Conecta con la puerta superior derecha de Main Hall
-      { id: "doorToMainHall", x: 30, y: 120, w: 8, h: 25, targetRoom: "mainHall", spawnX: 230, spawnY: 50 },
+      { id: "doorToMainHall", x: 30, y: 120, w: 8, h: 25, targetRoom: "mainHall", spawnX: 250, spawnY: 60 },
 
       // Puerta 'p' a la derecha -> Para conectar a futuro con el pasillo este / Art Gallery
       { id: "doorToEastHall", x: 252, y: 35, w: 8, h: 25, targetRoom: "wardrobe", spawnX: 60, spawnY: 60 },
@@ -493,13 +493,13 @@ windingPassage: {
       { id: "doorToOutsideBoiler", x: 252, y: 100, w: 8, h: 25, targetRoom: "outsideBoiler", spawnX: 215, spawnY: 145 },
 
       // pbr: Puerta arriba a la derecha -> Bathroom
-      { id: "doorToBathroom", x: 220, y: 70, w: 25, h: 8, targetRoom: "windingPassage", spawnX: 220, spawnY: 85 },
+      { id: "doorToBathroom", x: 220, y: 70, w: 25, h: 8, targetRoom: "bathroom", spawnX: 200, spawnY: 85 },
 
       // ptr: Puerta divisoria en el pasillo izquierdo -> Trap Room
-      { id: "doorToTrapRoom", x: 82, y: 90, w: 8, h: 25, targetRoom: "windingPassage", spawnX: 60, spawnY: 90 },
+      { id: "doorToTrapRoom", x: 82, y: 90, w: 8, h: 25, targetRoom: "trapRoom", spawnX: 115, spawnY: 75 },
 
       // pbp: Puerta abajo a la izquierda -> Back Passage
-      { id: "doorToBackPassage", x: 30, y: 110, w: 8, h: 25, targetRoom: "windingPassage", spawnX: 35, spawnY: 110 }
+      { id: "doorToBackPassage", x: 30, y: 110, w: 8, h: 25, targetRoom: "backPassage", spawnX: 230, spawnY: 140 }
     ],
 
     interactables: [
@@ -522,7 +522,7 @@ outsideBoiler: {
     ],
 
     doors: [
-      { id: "doorToWinding", x: 200, y: 122, w: 8, h: 25, targetRoom: "windingPassage", spawnX: 21, spawnY: 100 }
+      { id: "doorToWinding", x: 200, y: 122, w: 8, h: 25, targetRoom: "windingPassage", spawnX: 221, spawnY: 100 }
     ],
 
     interactables: [
@@ -545,6 +545,330 @@ outsideBoiler: {
       { type: "pottedPlant", x: 234, y: 34, w: 10, h: 10, solid: true },
       { type: "zombieDog", x: 220, y: 115, w: 10, h: 16 },
       { type: "greenHerb", x: 210, y: 150, w: 10, h: 10 }
+    ]
+  },
+ bathroom: {
+    name: "Bathroom",
+    bounds: { minX: 100, maxX: 180, minY: 50, maxY: 110 },
+
+    // Forzamos la geometría chica del cuarto (Ancho: 80px, Alto: 60px)
+    corridorPoly: [
+      { x: 100, y: 50, w: 80, h: 60 }
+    ],
+
+    doors: [
+      // Puerta abajo (Sur) -> Vuelve a Winding Passage
+      { id: "doorToWinding", x: 130, y: 102, w: 20, h: 8, targetRoom: "windingPassage", spawnX: 220, spawnY: 105 }
+    ],
+
+    interactables: [
+      // Ducha (Esquina superior izquierda)
+      { type: "shower", x: 104, y: 54, w: 14, h: 14, solid: true },
+
+      // Inodoro (Pared superior centro)
+      { type: "toilet", x: 126, y: 54, w: 8, h: 10, solid: true },
+
+      // Mesita con pileta (Pared superior derecha)
+      { type: "sinkTable", x: 142, y: 54, w: 14, h: 10, solid: true },
+
+      // Espejo (Sobre la pared norte)
+      { type: "mirror", x: 144, y: 48, w: 10, h: 5 },
+
+      // Ítem
+      { type: "greenHerb", x: 162, y: 88, w: 8, h: 8 }
+    ]
+  },
+  trapRoom: {
+    name: "Trap Room",
+    floorType: "wood",
+    bounds: { minX: 100, maxX: 180, minY: 50, maxY: 110 },
+
+    // Geometría compacta (80x60 px) para que no se extienda por toda la pantalla
+    corridorPoly: [
+      { x: 100, y: 50, w: 80, h: 60 }
+    ],
+
+    doors: [
+      // 'p' Izquierda: Vuelve a Winding Passage
+      { id: "doorToWinding", x: 100, y: 70, w: 8, h: 20, targetRoom: "windingPassage", spawnX: 70, spawnY: 90 },
+
+      // 'p' Abajo (esquina inferior derecha): Conecta con Living Room
+      { id: "doorToLiving", x: 150, y: 102, w: 20, h: 8, targetRoom: "livingRoom", spawnX: 150, spawnY: 45 }
+    ],
+
+    interactables: [
+      // (Acá podemos sumar la estatua/mecanismo cuando hagamos la lógica de la trampa)
+    ]
+  },
+  livingRoom: {
+    name: "Living Room",
+    floorType: "wood",
+    bounds: { minX: 80, maxX: 220, minY: 40, maxY: 140 },
+
+    // Geometría rectangular espaciosa (140x100 px)
+    corridorPoly: [
+      { x: 80, y: 40, w: 140, h: 100 }
+    ],
+
+    doors: [
+      // 'p' Arriba a la izquierda: Vuelve a Trap Room
+      { id: "doorToTrapRoom", x: 95, y: 40, w: 20, h: 8, targetRoom: "trapRoom", spawnX: 150, spawnY: 70 }
+    ],
+
+    interactables: [
+      // 'm' Mesa grande central (sólida)
+      { type: "livingTable", x: 125, y: 75, w: 50, h: 30, solid: true },
+
+      // 'b' Banco/Sillón en la esquina inferior izquierda (sólido)
+      { type: "bench", x: 85, y: 115, w: 22, h: 18, solid: true },
+
+      // 's' Escopeta colgada en la pared derecha (recolectable)
+      { type: "shotgunWall", x: 212, y: 80, w: 6, h: 20 }
+    ]
+  },
+  backPassage: {
+    name: "Back Passage",
+    floorType: "wood",
+    bounds: { minX: 30, maxX: 250, minY: 30, maxY: 170 },
+
+    // Geometría en L: Pasillo vertical a la izquierda y tramo horizontal abajo
+    corridorPoly: [
+      { x: 30, y: 30, w: 50, h: 140 },   // Tramo vertical (X: 30 a 80, Y: 30 a 170)
+      { x: 80, y: 120, w: 170, h: 50 }   // Tramo horizontal (X: 80 a 250, Y: 120 a 170)
+    ],
+
+    // Pared de colisión interna para la esquina vacía (no atravesar el hueco negro)
+    walls: [
+      { x: 80, y: 30, w: 10, h: 90 }  // Pared vertical derecha del tramo superior
+    ],
+
+    doors: [
+      // 'pwp' Puerta extrema derecha (pared este) -> Winding Passage
+      { id: "doorToWinding", x: 242, y: 135, w: 8, h: 22, targetRoom: "windingPassage", spawnX: 45, spawnY: 110 },
+
+      // 'pes1f' Puerta en pared norte (pegada a la derecha) -> East Stairway 1F
+      { id: "doorToEastStairway", x: 200, y: 120, w: 22, h: 8, targetRoom: "eastStairway1F", spawnX: 60, spawnY: 130 },
+
+      // 'pcs' Puerta en pared norte (centro del pasillo horizontal) -> Courtyard Study
+      { id: "doorToCourtyardStudy", x: 130, y: 120, w: 22, h: 8, targetRoom: "courtyardStudy", spawnX: 100, spawnY: 140 },
+
+      // 'plg' Puerta abajo a la izquierda (pared sur) -> Large Gallery
+      { id: "doorToLargeGallery", x: 45, y: 162, w: 22, h: 8, targetRoom: "largeGallery", spawnX: 100, spawnY: 45 },
+
+      // 'prp' Puerta en la parte superior izquierda (pared oeste) -> Roofed Passage
+      { id: "doorToRoofedPassage", x: 30, y: 50, w: 8, h: 22, targetRoom: "roofedPassage", spawnX: 50, spawnY: 130 }
+    ],
+
+    interactables: [
+      // Podés sumar detalles como una plantita o luz en la esquina más adelante
+    ]
+  },
+  eastStairway1F: {
+    name: "East Stairway 1F",
+    floorType: "wood",
+    bounds: { minX: 30, maxX: 230, minY: 30, maxY: 170 },
+
+    // Forma del mapa: Tramo vertical a la izquierda + tramo horizontal arriba a la derecha
+    corridorPoly: [
+      { x: 30, y: 30, w: 60, h: 140 },    // Bajada hacia Back Passage
+      { x: 90, y: 30, w: 140, h: 60 }     // Tramo horizontal (Escalera, Mansion Storeroom y Planta)
+    ],
+
+    // Pared de colisión interna para la esquina vacía (no atravesar el hueco negro)
+    walls: [
+      { x: 90, y: 90, w: 140, h: 10 }
+    ],
+
+    doors: [
+      // 'p' Abajo: Vuelve a Back Passage (pbp)
+      { id: "doorToBackPassage", x: 50, y: 162, w: 20, h: 8, targetRoom: "backPassage", spawnX: 200, spawnY: 135 },
+
+      // 'p' Pared este/sur del pasillo derecho: Conecta con Mansion Storeroom
+      { id: "doorToStoreroom", x: 190, y: 82, w: 20, h: 8, targetRoom: "mansionStoreroom", spawnX: 120, spawnY: 65 },
+
+      // Escalera al segundo piso (al tocarla transporta a East Stairway 2F)
+      { id: "stairsTo2F", x: 140, y: 30, w: 80, h: 20, targetRoom: "eastStairway2F", spawnX: 180, spawnY: 50 }
+    ],
+
+    interactables: [
+      // 'z' Zombi en la esquina superior izquierda
+      { type: "zombie", x: 45, y: 45, w: 12, h: 12 },
+
+      // 'z' Zombi en el pasillo cerca de la escalera/cuarto
+      { type: "zombie", x: 120, y: 65, w: 12, h: 12 },
+
+      // 'pla' Hierba verde en la esquina superior derecha junto a la puerta
+      { type: "greenHerb", x: 215, y: 65, w: 10, h: 10 },
+
+      // Visual de la escalera (escalones)
+      { type: "stairsVisual", x: 140, y: 30, w: 80, h: 22, solid: true }
+    ]
+  },
+  mansionStoreroom: {
+    name: "Mansion Storeroom",
+    floorType: "wood",
+    bounds: { minX: 100, maxX: 180, minY: 50, maxY: 110 },
+
+    // Geometría compacta (80x60 px)
+    corridorPoly: [
+      { x: 100, y: 50, w: 80, h: 60 }
+    ],
+
+    doors: [
+      // 'p' Arriba a la izquierda: Vuelve a East Stairway 1F
+      { id: "doorToEastStairway", x: 112, y: 50, w: 18, h: 6, targetRoom: "eastStairway1F", spawnX: 190, spawnY: 50 }
+    ],
+
+    interactables: [
+      // 'a' Acid Rounds (Munición para lanzagranadas)
+      { type: "acidRounds", x: 140, y: 54, w: 8, h: 8 },
+
+      // 'm.m' Mesita con máquina de escribir (puedes reutilizar typewriterTable / typewriter)
+      { type: "typewriterTable", x: 160, y: 54, w: 14, h: 10, solid: true },
+
+      // 'c' Baúl de ítems (Item Chest / Cajón)
+      { type: "itemChest", x: 164, y: 74, w: 12, h: 12, solid: true },
+
+      // 's' Shells (Cartuchos de escopeta)
+      { type: "shotgunShells", x: 135, y: 98, w: 8, h: 8 },
+
+      // 'aero' First Aid Spray / Aerosol desodorante curativo
+      { type: "firstAidSpray", x: 160, y: 98, w: 8, h: 8 }
+    ]
+  },
+  courtyardStudy: {
+    name: "Courtyard Study",
+    floorType: "wood",
+    bounds: { minX: 80, maxX: 180, minY: 40, maxY: 140 },
+
+    // Geometría rectangular de la oficina (100x100 px)
+    corridorPoly: [
+      { x: 80, y: 40, w: 100, h: 100 }
+    ],
+
+    doors: [
+      // 'p' Abajo: Vuelve a Back Passage (pcs)
+      { id: "doorToBackPassage", x: 120, y: 132, w: 20, h: 8, targetRoom: "backPassage", spawnX: 140, spawnY: 135 }
+    ],
+
+    interactables: [
+      // 'v' Ventana al patio en la pared superior
+      { type: "window", x: 120, y: 40, w: 20, h: 6 },
+
+      // 'mr' Magnum Rounds en la esquina superior derecha
+      { type: "magnumRounds", x: 165, y: 48, w: 8, h: 8 },
+
+      // 'pe' Perchero en la pared izquierda (sólido)
+      { type: "coatRack", x: 85, y: 75, w: 10, h: 14, solid: true },
+
+      // 'e' Escritorio a la derecha (sólido)
+      { type: "studyDesk", x: 145, y: 70, w: 25, h: 55, solid: true },
+
+      // 'db' Doom Book 1 ubicado sobre el escritorio (recolectable)
+      { type: "doomBook1", x: 153, y: 78, w: 10, h: 12 }
+    ]
+  },
+  largeGallery: {
+    name: "Large Gallery",
+    floorType: "wood",
+    bounds: { minX: 40, maxX: 220, minY: 40, maxY: 160 },
+
+    // Geometría rectangular amplia (180x120 px)
+    corridorPoly: [
+      { x: 40, y: 40, w: 180, h: 120 }
+    ],
+
+    // Pared central horizontal que divide la galería
+    walls: [
+      { x: 40, y: 95, w: 130, h: 8 }
+    ],
+
+    doors: [
+      // 'p' Arriba a la izquierda: Vuelve a Back Passage (plg)
+      { id: "doorToBackPassage", x: 55, y: 40, w: 20, h: 8, targetRoom: "backPassage", spawnX: 55, spawnY: 110 }
+    ],
+
+    interactables: [
+      // 'cue' Cuervos zombi distribuidos en la habitación
+      { type: "crow", x: 170, y: 55, w: 10, h: 10 },
+      { type: "crow", x: 110, y: 145, w: 10, h: 10 },
+      { type: "crow", x: 180, y: 145, w: 10, h: 10 },
+
+      // 'c' Cuadros en el lado norte de la pared divisoria (de izquierda a derecha)
+      { type: "painting", id: "p1", x: 75, y: 86, w: 14, h: 8, title: "Recién nacido" },
+      { type: "painting", id: "p2", x: 120, y: 86, w: 14, h: 8, title: "Niño feliz" },
+      { type: "painting", id: "p3", x: 160, y: 86, w: 14, h: 8, title: "Joven audaz" },
+
+      // 'c' Cuadros en el lado sur / paredes inferiores
+      { type: "painting", id: "p4", x: 48, y: 125, w: 8, h: 14, title: "Hombre maduro" },
+      { type: "painting", id: "p5", x: 100, y: 108, w: 14, h: 8, title: "Anciano sabio" },
+      { type: "painting", id: "p6", x: 145, y: 108, w: 14, h: 8, title: "Cuadro final / Cuadro del bebé" }
+    ]
+  },
+  roofedPassage: {
+    name: "Roofed Passage",
+    floorType: "stone", // Piso de piedra exterior techado
+    bounds: { minX: 30, maxX: 180, minY: 30, maxY: 170 },
+
+    // Geometría en L con esquina diagonal
+    corridorPoly: [
+      { x: 30, y: 70, w: 40, h: 100 },   // Tramo vertical inferior
+      { x: 30, y: 30, w: 70, h: 50 },    // Codo/esquina superior izquierda
+      { x: 90, y: 30, w: 90, h: 40 }     // Tramo horizontal superior hacia el Storeroom
+    ],
+
+    // Paredes de colisión para la esquina interna
+    walls: [
+      { x: 70, y: 70, w: 20, h: 60 }
+    ],
+
+    doors: [
+      // 'p' Abajo: Vuelve a Back Passage (prp)
+      { id: "doorToBackPassage", x: 40, y: 162, w: 20, h: 8, targetRoom: "backPassage", spawnX: 45, spawnY: 60 },
+
+      // 'p' Arriba a la derecha: Conecta con Storeroom / Cobertizo Exterior
+      { id: "doorToStoreroom", x: 172, y: 38, w: 8, h: 22, targetRoom: "storeroom", spawnX: 45, spawnY: 80 }
+    ],
+
+    interactables: [
+      // 'c' Relieve en la pared para insertar las 4 crestas (Crests Wall Relief)
+      { type: "crestRelief", x: 130, y: 30, w: 22, h: 8, solid: true }
+    ]
+  },
+  storeroom: {
+    name: "Garden Shed / Storeroom",
+    floorType: "wood",
+    bounds: { minX: 30, maxX: 190, minY: 40, maxY: 140 },
+
+    // Geometría del cobertizo de herramientas (160x100 px)
+    corridorPoly: [
+      { x: 30, y: 40, w: 160, h: 100 }
+    ],
+
+    doors: [
+      // 'p' Izquierda: Vuelve a Roofed Passage
+      { id: "doorToRoofedPassage", x: 30, y: 70, w: 8, h: 22, targetRoom: "roofedPassage", spawnX: 160, spawnY: 45 },
+
+      // 'p' Derecha: Avanza hacia Courtyard Garden
+      { id: "doorToCourtyardGarden", x: 182, y: 70, w: 8, h: 22, targetRoom: "courtyardGarden", spawnX: 45, spawnY: 70 }
+    ],
+
+    interactables: [
+      // Escalera de mano / Peldaños
+      { type: "ladder", x: 80, y: 45, w: 16, h: 20, solid: true },
+
+      // Estante con la Manivela (Square Crank)
+      { type: "shelfWithCrank", x: 110, y: 42, w: 25, h: 12, solid: true },
+
+      // 'crank' Objeto recolectable: Square Crank (sobre el estante)
+      { type: "crankItem", x: 118, y: 44, w: 10, h: 8 },
+
+      // Barriles de madera en la esquina inferior izquierda
+      { type: "barrel", x: 45, y: 115, w: 12, h: 12, solid: true },
+      { type: "barrel", x: 60, y: 118, w: 12, h: 12, solid: true },
+
+      // Barriles adicionales cerca de la pared derecha
+      { type: "barrel", x: 160, y: 115, w: 12, h: 12, solid: true }
     ]
   }
 };
