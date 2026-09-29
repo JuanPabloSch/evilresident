@@ -12,7 +12,9 @@ const STATUS_ITEMS = {
   redJewel: "Joya roja",
   orders: "Orders",
   carBattery: "Batería de auto",
-  acidRounds: "Acid Rounds"
+  acidRounds: "Acid Rounds",
+  scrapbook: "Scrapbook",
+  moDisk: "MO Disk"
 };
 
 const STATUS = (() => {

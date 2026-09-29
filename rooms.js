@@ -14,7 +14,11 @@ const ROOMS = {
       { type: "stairsHorizontal", x: 120, y: 25, w: 80, h: 90},
       { type: "balconyLeft", x: 18, y: 24, w: 102, h: 30, solid: true },
     { type: "balconyRight", x: 200, y: 24, w: 102, h: 30, solid: true },
-      { type: "typewriter", x: 80, y: 54, w: 26, h: 20, solid: true }
+      { type: "typewriter", x: 80, y: 54, w: 26, h: 20, solid: true },
+      { type: "staticCharacter", character: "greenSoldier", x: 54, y: 116, w: 16, h: 22 },
+      { type: "staticCharacter", character: "redVest", x: 82, y: 142, w: 18, h: 22 },
+      { type: "staticCharacter", character: "medic", x: 218, y: 116, w: 16, h: 22 },
+      { type: "staticCharacter", character: "sunglasses", x: 258, y: 142, w: 16, h: 22 }
     ]
   },
 
@@ -1029,7 +1033,7 @@ outsideBoiler: {
       { id: "doorToRoughPassage", x: 20, y: 146, w: 10, h: 28, targetRoom: "roughPassage", spawnX: 250, spawnY: 154 },
       { id: "doorToCloset", x: 105, y: 180, w: 26, h: 10, targetRoom: "closet", spawnX: 118, spawnY: 90 },
       { id: "elevatorToBasement", x: 170, y: 112, w: 10, h: 28, disabled: true, blockedMessage: "Ascensor bloqueado." },
-      { id: "doorToLargeLibrary", x: 280, y: 42, w: 10, h: 28, targetRoom: "largeLibrary", spawnX: 60, spawnY: 100 }
+      { id: "doorToLargeLibrary", x: 60, y: 42, w: 10, h: 28, targetRoom: "largeLibrary", spawnX: 260, spawnY: 50 }
     ],
     interactables: [
       { type: "elevator", x: 135, y: 95, w: 35, h: 45, solid: true },
@@ -1053,9 +1057,53 @@ outsideBoiler: {
   largeLibrary: {
     name: "Large Library",
     floorType: "wood",
-    bounds: { minX: 40, maxX: 260, minY: 30, maxY: 170 },
-    corridorPoly: [{ x: 40, y: 30, w: 220, h: 140 }],
-    doors: [{ id: "doorToElevatorStairway2F", x: 40, y: 82, w: 10, h: 28, targetRoom: "elevatorStairway2F", spawnX: 244, spawnY: 50 }],
-    interactables: []
+    bounds: { minX: 20, maxX: 300, minY: 10, maxY: 180 },
+    corridorPoly: [
+      { x: 20, y: 10, w: 280, h: 90 },
+      { x: 20, y: 100, w: 180, h: 80 }
+    ],
+    walls: [{ x: 200, y: 100, w: 100, h: 80 }],
+    doors: [
+      { id: "doorToElevatorStairway2F", x: 290, y: 48, w: 10, h: 28, targetRoom: "elevatorStairway2F", spawnX: 75, spawnY: 52 },
+      { id: "doorToHeliportLookout", x: 78, y: 10, w: 30, h: 10, targetRoom: "heliportLookout", spawnX: 100, spawnY: 100 },
+      { id: "doorToPrivateLibrary", x: 20, y: 128, w: 10, h: 28, targetRoom: "privateLibrary", spawnX: 190, spawnY: 75 }
+    ],
+    interactables: [
+      { type: "shelf", x: 48, y: 28, w: 82, h: 16, solid: true },
+      { type: "shelf", x: 168, y: 28, w: 82, h: 16, solid: true },
+      { type: "shelfVertical", x: 58, y: 106, w: 18, h: 56, solid: true },
+      { type: "shelfVertical", x: 132, y: 106, w: 18, h: 56, solid: true },
+      { type: "zombie", x: 188, y: 66, w: 12, h: 14 },
+      { type: "zombie", x: 95, y: 142, w: 12, h: 14 },
+      { type: "magnumRounds", x: 226, y: 78, w: 9, h: 8 },
+      { type: "scrapbook", x: 164, y: 72, w: 12, h: 10 },
+      { type: "zombie", x: 95, y: 142, w: 12, h: 14 }
+    ]
+  },
+  heliportLookout: {
+    name: "Heliport Lookout",
+    floorType: "wood",
+    bounds: { minX: 85, maxX: 235, minY: 35, maxY: 155 },
+    corridorPoly: [{ x: 85, y: 35, w: 150, h: 120 }],
+    doors: [{ id: "doorToLargeLibrary", x: 145, y: 147, w: 30, h: 8, targetRoom: "largeLibrary", spawnX: 142, spawnY: 50 }],
+    interactables: [
+      { type: "windowVertical", x: 85, y: 48, w: 6, h: 36 },
+      { type: "desk", x: 120, y: 58, w: 85, h: 46, solid: true },
+      { type: "handgunAmmo", x: 142, y: 98, w: 10, h: 6 },
+      { type: "inkRibbon", x: 174, y: 97, w: 10, h: 8 }
+    ]
+  },
+  privateLibrary: {
+    name: "Private Library",
+    floorType: "wood",
+    bounds: { minX: 70, maxX: 250, minY: 35, maxY: 165 },
+    corridorPoly: [{ x: 70, y: 35, w: 180, h: 130 }],
+    doors: [{ id: "doorToLargeLibrary", x: 240, y: 88, w: 10, h: 28, targetRoom: "largeLibrary", spawnX: 34, spawnY: 138 }],
+    interactables: [
+      { type: "shelf", x: 100, y: 48, w: 105, h: 16, solid: true },
+      { type: "shelfVertical", x: 82, y: 72, w: 18, h: 58, solid: true },
+      { type: "pushableStatue", x: 146, y: 94, w: 26, h: 28, solid: true },
+      { type: "moDisk", x: 198, y: 136, w: 10, h: 8 }
+    ]
   }
 };

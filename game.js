@@ -450,7 +450,10 @@ function drawRoom() {
 
 // 3. Dibujar Muebles y Elementos Específicos
   room.interactables.forEach((obj) => {
-    if (obj.type === "elevator") {
+    if (obj.type === "staticCharacter") {
+      drawStaticCharacter(obj);
+
+    } else if (obj.type === "elevator") {
       ctx.fillStyle = "#11130f";
       ctx.fillRect(obj.x - 3, obj.y - 3, obj.w + 6, obj.h + 6);
       ctx.fillStyle = "#3d4036";
@@ -803,6 +806,26 @@ function drawRoom() {
     ctx.fillRect(obj.x + 4, obj.y + 6, 3, 2);
     ctx.fillStyle = "#d3d1c6";
     ctx.fillRect(obj.x + 10, obj.y + 6, 3, 2);
+
+  } else if (obj.type === "scrapbook") {
+    ctx.fillStyle = "#17100b";
+    ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
+    ctx.fillStyle = "#75412d";
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#e1d4ae";
+    ctx.fillRect(obj.x + 3, obj.y + 2, obj.w - 5, obj.h - 4);
+    ctx.fillStyle = "#7b2520";
+    ctx.fillRect(obj.x + 5, obj.y + 3, 3, 3);
+    ctx.fillStyle = "#60452d";
+    ctx.fillRect(obj.x + 4, obj.y + 7, obj.w - 7, 1);
+
+  } else if (obj.type === "moDisk") {
+    ctx.fillStyle = "#131713";
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#aeb6a3";
+    ctx.fillRect(obj.x + 1, obj.y + 1, obj.w - 2, obj.h - 2);
+    ctx.fillStyle = "#65715f";
+    ctx.fillRect(obj.x + 3, obj.y + 3, 4, 2);
 
   } else if (obj.type === "shotgunShells") {
     // Cartuchos de escopeta: Caja roja con borde negro
@@ -1379,6 +1402,84 @@ function drawRoom() {
     }
     
   });
+}
+
+function drawStaticCharacter(obj) {
+  const x = Math.round(obj.x);
+  const y = Math.round(obj.y);
+
+  ctx.fillStyle = "rgba(0, 0, 0, 0.38)";
+  ctx.fillRect(x + 1, y + 19, obj.w + 3, 4);
+
+  if (obj.character === "greenSoldier") {
+    ctx.fillStyle = "#25251f";
+    ctx.fillRect(x + 4, y + 1, 9, 6);
+    ctx.fillStyle = "#e1b08b";
+    ctx.fillRect(x + 5, y + 4, 7, 6);
+    ctx.fillStyle = "#526b3d";
+    ctx.fillRect(x + 3, y + 9, 11, 8);
+    ctx.fillRect(x + 1, y + 10, 3, 7);
+    ctx.fillRect(x + 13, y + 10, 3, 6);
+    ctx.fillStyle = "#75805b";
+    ctx.fillRect(x + 5, y + 10, 2, 6);
+    ctx.fillRect(x + 10, y + 10, 2, 6);
+    ctx.fillStyle = "#45483b";
+    ctx.fillRect(x + 4, y + 17, 4, 5);
+    ctx.fillRect(x + 10, y + 17, 4, 5);
+    ctx.fillStyle = "#252722";
+    ctx.fillRect(x + 13, y + 12, 10, 2);
+    ctx.fillRect(x + 20, y + 11, 3, 1);
+  } else if (obj.character === "redVest") {
+    ctx.fillStyle = "#4a3024";
+    ctx.fillRect(x + 4, y + 1, 10, 6);
+    ctx.fillStyle = "#d5a27b";
+    ctx.fillRect(x + 4, y + 5, 11, 7);
+    ctx.fillStyle = "#72513c";
+    ctx.fillRect(x + 5, y + 9, 9, 3);
+    ctx.fillStyle = "#aaa69a";
+    ctx.fillRect(x + 1, y + 10, 4, 7);
+    ctx.fillRect(x + 14, y + 10, 4, 7);
+    ctx.fillStyle = "#9a2822";
+    ctx.fillRect(x + 3, y + 11, 14, 7);
+    ctx.fillStyle = "#6c7771";
+    ctx.fillRect(x + 4, y + 18, 5, 4);
+    ctx.fillRect(x + 12, y + 18, 5, 4);
+    ctx.fillStyle = "#272b29";
+    ctx.fillRect(x + 8, y + 12, 2, 4);
+  } else if (obj.character === "medic") {
+    ctx.fillStyle = "#4a2c1d";
+    ctx.fillRect(x + 3, y + 1, 11, 7);
+    ctx.fillStyle = "#edc3a0";
+    ctx.fillRect(x + 5, y + 4, 8, 7);
+    ctx.fillStyle = "#e8e4d7";
+    ctx.fillRect(x + 3, y + 10, 12, 9);
+    ctx.fillRect(x + 1, y + 11, 3, 7);
+    ctx.fillRect(x + 14, y + 11, 3, 7);
+    ctx.fillStyle = "#b32a26";
+    ctx.fillRect(x + 9, y + 11, 2, 5);
+    ctx.fillRect(x + 8, y + 12, 4, 2);
+    ctx.fillStyle = "#54614d";
+    ctx.fillRect(x + 4, y + 19, 4, 3);
+    ctx.fillRect(x + 11, y + 19, 4, 3);
+    ctx.fillStyle = "#edc3a0";
+    ctx.fillRect(x, y + 15, 3, 3);
+  } else if (obj.character === "sunglasses") {
+    ctx.fillStyle = "#d0b583";
+    ctx.fillRect(x + 4, y + 2, 9, 3);
+    ctx.fillStyle = "#e2b993";
+    ctx.fillRect(x + 5, y + 5, 8, 6);
+    ctx.fillStyle = "#17191a";
+    ctx.fillRect(x + 4, y + 7, 10, 3);
+    ctx.fillStyle = "#111416";
+    ctx.fillRect(x + 3, y + 10, 12, 9);
+    ctx.fillRect(x + 1, y + 11, 3, 7);
+    ctx.fillRect(x + 14, y + 11, 3, 7);
+    ctx.fillStyle = "#292b2c";
+    ctx.fillRect(x + 4, y + 19, 4, 3);
+    ctx.fillRect(x + 11, y + 19, 4, 3);
+    ctx.fillStyle = "#c5c5bc";
+    ctx.fillRect(x + 8, y + 11, 2, 7);
+  }
 }
 
 function drawPlayer() {
