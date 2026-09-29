@@ -68,9 +68,24 @@ concreteCtx.fillStyle = "#555555";
 concreteCtx.fillRect(7, 7, 2, 2);
 const concreteFloorPattern = ctx.createPattern(concreteTileCanvas, "repeat");
 
+const upperFloorCanvas = document.createElement("canvas");
+upperFloorCanvas.width = 16;
+upperFloorCanvas.height = 16;
+const upperFloorCtx = upperFloorCanvas.getContext("2d");
+upperFloorCtx.fillStyle = "#b49a32";
+upperFloorCtx.fillRect(0, 0, 16, 16);
+upperFloorCtx.strokeStyle = "#78651f";
+upperFloorCtx.lineWidth = 1;
+upperFloorCtx.strokeRect(0, 0, 16, 16);
+upperFloorCtx.fillStyle = "#cbb84d";
+upperFloorCtx.fillRect(3, 3, 2, 2);
+upperFloorCtx.fillRect(11, 11, 2, 2);
+const upperFloorPattern = ctx.createPattern(upperFloorCanvas, "repeat");
+
 
 // --- ESTADO DEL JUEGO ---
 let currentRoom = "mainHall";
+let trophyLightsOn = true;
 
 let player = {
   x: 230,
@@ -79,11 +94,94 @@ let player = {
   dy: 0,
   isMoving: false,
   animFrame: 0,
-  animTimer: 0
+  animTimer: 0,
+  aimAngle: -Math.PI / 2
 };
 
+const weapon = { loaded: 12, capacity: 12, shotFlash: 0, hitPoints: new WeakMap() };
+let aimPoint = { x: 0, y: 0 };
+let gameFrame = 0;
+let playerDamageCooldown = 0;
+const unlockedLocks = new Set();
+const interactionPrompt = document.getElementById("interaction-prompt");
+
+const ENEMY_TYPES = {
+  zombie: { sight: 105, speed: 0.38, attackRange: 18, damage: 8, attackDelay: 52 },
+  zombieDog: { sight: 145, speed: 0.82, attackRange: 21, damage: 12, attackDelay: 42 },
+  crow: { sight: 135, speed: 0.68, attackRange: 18, damage: 6, attackDelay: 46 }
+};
+
+function updateAmmoDisplay() {
+  document.getElementById("ammo-loaded").textContent = weapon.loaded;
+  document.getElementById("ammo-reserve").textContent = STATUS.getHandgunReserve();
+}
+
+function canvasPoint(event) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (event.clientX - rect.left) * (canvas.width / rect.width),
+    y: (event.clientY - rect.top) * (canvas.height / rect.height)
+  };
+}
+
+function reloadWeapon() {
+  const needed = weapon.capacity - weapon.loaded;
+  if (needed <= 0 || STATUS.getHandgunReserve() <= 0) return;
+  weapon.loaded += STATUS.takeHandgunAmmo(needed);
+  updateAmmoDisplay();
+}
+
+function fireWeapon() {
+  if (STATUS.isOpen() || weapon.loaded <= 0) return;
+  weapon.loaded--;
+  weapon.shotFlash = 4;
+  const originX = player.x + PLAYER_WIDTH / 2;
+  const originY = player.y + PLAYER_HEIGHT / 2;
+  const range = 150;
+  let target = null;
+  let targetDistance = range;
+  const room = ROOMS[currentRoom];
+
+  room.interactables.forEach((obj) => {
+    if (!["zombie", "zombieDog", "crow"].includes(obj.type)) return;
+    const dx = obj.x + obj.w / 2 - originX;
+    const dy = obj.y + obj.h / 2 - originY;
+    const along = dx * Math.cos(player.aimAngle) + dy * Math.sin(player.aimAngle);
+    const across = Math.abs(dx * Math.sin(player.aimAngle) - dy * Math.cos(player.aimAngle));
+    if (along > 0 && along < targetDistance && across < Math.max(5, Math.min(obj.w, obj.h) * 0.65)) {
+      target = obj;
+      targetDistance = along;
+    }
+  });
+
+  if (target) {
+    const remaining = (weapon.hitPoints.get(target) ?? (target.type === "crow" ? 1 : 3)) - 1;
+    if (remaining <= 0) room.interactables.splice(room.interactables.indexOf(target), 1);
+    else weapon.hitPoints.set(target, remaining);
+  }
+  updateAmmoDisplay();
+}
+
+canvas.addEventListener("mousemove", (event) => {
+  aimPoint = canvasPoint(event);
+  player.aimAngle = Math.atan2(aimPoint.y - (player.y + PLAYER_HEIGHT / 2), aimPoint.x - (player.x + PLAYER_WIDTH / 2));
+});
+canvas.addEventListener("mousedown", (event) => {
+  event.preventDefault();
+  if (event.button === 0) fireWeapon();
+  if (event.button === 2) reloadWeapon();
+});
+canvas.addEventListener("contextmenu", (event) => event.preventDefault());
+updateAmmoDisplay();
+
 const keys = new Set();
-window.addEventListener("keydown", (e) => keys.add(e.key.length === 1 ? e.key.toLowerCase() : e.key));
+window.addEventListener("keydown", (e) => {
+  const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  keys.add(key);
+  if (key === "m" && !e.repeat) MANSION_MAP.toggle();
+  if (key === "i" && !e.repeat) STATUS.toggle();
+  if (key === "e" && !e.repeat && !STATUS.isOpen()) interactNearby();
+});
 window.addEventListener("keyup", (e) => keys.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key));
 
 function checkCollision(rect1, rect2) {
@@ -95,7 +193,154 @@ function checkCollision(rect1, rect2) {
   );
 }
 
+function hasLineOfSight(x1, y1, x2, y2, room, observer) {
+  const distance = Math.hypot(x2 - x1, y2 - y1);
+  const steps = Math.ceil(distance / 4);
+  for (let step = 1; step < steps; step++) {
+    const x = x1 + (x2 - x1) * step / steps;
+    const y = y1 + (y2 - y1) * step / steps;
+    if (room.walls?.some((wall) => x >= wall.x && x <= wall.x + wall.w && y >= wall.y && y <= wall.y + wall.h)) return false;
+    if (room.interactables.some((obj) => obj !== observer && obj.solid && x >= obj.x && x <= obj.x + obj.w && y >= obj.y && y <= obj.y + obj.h)) return false;
+  }
+  return true;
+}
+
+function updateEnemies(room) {
+  const playerX = player.x + PLAYER_WIDTH / 2;
+  const playerY = player.y + PLAYER_HEIGHT / 2;
+  const obstacles = room.interactables.filter((obj) => obj.solid && !ENEMY_TYPES[obj.type]);
+
+  room.interactables.forEach((enemy) => {
+    const behavior = ENEMY_TYPES[enemy.type];
+    if (!behavior) return;
+    const enemyX = enemy.x + enemy.w / 2;
+    const enemyY = enemy.y + enemy.h / 2;
+    const distance = Math.hypot(playerX - enemyX, playerY - enemyY);
+    if (!enemy.alerted && distance <= behavior.sight && hasLineOfSight(enemyX, enemyY, playerX, playerY, room, enemy)) enemy.alerted = true;
+    if (!enemy.alerted) return;
+
+    if (distance <= behavior.attackRange) {
+      enemy.attackAt ??= 0;
+      if (gameFrame >= enemy.attackAt && playerDamageCooldown === 0) {
+        STATUS.setHealth(STATUS.getHealth() - behavior.damage);
+        playerDamageCooldown = 24;
+        enemy.attackAt = gameFrame + behavior.attackDelay;
+      }
+      return;
+    }
+
+    const stepX = (playerX - enemyX) / distance * behavior.speed;
+    const stepY = (playerY - enemyY) / distance * behavior.speed;
+    const canOccupy = (x, y) => {
+      const bounds = room.bounds;
+      const box = { x, y, w: enemy.w, h: enemy.h };
+      return x >= bounds.minX && y >= bounds.minY && x + enemy.w <= bounds.maxX && y + enemy.h <= bounds.maxY &&
+        !room.walls?.some((wall) => checkCollision(box, wall)) &&
+        !obstacles.some((obstacle) => checkCollision(box, obstacle));
+    };
+    if (canOccupy(enemy.x + stepX, enemy.y)) enemy.x += stepX;
+    if (canOccupy(enemy.x, enemy.y + stepY)) enemy.y += stepY;
+    enemy.animFrame = Math.floor(gameFrame / 12) % 2;
+  });
+}
+
+function collectNearbyItem() {
+  const room = ROOMS[currentRoom];
+  const playerReach = { x: player.x - 8, y: player.y - 8, w: PLAYER_WIDTH + 16, h: PLAYER_HEIGHT + 16 };
+  const itemIndex = room.interactables.findIndex((obj) =>
+    STATUS.getItemName(obj.type) && (!obj.requiresDark || !trophyLightsOn) && checkCollision(playerReach, obj)
+  );
+  if (itemIndex === -1) {
+    STATUS.setPickupHint("No hay objetos al alcance.");
+    return;
+  }
+  const item = room.interactables[itemIndex];
+  if (STATUS.addItem(item.type)) room.interactables.splice(itemIndex, 1);
+}
+
+function nearbyDoor() {
+  const room = ROOMS[currentRoom];
+  const reach = { x: player.x - 18, y: player.y - 18, w: PLAYER_WIDTH + 36, h: PLAYER_HEIGHT + 36 };
+  return room.doors
+    .filter((door) => checkCollision(reach, door))
+    .sort((a, b) => Math.hypot(a.x + a.w / 2 - player.x, a.y + a.h / 2 - player.y) - Math.hypot(b.x + b.w / 2 - player.x, b.y + b.h / 2 - player.y))[0];
+}
+
+function updateInteractionPrompt() {
+  const door = nearbyDoor();
+  if (door) {
+    const locked = door.keyRequired && !unlockedLocks.has(door.lockId);
+    interactionPrompt.textContent = locked
+      ? `E · Cerrada: ${STATUS.getItemName(door.keyRequired)}`
+      : `E · Abrir: ${ROOMS[door.targetRoom].name}`;
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const room = ROOMS[currentRoom];
+  const reach = { x: player.x - 14, y: player.y - 14, w: PLAYER_WIDTH + 28, h: PLAYER_HEIGHT + 28 };
+  const chest = room.interactables.find((obj) => obj.type === "itemChest" && checkCollision(reach, obj));
+  if (chest) {
+    interactionPrompt.textContent = "E · Abrir baúl de objetos";
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const switchReach = { x: player.x - 14, y: player.y - 14, w: PLAYER_WIDTH + 28, h: PLAYER_HEIGHT + 28 };
+  const trophySwitch = room.interactables.find((obj) => obj.type === "trophySwitch" && checkCollision(switchReach, obj));
+  if (trophySwitch) {
+    interactionPrompt.textContent = `E · ${trophyLightsOn ? "Apagar" : "Encender"} la luz`;
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const itemReach = { x: player.x - 8, y: player.y - 8, w: PLAYER_WIDTH + 16, h: PLAYER_HEIGHT + 16 };
+  const item = room.interactables.find((obj) => STATUS.getItemName(obj.type) && (!obj.requiresDark || !trophyLightsOn) && checkCollision(itemReach, obj));
+  interactionPrompt.textContent = item ? `E · Recoger: ${STATUS.getItemName(item.type)}` : "";
+  interactionPrompt.hidden = !item;
+}
+
+function transitionThroughDoor(door) {
+  currentRoom = door.targetRoom;
+  player.x = door.spawnX;
+  player.y = door.spawnY;
+  const titleElem = document.getElementById("room-title");
+  if (titleElem) titleElem.innerText = ROOMS[currentRoom].name;
+  MANSION_MAP.setCurrentRoom(currentRoom);
+}
+
+function interactNearby() {
+  const door = nearbyDoor();
+  if (door) {
+    if (door.keyRequired && !unlockedLocks.has(door.lockId)) {
+      if (!STATUS.hasItem(door.keyRequired)) {
+        const keyName = STATUS.getItemName(door.keyRequired);
+        STATUS.setPickupHint(`La puerta está cerrada. Necesitás: ${keyName}.`);
+        return;
+      }
+      unlockedLocks.add(door.lockId);
+      STATUS.setPickupHint(`Usaste la ${STATUS.getItemName(door.keyRequired)}. La puerta quedó abierta.`);
+    }
+    transitionThroughDoor(door);
+    return;
+  }
+  const room = ROOMS[currentRoom];
+  const reach = { x: player.x - 14, y: player.y - 14, w: PLAYER_WIDTH + 28, h: PLAYER_HEIGHT + 28 };
+  if (room.interactables.some((obj) => obj.type === "itemChest" && checkCollision(reach, obj))) {
+    STATUS.openChest();
+    return;
+  }
+  const trophySwitch = room.interactables.find((obj) => obj.type === "trophySwitch" && checkCollision(reach, obj));
+  if (trophySwitch) {
+    trophyLightsOn = !trophyLightsOn;
+    return;
+  }
+  collectNearbyItem();
+}
+
 function update() {
+  if (STATUS.isOpen()) return;
+  gameFrame++;
+  if (playerDamageCooldown > 0) playerDamageCooldown--;
+  if (weapon.shotFlash > 0) weapon.shotFlash--;
+  player.aimAngle = Math.atan2(aimPoint.y - (player.y + PLAYER_HEIGHT / 2), aimPoint.x - (player.x + PLAYER_WIDTH / 2));
   const room = ROOMS[currentRoom];
   player.dx = 0;
   player.dy = 0;
@@ -144,17 +389,8 @@ function update() {
   if (canMoveX) player.x = nextX;
   if (canMoveY) player.y = nextY;
 
-  // Transiciones de puertas
-  const playerRect = { x: player.x, y: player.y, w: PLAYER_WIDTH, h: PLAYER_HEIGHT };
-  room.doors.forEach((door) => {
-    if (checkCollision(playerRect, door)) {
-      currentRoom = door.targetRoom;
-      player.x = door.spawnX;
-      player.y = door.spawnY;
-      const titleElem = document.getElementById("room-title");
-      if (titleElem) titleElem.innerText = ROOMS[currentRoom].name;
-    }
-  });
+  updateEnemies(room);
+  updateInteractionPrompt();
 }
 
 function drawRoom() {
@@ -167,6 +403,8 @@ function drawRoom() {
     currentFloorPattern = woodFloorPattern;
   } else if (room.floorType === "concrete") {
     currentFloorPattern = concreteFloorPattern;
+  } else if (room.floorType === "secondFloor") {
+    currentFloorPattern = upperFloorPattern;
   }
 
   // Fondo negro base
@@ -218,6 +456,56 @@ function drawRoom() {
         ctx.lineTo(x, obj.y + obj.h);
         ctx.stroke();
       }
+    } else if (obj.type === "lowerFloorView") {
+      ctx.fillStyle = floorPattern;
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.strokeStyle = "#080b08";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(obj.x, obj.y, obj.w, obj.h);
+      if (obj.railings) {
+        ctx.strokeStyle = "#26382a";
+        ctx.lineWidth = 1;
+        for (let railX = obj.x + 5; railX < obj.x + obj.w; railX += 9) {
+          ctx.beginPath();
+          ctx.moveTo(railX, obj.y);
+          ctx.lineTo(railX, obj.y + obj.h);
+          ctx.stroke();
+        }
+      }
+    } else if (obj.type === "stairwell") {
+      ctx.fillStyle = "#080b08";
+      ctx.fillRect(obj.x - 3, obj.y - 3, obj.w + 6, obj.h + 6);
+      ctx.fillStyle = "#354b2b";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.strokeStyle = "#172317";
+      ctx.lineWidth = 2;
+      for (let stepX = obj.x + 7; stepX < obj.x + obj.w; stepX += 13) {
+        ctx.beginPath();
+        ctx.moveTo(stepX, obj.y + 2);
+        ctx.lineTo(stepX, obj.y + obj.h - 2);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = "#91a05e";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+    } else if (obj.type === "lowerFloorTable") {
+      ctx.fillStyle = "#2b160a";
+      ctx.fillRect(obj.x, obj.y + 3, obj.w, obj.h - 6);
+      ctx.fillRect(obj.x + 7, obj.y, obj.w - 14, obj.h);
+      ctx.fillStyle = "#68401e";
+      ctx.fillRect(obj.x + 4, obj.y + 5, obj.w - 8, obj.h - 10);
+      ctx.fillStyle = "#8a5b2e";
+      ctx.fillRect(obj.x + 12, obj.y + 8, obj.w - 24, obj.h - 16);
+    } else if (obj.type === "pushableStatue") {
+      ctx.fillStyle = "#171815";
+      ctx.fillRect(obj.x + 2, obj.y + 21, obj.w - 4, 8);
+      ctx.fillStyle = "#777b70";
+      ctx.fillRect(obj.x + 4, obj.y + 19, obj.w - 8, 7);
+      ctx.fillStyle = "#a5a99a";
+      ctx.fillRect(obj.x + 7, obj.y + 7, obj.w - 14, 13);
+      ctx.fillRect(obj.x + 9, obj.y + 3, obj.w - 18, 6);
+      ctx.fillStyle = "#d5bc45";
+      ctx.fillRect(obj.x + 12, obj.y + 11, 4, 5);
     } else if (obj.type === "stairsHorizontal") {
       // Escalera con peldaños HORIZONTALES (para Main Hall)
       ctx.fillStyle = PALETTE.stairs;
@@ -255,47 +543,6 @@ function drawRoom() {
         ctx.stroke();
       }
 
-      room.interactables.forEach((obj) => {
-  if (obj.type === "greenHerb") {
-    // Hierba verde brillante con borde negro
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
-    ctx.fillStyle = "#00ff66";
-    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-
-  } else if (obj.type === "grillBoiler") {
-    // Parrilla con rejilla gris clara y brasas rojas
-    ctx.fillStyle = "#888888";
-    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-    ctx.fillStyle = "#111111";
-    ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
-    ctx.fillStyle = "#ff3300"; // Brasas rojas
-    ctx.fillRect(obj.x + 4, obj.y + 5, obj.w - 8, 4);
-
-  } else if (obj.type === "chemicalItem") {
-    // Bidón químico rojo con amarillo
-    ctx.fillStyle = "#ff0000";
-    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-    ctx.fillStyle = "#ffff00";
-    ctx.fillRect(obj.x + 1, obj.y + 2, obj.w - 2, 4);
-
-  } else if (obj.type === "pottedPlant") {
-    // Planta decorativa: Maceta terracota clara + hojas verde brillante
-    ctx.fillStyle = "#d2691e"; // Maceta terracota clara
-    ctx.fillRect(obj.x + 1, obj.y + 4, obj.w - 2, 6);
-    ctx.fillStyle = "#00ff44"; // Hojas verde lima
-    ctx.fillRect(obj.x, obj.y, obj.w, 5);
-
-  } else if (obj.type === "zombieDog") {
-    // Perro Zombi: Borde rojizo/oscuro + ojos rojos brillantes
-    ctx.fillStyle = "#2a1508";
-    ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
-    ctx.fillStyle = "#8b4513"; // Marrón
-    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-    ctx.fillStyle = "#ff0000"; // Ojos rojos
-    ctx.fillRect(obj.x + 2, obj.y + 2, 3, 3);
-  }
-});
       } else if (obj.type === "monsterPlant") {
       // Planta Monstruo (Planta 42 / Tentáculos)
       ctx.fillStyle = "#1e4d2b"; // Base tallo verde oscuro
@@ -326,13 +573,6 @@ function drawRoom() {
       ctx.fillRect(obj.x + 6, obj.y + 6, 12, 8);
       ctx.fillStyle = "#d89a42"; // Válvula de bronce
       ctx.fillRect(obj.x + obj.w - 12, obj.y + 8, 8, 8);
-
-    } else if (obj.type === "greenHerb") {
-      // Hierba Verde 'g' (Maceta con hoja verde)
-      ctx.fillStyle = "#5c341d"; // Maceta
-      ctx.fillRect(obj.x + 2, obj.y + 5, 6, 5);
-      ctx.fillStyle = "#228b22"; // Planta verde
-      ctx.fillRect(obj.x, obj.y, 10, 6);
 
     } else if (obj.type === "blueHerb") {
       // Hierba Azul 'b' (Maceta con hoja azul)
@@ -366,6 +606,13 @@ function drawRoom() {
       ctx.fillRect(obj.x + 6, obj.y + 2, 14, 3);
       ctx.fillStyle = "#221108"; // Grieta / Detalle de rotura en el cañón
       ctx.fillRect(obj.x + 12, obj.y + 2, 2, 3);
+
+      } else if (obj.type === "pottedPlant") {
+      // Maceta decorativa con hojas brillantes
+      ctx.fillStyle = "#d2691e";
+      ctx.fillRect(obj.x + 1, obj.y + 4, obj.w - 2, 6);
+      ctx.fillStyle = "#00ff44";
+      ctx.fillRect(obj.x, obj.y, obj.w, 5);
 
       } else if (obj.type === "grillBoiler") {
     // Parrilla con rejilla gris clara y brasas rojas
@@ -408,13 +655,6 @@ function drawRoom() {
     ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
     ctx.fillStyle = "#aaaaaa"; // Canilla
     ctx.fillRect(obj.x + (obj.w / 2) - 1, obj.y, 2, 2);
-
-  } else if (obj.type === "mirror") {
-    // Espejo chico
-    ctx.fillStyle = "#d4af37";
-    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-    ctx.fillStyle = "#e0ffff";
-    ctx.fillRect(obj.x + 1, obj.y + 1, obj.w - 2, obj.h - 2);
 
       } else if (obj.type === "tigerStatue") {
       // Pedestal
@@ -500,26 +740,12 @@ function drawRoom() {
       ctx.fillStyle = "#701c1c"; // Tapa
       ctx.fillRect(obj.x + 4, obj.y + 2, obj.w - 6, obj.h - 4);
 
-    } else if (obj.type === "mirror") {
-      // Espejo en la pared (Marco de madera, cristal plateado/azul)
-      ctx.fillStyle = PALETTE.trim;
-      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-      ctx.fillStyle = "#a2c4c9";
-      ctx.fillRect(obj.x + 1, obj.y + 2, obj.w - 2, obj.h - 4);
-
     } else if (obj.type === "closetDoor") {
       // Marco / Puerta del armario
       ctx.fillStyle = "#221108";
       ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
       ctx.fillStyle = PALETTE.trim;
       ctx.fillRect(obj.x + 1, obj.y + 4, obj.w - 2, obj.h - 8);
-
-    } else if (obj.type === "shotgunShells") {
-      // Cartuchos de escopeta (Caja roja brillante)
-      ctx.fillStyle = "#b81d1d";
-      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-      ctx.fillStyle = "#d89a42"; // Detalle dorado/bronce
-      ctx.fillRect(obj.x + 1, obj.y + 1, 3, obj.h - 2);
 
       } else if (obj.type === "stairsVisual") {
     // Estructura de la escalera: Fondo de madera + peldaños horizontales y pasamanos
@@ -545,15 +771,6 @@ function drawRoom() {
     ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, 2);
-
-  } else if (obj.type === "itemChest") {
-    // Baúl de almacenamiento (Madera oscura con refuerzos dorados/metálicos)
-    ctx.fillStyle = "#2c170a";
-    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-    ctx.fillStyle = "#5c3317";
-    ctx.fillRect(obj.x + 1, obj.y + 1, obj.w - 2, obj.h - 2);
-    ctx.fillStyle = "#d4af37"; // Cerradura y esquinas doradas
-    ctx.fillRect(obj.x + (obj.w / 2) - 1, obj.y + 2, 2, 4);
 
   } else if (obj.type === "shotgunShells") {
     // Cartuchos de escopeta: Caja roja con borde negro
@@ -599,7 +816,38 @@ function drawRoom() {
     ctx.fillRect(obj.x, obj.y + 2, obj.w, 2);
     ctx.fillRect(obj.x + 1, obj.y + 6, obj.w - 2, 2);
 
-  } else if (obj.type === "studyDesk") {
+    } else if (obj.type === "taxidermyDeer") {
+      ctx.fillStyle = "#24150e";
+      ctx.fillRect(obj.x + 4, obj.y + 20, obj.w - 8, 6);
+      ctx.fillStyle = "#8b5a32";
+      ctx.fillRect(obj.x + 9, obj.y + 8, 18, 17);
+      ctx.fillStyle = "#b7804b";
+      ctx.fillRect(obj.x + 7, obj.y + 3, 20, 12);
+      ctx.fillRect(obj.x + 10, obj.y, 3, 8);
+      ctx.fillRect(obj.x + 23, obj.y, 3, 8);
+      ctx.fillStyle = "#24150e";
+      ctx.fillRect(obj.x + 11, obj.y + 7, 3, 2);
+      if (!trophyLightsOn && ROOMS[currentRoom].interactables.some((item) => item.type === "redJewel")) {
+        ctx.fillStyle = "#ff1717";
+        ctx.fillRect(obj.x + 22, obj.y + 7, 3, 3);
+        ctx.fillStyle = "rgba(255, 0, 0, 0.25)";
+        ctx.fillRect(obj.x + 19, obj.y + 4, 9, 9);
+      }
+
+    } else if (obj.type === "trophySwitch") {
+      ctx.fillStyle = "#21150d";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = trophyLightsOn ? "#d6bd68" : "#726b55";
+      ctx.fillRect(obj.x + 2, obj.y + (trophyLightsOn ? 2 : 6), 4, 4);
+
+    } else if (obj.type === "orders") {
+      ctx.fillStyle = "#eee2bd";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#6b3f26";
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, 1);
+      ctx.fillRect(obj.x + 2, obj.y + 5, obj.w - 5, 1);
+
+    } else if (obj.type === "studyDesk") {
     // Escritorio ejecutivo de madera oscura
     ctx.fillStyle = "#2c170a";
     ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
@@ -1096,12 +1344,6 @@ function drawRoom() {
       ctx.lineWidth = 1;
       ctx.strokeRect(obj.x, obj.y, obj.w, obj.h);
     
-    } else if (obj.type === "window") {
-      ctx.fillStyle = "#88cbe8";
-      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 1;
-      ctx.strokeRect(obj.x, obj.y, obj.w, obj.h);
     }
     
   });
@@ -1129,12 +1371,58 @@ function drawPlayer() {
     ctx.fillRect(x + 1, y + 11, 4, 5);
     ctx.fillRect(x + 7, y + 11, 4, 5);
   }
+
+  ctx.save();
+  ctx.translate(x + 6, y + 8);
+  ctx.rotate(player.aimAngle);
+  ctx.fillStyle = "#e9c39a";
+  ctx.fillRect(2, -1, 5, 3);
+  ctx.fillStyle = "#292b2a";
+  ctx.fillRect(6, -2, 9, 3);
+  ctx.fillStyle = "#77766c";
+  ctx.fillRect(11, -3, 5, 2);
+  ctx.restore();
+
+  if (weapon.shotFlash > 0) {
+    ctx.fillStyle = "#f5d66b";
+    ctx.fillRect(x + 6 + Math.cos(player.aimAngle) * 16 - 1, y + 8 + Math.sin(player.aimAngle) * 16 - 1, 3, 3);
+    ctx.strokeStyle = "#f5d66b";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x + 6, y + 8);
+    ctx.lineTo(aimPoint.x, aimPoint.y);
+    ctx.stroke();
+  }
+
+  if (aimPoint.x >= 0 && aimPoint.x <= WIDTH && aimPoint.y >= 0 && aimPoint.y <= HEIGHT) {
+    ctx.strokeStyle = "rgba(240, 225, 170, 0.8)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(aimPoint.x - 4, aimPoint.y);
+    ctx.lineTo(aimPoint.x + 4, aimPoint.y);
+    ctx.moveTo(aimPoint.x, aimPoint.y - 4);
+    ctx.lineTo(aimPoint.x, aimPoint.y + 4);
+    ctx.stroke();
+  }
+}
+
+function drawTrophyDarkness() {
+  if (currentRoom !== "trophyRoom" || trophyLightsOn) return;
+  ctx.fillStyle = "rgba(0, 0, 0, 0.82)";
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  if (ROOMS.trophyRoom.interactables.some((obj) => obj.type === "redJewel")) {
+    ctx.fillStyle = "rgba(145, 0, 0, 0.35)";
+    ctx.fillRect(158, 41, 15, 15);
+    ctx.fillStyle = "#ff2020";
+    ctx.fillRect(164, 45, 3, 3);
+  }
 }
 
 function loop() {
   update();
   drawRoom();
   drawPlayer();
+  drawTrophyDarkness();
   requestAnimationFrame(loop);
 }
 

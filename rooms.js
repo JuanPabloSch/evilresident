@@ -3,10 +3,11 @@ const ROOMS = {
     name: "Main Hall 1F",
     bounds: { minX: 18, maxX: 302, minY: 24, maxY: 172 },
     doors: [
+      { id: "stairsToMainHall2F", x: 120, y: 25, w: 80, h: 40, targetRoom: "mainHall2F", spawnX: 155, spawnY: 45 },
       // Puerta Oeste -> Va al Dining Room
       { id: "west", x: 12, y: 75, w: 12, h: 40, targetRoom: "diningRoom", spawnX: 280, spawnY: 90 },
       // Puertas Este (Pared derecha)
-      { id: "eastTop", x: 296, y: 55, w: 12, h: 30, targetRoom: "dressingRoom", spawnX: 45, spawnY: 130 },
+      { id: "eastTop", x: 296, y: 55, w: 12, h: 30, targetRoom: "dressingRoom", spawnX: 45, spawnY: 130, keyRequired: "armorKey", lockId: "armor-door" },
       { id: "eastBottom", x: 296, y: 120, w: 12, h: 30, targetRoom: "artRoom", spawnX: 45, spawnY: 100 }
     ],
     interactables: [
@@ -248,7 +249,8 @@ tigerStatueRoom: {
     doors: [
       { id: "doorToCentral", x: 252, y: 35, w: 8, h: 25, targetRoom: "centralCorridor", spawnX: 35, spawnY: 45 },
       { id: "doorToVacant", x: 190, y: 62, w: 25, h: 8, targetRoom: "vacantRoom", spawnX: 150, spawnY: 75 },
-      { id: "doorToSaveRoom", x: 130, y: 130, w: 25, h: 8, targetRoom: "mansionSaveRoom", spawnX: 150, spawnY: 100 }
+      { id: "doorToSaveRoom", x: 130, y: 130, w: 25, h: 8, targetRoom: "mansionSaveRoom", spawnX: 150, spawnY: 100 },
+      { id: "stairsToWestStairway2F", x: 180, y: 130, w: 75, h: 40, targetRoom: "westStairway2F", spawnX: 90, spawnY: 78 }
     ],
     interactables: [
       { type: "column", x: 50, y: 85, w: 14, h: 14, solid: true },
@@ -325,7 +327,7 @@ dressingRoom: {
     ],
     doors: [
       // Puerta 'p' abajo a la izquierda -> Conecta con la puerta superior derecha de Main Hall
-      { id: "doorToMainHall", x: 30, y: 120, w: 8, h: 25, targetRoom: "mainHall", spawnX: 250, spawnY: 60 },
+      { id: "doorToMainHall", x: 30, y: 120, w: 8, h: 25, targetRoom: "mainHall", spawnX: 250, spawnY: 60, keyRequired: "armorKey", lockId: "armor-door" },
 
       // Puerta 'p' a la derecha -> Para conectar a futuro con el pasillo este / Art Gallery
       { id: "doorToEastHall", x: 252, y: 35, w: 8, h: 25, targetRoom: "wardrobe", spawnX: 60, spawnY: 60 },
@@ -870,5 +872,119 @@ outsideBoiler: {
       // Barriles adicionales cerca de la pared derecha
       { type: "barrel", x: 160, y: 115, w: 12, h: 12, solid: true }
     ]
+  },
+  mainHall2F: {
+    name: "Main Hall 2F",
+    floorType: "secondFloor",
+    bounds: { minX: 18, maxX: 302, minY: 20, maxY: 172 },
+    corridorPoly: [{ x: 18, y: 20, w: 284, h: 152 }],
+    walls: [
+      { x: 55, y: 50, w: 90, h: 32 },
+      { x: 205, y: 50, w: 70, h: 32 },
+      { x: 55, y: 78, w: 220, h: 24 },
+      { x: 50, y: 120, w: 220, h: 52 }
+    ],
+    doors: [
+      { id: "stairsToMainHall", x: 135, y: 16, w: 50, h: 10, targetRoom: "mainHall", spawnX: 155, spawnY: 112 },
+      { id: "p1DiningRoom2F", x: 12, y: 68, w: 12, h: 38, targetRoom: "diningRoom2F", spawnX: 270, spawnY: 100 },
+      { id: "p2CPassage", x: 296, y: 34, w: 12, h: 36, targetRoom: "cPassage", spawnX: 255, spawnY: 100 },
+      { id: "p3TerraceEntry", x: 296, y: 130, w: 12, h: 36, targetRoom: "terraceEntry", spawnX: 255, spawnY: 100 }
+    ],
+    interactables: [
+      { type: "lowerFloorView", x: 55, y: 50, w: 90, h: 32, solid: true, railings: true },
+      { type: "lowerFloorView", x: 205, y: 50, w: 70, h: 32, solid: true, railings: true },
+      { type: "lowerFloorView", x: 55, y: 78, w: 220, h: 24, solid: true, railings: true },
+      { type: "lowerFloorView", x: 50, y: 120, w: 220, h: 52, solid: true, railings: true },
+      { type: "stairsHorizontal", x: 135, y: 20, w: 50, h: 30 }
+    ]
+  },
+  diningRoom2F: {
+    name: "Dining Room 2F",
+    floorType: "secondFloor",
+    bounds: { minX: 18, maxX: 302, minY: 12, maxY: 184 },
+    corridorPoly: [{ x: 18, y: 12, w: 284, h: 172 }],
+    walls: [{ x: 50, y: 45, w: 220, h: 95 }],
+    doors: [
+      { id: "p1ToMainHall2F", x: 290, y: 76, w: 12, h: 38, targetRoom: "mainHall2F", spawnX: 270, spawnY: 100 },
+      { id: "pToWestStairway2F", x: 18, y: 23, w: 12, h: 30, targetRoom: "westStairway2F", spawnX: 240, spawnY: 158 }
+    ],
+    interactables: [
+      { type: "lowerFloorView", x: 50, y: 45, w: 220, h: 95, solid: true },
+      { type: "lowerFloorTable", x: 92, y: 76, w: 136, h: 34 },
+      { type: "zombie", x: 255, y: 22, w: 12, h: 14 },
+      { type: "zombie", x: 25, y: 160, w: 12, h: 14 },
+      { type: "pushableStatue", x: 145, y: 150, w: 28, h: 30, solid: true }
+    ]
+  },
+  cPassage: {
+    name: "C Passage",
+    floorType: "secondFloor",
+    bounds: { minX: 30, maxX: 290, minY: 30, maxY: 170 },
+    corridorPoly: [
+      { x: 30, y: 80, w: 260, h: 50 },
+      { x: 210, y: 30, w: 80, h: 100 }
+    ],
+    doors: [{ id: "p2ToMainHall2F", x: 280, y: 115, w: 10, h: 30, targetRoom: "mainHall2F", spawnX: 270, spawnY: 55 }],
+    interactables: []
+  },
+  terraceEntry: {
+    name: "Terrace Entry",
+    floorType: "secondFloor",
+    bounds: { minX: 30, maxX: 290, minY: 30, maxY: 170 },
+    corridorPoly: [{ x: 30, y: 30, w: 260, h: 140 }],
+    doors: [{ id: "p3ToMainHall2F", x: 280, y: 82, w: 10, h: 36, targetRoom: "mainHall2F", spawnX: 270, spawnY: 145 }],
+    interactables: []
+  },
+  westStairway2F: {
+    name: "West Stairway 2F",
+    floorType: "wood",
+    bounds: { minX: 20, maxX: 300, minY: 10, maxY: 184 },
+    corridorPoly: [
+      { x: 210, y: 10, w: 90, h: 65 },
+      { x: 80, y: 65, w: 220, h: 27 },
+      { x: 20, y: 65, w: 85, h: 85 },
+      { x: 20, y: 150, w: 280, h: 34 },
+      { x: 220, y: 124, w: 80, h: 60 }
+    ],
+    walls: [
+      { x: 20, y: 10, w: 190, h: 55 },
+      { x: 86, y: 146, w: 210, h: 4 }
+    ],
+    doors: [
+      { id: "bottomToDiningRoom2F", x: 218, y: 174, w: 42, h: 10, targetRoom: "diningRoom2F", spawnX: 34, spawnY: 38 },
+      { id: "stairsToWestStairway1F", x: 86, y: 96, w: 42, h: 16, targetRoom: "westStairway1F", spawnX: 160, spawnY: 140 },
+      { id: "sideDoorToTrophyRoom", x: 210, y: 36, w: 12, h: 28, targetRoom: "trophyRoom", spawnX: 264, spawnY: 132 },
+      { id: "topToRoughPassage", x: 248, y: 10, w: 36, h: 12, targetRoom: "roughPassage", spawnX: 145, spawnY: 160 }
+    ],
+    interactables: [
+      { type: "stairwell", x: 86, y: 112, w: 210, h: 34, solid: true },
+      { type: "zombie", x: 268, y: 34, w: 12, h: 14 },
+      { type: "zombie", x: 55, y: 136, w: 12, h: 14 }
+    ]
+  },
+  trophyRoom: {
+    name: "Trophy Room",
+    floorType: "wood",
+    bounds: { minX: 30, maxX: 290, minY: 30, maxY: 170 },
+    corridorPoly: [{ x: 30, y: 30, w: 260, h: 140 }],
+    doors: [{ id: "doorToWestStairway2F", x: 280, y: 130, w: 10, h: 36, targetRoom: "westStairway2F", spawnX: 224, spawnY: 54 }],
+    interactables: [
+      { type: "trophySwitch", x: 260, y: 91, w: 8, h: 12 },
+      { type: "taxidermyDeer", x: 142, y: 38, w: 34, h: 28, solid: true },
+      { type: "redJewel", x: 143, y: 48, w: 7, h: 7, requiresDark: true },
+      { type: "studyDesk", x: 82, y: 100, w: 98, h: 30, solid: true },
+      { type: "windowVertical", x: 30, y: 72, w: 4, h: 36 },
+      { type: "shotgunShells", x: 98, y: 123, w: 9, h: 8 },
+      { type: "magnumRounds", x: 128, y: 123, w: 9, h: 8 },
+      { type: "orders", x: 153, y: 122, w: 10, h: 9 }
+    ]
+  },
+  roughPassage: {
+    name: "Rough Passage",
+    floorType: "wood",
+    bounds: { minX: 30, maxX: 290, minY: 30, maxY: 170 },
+    corridorPoly: [{ x: 30, y: 30, w: 260, h: 140 }],
+    doors: [{ id: "doorToWestStairway2F", x: 130, y: 162, w: 40, h: 8, targetRoom: "westStairway2F", spawnX: 250, spawnY: 45 }],
+    interactables: []
   }
 };
