@@ -693,7 +693,7 @@ outsideBoiler: {
       { id: "doorToStoreroom", x: 190, y: 82, w: 20, h: 8, targetRoom: "mansionStoreroom", spawnX: 120, spawnY: 65 },
 
       // Escalera al segundo piso (al tocarla transporta a East Stairway 2F)
-      { id: "stairsTo2F", x: 140, y: 30, w: 80, h: 20, targetRoom: "eastStairway2F", spawnX: 180, spawnY: 50 }
+      { id: "stairsTo2F", x: 140, y: 30, w: 80, h: 20, targetRoom: "eastStairway2F", spawnX: 125, spawnY: 42 }
     ],
 
     interactables: [
@@ -722,7 +722,7 @@ outsideBoiler: {
 
     doors: [
       // 'p' Arriba a la izquierda: Vuelve a East Stairway 1F
-      { id: "doorToEastStairway", x: 112, y: 50, w: 18, h: 6, targetRoom: "eastStairway1F", spawnX: 190, spawnY: 50 }
+      { id: "doorToEastStairway", x: 112, y: 50, w: 18, h: 6, targetRoom: "eastStairway1F", spawnX: 190, spawnY: 55 }
     ],
 
     interactables: [
@@ -891,8 +891,8 @@ outsideBoiler: {
     doors: [
       { id: "stairsToMainHall", x: 135, y: 16, w: 50, h: 10, targetRoom: "mainHall", spawnX: 155, spawnY: 112 },
       { id: "p1DiningRoom2F", x: 12, y: 68, w: 12, h: 38, targetRoom: "diningRoom2F", spawnX: 270, spawnY: 100 },
-      { id: "p2CPassage", x: 296, y: 34, w: 12, h: 36, targetRoom: "cPassage", spawnX: 255, spawnY: 100 },
-      { id: "p3TerraceEntry", x: 296, y: 130, w: 12, h: 36, targetRoom: "terraceEntry", spawnX: 255, spawnY: 100 }
+      { id: "p2CPassage", x: 296, y: 34, w: 12, h: 36, targetRoom: "cPassage", spawnX: 55, spawnY: 155 },
+      { id: "p3TerraceEntry", x: 296, y: 130, w: 12, h: 36, targetRoom: "terraceEntry", spawnX: 132, spawnY: 150 }
     ],
     interactables: [
       { type: "lowerFloorView", x: 55, y: 50, w: 90, h: 32, solid: true, railings: true },
@@ -922,22 +922,57 @@ outsideBoiler: {
   },
   cPassage: {
     name: "C Passage",
-    floorType: "secondFloor",
-    bounds: { minX: 30, maxX: 290, minY: 30, maxY: 170 },
+    floorType: "wood",
+    bounds: { minX: 20, maxX: 300, minY: 10, maxY: 190 },
     corridorPoly: [
-      { x: 30, y: 80, w: 260, h: 50 },
-      { x: 210, y: 30, w: 80, h: 100 }
+      { x: 50, y: 10, w: 250, h: 45 },
+      { x: 255, y: 55, w: 45, h: 90 },
+      { x: 20, y: 145, w: 280, h: 40 }
     ],
-    doors: [{ id: "p2ToMainHall2F", x: 280, y: 115, w: 10, h: 30, targetRoom: "mainHall2F", spawnX: 270, spawnY: 55 }],
-    interactables: []
+    walls: [
+      { x: 20, y: 10, w: 30, h: 45 },
+      { x: 20, y: 55, w: 235, h: 90 }
+    ],
+    doors: [
+      { id: "door1ToMainHall2F", x: 46, y: 175, w: 28, h: 10, targetRoom: "mainHall2F", spawnX: 278, spawnY: 70 },
+      { id: "door2ToPillarPassage", x: 132, y: 175, w: 30, h: 10, targetRoom: "pillarPassage", spawnX: 45, spawnY: 34 },
+      { id: "door3ToArmorRoom", x: 255, y: 84, w: 10, h: 28, targetRoom: "armorRoom", spawnX: 225, spawnY: 90 },
+      { id: "door4ToEastStairway2F", x: 182, y: 10, w: 30, h: 10, targetRoom: "eastStairway2F", spawnX: 150, spawnY: 72 },
+      { id: "door5ToSmallLibrary", x: 62, y: 10, w: 30, h: 10, targetRoom: "smallLibrary", spawnX: 140, spawnY: 130 }
+    ],
+    interactables: [
+      { type: "zombie", x: 118, y: 25, w: 12, h: 14 },
+      { type: "zombie", x: 205, y: 158, w: 12, h: 14 }
+    ]
   },
   terraceEntry: {
     name: "Terrace Entry",
-    floorType: "secondFloor",
-    bounds: { minX: 30, maxX: 290, minY: 30, maxY: 170 },
-    corridorPoly: [{ x: 30, y: 30, w: 260, h: 140 }],
-    doors: [{ id: "p3ToMainHall2F", x: 280, y: 82, w: 10, h: 36, targetRoom: "mainHall2F", spawnX: 270, spawnY: 145 }],
+    floorType: "wood",
+    bounds: { minX: 120, maxX: 200, minY: 12, maxY: 188 },
+    corridorPoly: [{ x: 120, y: 12, w: 80, h: 176 }],
+    doors: [
+      { id: "p3ToMainHall2F", x: 120, y: 160, w: 10, h: 26, targetRoom: "mainHall2F", spawnX: 270, spawnY: 145 },
+      { id: "doorToTerrace", x: 190, y: 38, w: 10, h: 28, targetRoom: "terrace", spawnX: 220, spawnY: 50 }
+    ],
     interactables: []
+  },
+  terrace: {
+    name: "Terrace",
+    floorType: "concrete",
+    bounds: { minX: 20, maxX: 280, minY: 10, maxY: 190 },
+    corridorPoly: [
+      { x: 20, y: 10, w: 260, h: 90 },
+      { x: 200, y: 100, w: 80, h: 90 }
+    ],
+    doors: [{ id: "doorToTerraceEntry", x: 20, y: 50, w: 10, h: 28, targetRoom: "terraceEntry", spawnX: 160, spawnY: 56 }],
+    interactables: [
+      { type: "terraceGarden", x: 20, y: 100, w: 180, h: 88, solid: true },
+      { type: "terraceSeat", x: 162, y: 30, w: 14, h: 14, solid: true },
+      { type: "crow", x: 226, y: 70, w: 10, h: 10 },
+      { type: "crow", x: 238, y: 126, w: 10, h: 10 },
+      { type: "spencerBody", x: 232, y: 158, w: 20, h: 12 },
+      { type: "bazooka", x: 258, y: 160, w: 20, h: 6 }
+    ]
   },
   westStairway2F: {
     name: "West Stairway 2F",
@@ -1105,5 +1140,222 @@ outsideBoiler: {
       { type: "pushableStatue", x: 146, y: 94, w: 26, h: 28, solid: true },
       { type: "moDisk", x: 198, y: 136, w: 10, h: 8 }
     ]
+  },
+  pillarPassage: {
+    name: "Pillar Passage",
+    floorType: "wood",
+    bounds: { minX: 20, maxX: 300, minY: 10, maxY: 190 },
+    walkablePolygon: [
+      { x: 20, y: 10 },
+      { x: 100, y: 10 },
+      { x: 100, y: 72 },
+      { x: 160, y: 72 },
+      { x: 160, y: 110 },
+      { x: 300, y: 110 },
+      { x: 300, y: 190 },
+      { x: 35, y: 190 },
+      { x: 35, y: 127 },
+      { x: 20, y: 127 }
+    ],
+    walls: [
+      { x: 110, y: 10, w: 190, h: 62 },
+      { x: 20, y: 72, w: 70, h: 38 },
+      { x: 20, y: 127, w: 15, h: 63 }
+    ],
+    doors: [
+      { id: "door1ToCPassage", x: 42, y: 10, w: 26, h: 10, targetRoom: "cPassage", spawnX: 145, spawnY: 155 },
+      { id: "door2ToAtticEntry", x: 290, y: 132, w: 10, h: 28, targetRoom: "atticEntry", spawnX: 65, spawnY: 145 }
+    ],
+    interactables: [
+      { type: "pillar", x: 92, y: 130, w: 30, h: 28, solid: true },
+      { type: "greenHerb", x: 166, y: 118, w: 10, h: 10 },
+      { type: "richardBody", x: 210, y: 145, w: 24, h: 14 },
+      { type: "radio", x: 235, y: 139, w: 10, h: 10 },
+      { type: "handgunAmmo", x: 245, y: 159, w: 10, h: 6 }
+    ]
+  },
+  atticEntry: {
+    name: "Attic Entry",
+    floorType: "wood",
+    bounds: { minX: 45, maxX: 250, minY: 15, maxY: 180 },
+    walkablePolygon: [
+      { x: 55, y: 115 },
+      { x: 125, y: 115 },
+      { x: 125, y: 15 },
+      { x: 185, y: 15 },
+      { x: 185, y: 115 },
+      { x: 240, y: 115 },
+      { x: 240, y: 175 },
+      { x: 55, y: 175 }
+    ],
+    walls: [
+      { x: 45, y: 115, w: 10, h: 60 },
+      { x: 55, y: 15, w: 70, h: 100 },
+      { x: 185, y: 15, w: 55, h: 100 },
+      { x: 240, y: 115, w: 10, h: 60 }
+    ],
+    doors: [
+      { id: "door1ToPillarPassage", x: 55, y: 132, w: 8, h: 26, targetRoom: "pillarPassage", spawnX: 270, spawnY: 140 },
+      { id: "door2ToSmallDiningRoom", x: 140, y: 15, w: 28, h: 8, targetRoom: "smallDiningRoom", spawnX: 215, spawnY: 45 },
+      { id: "door3ToAttic", x: 232, y: 132, w: 8, h: 26, targetRoom: "attic", spawnX: 108, spawnY: 155 }
+    ],
+    interactables: [
+      { type: "stairsVertical", x: 193, y: 126, w: 34, h: 32 }
+    ]
+  },
+  smallDiningRoom: {
+    name: "Small Dining Room",
+    floorType: "wood",
+    bounds: { minX: 50, maxX: 250, minY: 15, maxY: 185 },
+    walkablePolygon: [
+      { x: 50, y: 15 },
+      { x: 240, y: 15 },
+      { x: 240, y: 185 },
+      { x: 120, y: 185 },
+      { x: 120, y: 125 },
+      { x: 50, y: 125 }
+    ],
+    walls: [{ x: 50, y: 125, w: 70, h: 60 }],
+    doors: [{ id: "doorToAtticEntry", x: 232, y: 38, w: 8, h: 26, targetRoom: "atticEntry", spawnX: 150, spawnY: 38 }],
+    interactables: [
+      { type: "livingTable", x: 132, y: 78, w: 56, h: 30, solid: true },
+      { type: "mirror", x: 67, y: 38, w: 6, h: 30, solid: true },
+      { type: "acidRounds", x: 194, y: 112, w: 10, h: 10 },
+      { type: "handgunAmmo", x: 90, y: 94, w: 10, h: 6 },
+      { type: "inkRibbon", x: 188, y: 151, w: 10, h: 8 }
+    ]
+  },
+  attic: {
+    name: "Attic",
+    floorType: "wood",
+    bounds: { minX: 95, maxX: 225, minY: 10, maxY: 190 },
+    corridorPoly: [{ x: 95, y: 10, w: 130, h: 180 }],
+    doors: [{ id: "doorToAtticEntry", x: 98, y: 182, w: 28, h: 8, targetRoom: "atticEntry", spawnX: 220, spawnY: 145 }],
+    interactables: [
+      { type: "yawn", x: 105, y: 32, w: 105, h: 46 },
+      { type: "pillar", x: 149, y: 86, w: 28, h: 32, solid: true },
+      { type: "moonCrest", x: 112, y: 133, w: 12, h: 12 },
+      { type: "shotgunShells", x: 182, y: 146, w: 12, h: 9 }
+    ]
+  },
+  armorRoom: {
+    name: "Armor Room",
+    floorType: "wood",
+    bounds: { minX: 50, maxX: 250, minY: 20, maxY: 180 },
+    corridorPoly: [{ x: 50, y: 20, w: 200, h: 160 }],
+    doors: [{ id: "doorToCPassage", x: 242, y: 84, w: 8, h: 28, targetRoom: "cPassage", spawnX: 265, spawnY: 96 }],
+    interactables: [
+      { type: "armorChest", x: 62, y: 74, w: 32, h: 44, solid: true },
+      { type: "sunCrest", x: 98, y: 102, w: 12, h: 12 },
+      { type: "knightStatue", x: 76, y: 38, w: 15, h: 23, solid: true },
+      { type: "knightStatue", x: 119, y: 38, w: 15, h: 23, solid: true },
+      { type: "knightStatue", x: 162, y: 38, w: 15, h: 23, solid: true },
+      { type: "knightStatue", x: 205, y: 38, w: 15, h: 23, solid: true },
+      { type: "knightStatue", x: 119, y: 137, w: 15, h: 23, solid: true },
+      { type: "knightStatue", x: 162, y: 137, w: 15, h: 23, solid: true },
+      { type: "knightStatue", x: 76, y: 137, w: 15, h: 23, solid: true },
+      { type: "knightStatue", x: 205, y: 137, w: 15, h: 23, solid: true },
+      { type: "pushableStatue", x: 112, y: 87, w: 22, h: 28, solid: true },
+      { type: "pushableStatue", x: 197, y: 87, w: 22, h: 28, solid: true },
+      { type: "puzzleGrate", x: 148, y: 86, w: 16, h: 30 },
+      { type: "puzzleGrate", x: 171, y: 86, w: 16, h: 30 }
+    ]
+  },
+  eastStairway2F: {
+    name: "East Stairway 2F",
+    floorType: "wood",
+    bounds: { minX: 40, maxX: 280, minY: 10, maxY: 185 },
+    walkablePolygon: [
+      { x: 40, y: 60 },
+      { x: 132, y: 60 },
+      { x: 132, y: 36 },
+      { x: 76, y: 36 },
+      { x: 76, y: 10 },
+      { x: 159, y: 10 },
+      { x: 159, y: 60 },
+      { x: 280, y: 63 },
+      { x: 280, y: 185 },
+      { x: 238, y: 185 },
+      { x: 238, y: 96 },
+      { x: 72, y: 96 },
+      { x: 72, y: 185 },
+      { x: 40, y: 185 }
+    ],
+    walls: [
+      { x: 40, y: 10, w: 36, h: 50 },
+      { x: 159, y: 10, w: 121, h: 50 },
+      { x: 72, y: 96, w: 166, h: 89 }
+    ],
+    doors: [
+      { id: "door1ToCPassage", x: 43, y: 177, w: 26, h: 8, targetRoom: "cPassage", spawnX: 195, spawnY: 34 },
+      { id: "door2ToSmallLibrary", x: 40, y: 67, w: 8, h: 28, targetRoom: "smallLibrary", spawnX: 220, spawnY: 88 },
+      { id: "door3ToEastStairway1F", x: 101, y: 10, w: 30, h: 8, targetRoom: "eastStairway1F", spawnX: 170, spawnY: 55 },
+      { id: "door4ToDeerRoom", x: 178, y: 90, w: 30, h: 8, targetRoom: "deerRoom", spawnX: 150, spawnY: 58 },
+      { id: "door5ToLessonRoomEntry", x: 244, y: 177, w: 28, h: 8, targetRoom: "lessonRoomEntry", spawnX: 85, spawnY: 140 }
+    ],
+    interactables: [
+      { type: "stairsVisual", x: 78, y: 12, w: 78, h: 24 },
+      { type: "zombie", x: 184, y: 68, w: 12, h: 14 },
+      { type: "zombie", x: 250, y: 137, w: 12, h: 14 }
+    ]
+  },
+  smallLibrary: {
+    name: "Small Library",
+    floorType: "carpet",
+    bounds: { minX: 60, maxX: 240, minY: 35, maxY: 165 },
+    corridorPoly: [{ x: 60, y: 35, w: 180, h: 130 }],
+    doors: [
+      { id: "doorToCPassage", x: 110, y: 157, w: 30, h: 8, targetRoom: "cPassage", spawnX: 105, spawnY: 32 },
+      { id: "doorToEastStairway2F", x: 232, y: 76, w: 8, h: 28, targetRoom: "eastStairway2F", spawnX: 56, spawnY: 72 }
+    ],
+    interactables: [
+      { type: "livingTable", x: 130, y: 91, w: 50, h: 24, solid: true },
+      { type: "botanyBook", x: 148, y: 76, w: 14, h: 10 }
+    ]
+  },
+  deerRoom: {
+    name: "Deer Room",
+    floorType: "wood",
+    bounds: { minX: 85, maxX: 225, minY: 45, maxY: 155 },
+    corridorPoly: [{ x: 85, y: 45, w: 140, h: 110 }],
+    doors: [
+      { id: "door1ToEastStairway2F", x: 140, y: 45, w: 30, h: 8, targetRoom: "eastStairway2F", spawnX: 205, spawnY: 72 },
+      { id: "door2ToBedroom", x: 85, y: 88, w: 8, h: 28, targetRoom: "bedroom", spawnX: 210, spawnY: 88 },
+      { id: "door3ToStudy", x: 217, y: 88, w: 8, h: 28, targetRoom: "study", spawnX: 82, spawnY: 88 }
+    ],
+    interactables: [
+      { type: "zombie", x: 151, y: 103, w: 12, h: 14 },
+      { type: "taxidermyDeer", x: 138, y: 124, w: 34, h: 28, solid: true }
+    ]
+  },
+  bedroom: {
+    name: "Bedroom",
+    floorType: "carpet",
+    bounds: { minX: 70, maxX: 230, minY: 35, maxY: 165 },
+    corridorPoly: [{ x: 70, y: 35, w: 160, h: 130 }],
+    doors: [{ id: "doorToDeerRoom", x: 222, y: 82, w: 8, h: 28, targetRoom: "deerRoom", spawnX: 98, spawnY: 88 }],
+    interactables: [
+      { type: "bed", x: 78, y: 47, w: 120, h: 34, solid: true },
+      { type: "smallTable", x: 77, y: 88, w: 28, h: 24, solid: true },
+      { type: "lighter", x: 87, y: 78, w: 10, h: 6 },
+      { type: "bed", x: 78, y: 124, w: 120, h: 34, solid: true },
+      { type: "handgunAmmo", x: 132, y: 136, w: 12, h: 6 }
+    ]
+  },
+  study: {
+    name: "Study",
+    floorType: "wood",
+    bounds: { minX: 70, maxX: 230, minY: 35, maxY: 165 },
+    corridorPoly: [{ x: 70, y: 35, w: 160, h: 130 }],
+    doors: [{ id: "doorToDeerRoom", x: 70, y: 82, w: 8, h: 28, targetRoom: "deerRoom", spawnX: 195, spawnY: 88 }],
+    interactables: []
+  },
+  lessonRoomEntry: {
+    name: "Lesson Room Entry",
+    floorType: "wood",
+    bounds: { minX: 70, maxX: 230, minY: 35, maxY: 165 },
+    corridorPoly: [{ x: 70, y: 35, w: 160, h: 130 }],
+    doors: [{ id: "doorToEastStairway2F", x: 70, y: 78, w: 8, h: 28, targetRoom: "eastStairway2F", spawnX: 260, spawnY: 145 }],
+    interactables: []
   }
 };

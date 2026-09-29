@@ -418,7 +418,26 @@ function drawRoom() {
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
   // 2. Dibujar la estructura (Pasillos custom o Cuartos rectangulares)
-  if (room.corridorPoly) {
+  if (room.walkablePolygon) {
+    const drawRoomShape = () => {
+      ctx.beginPath();
+      ctx.moveTo(room.walkablePolygon[0].x, room.walkablePolygon[0].y);
+      room.walkablePolygon.slice(1).forEach((point) => ctx.lineTo(point.x, point.y));
+      ctx.closePath();
+    };
+
+    drawRoomShape();
+    ctx.fillStyle = PALETTE.wall;
+    ctx.lineJoin = "miter";
+    ctx.lineWidth = 12;
+    ctx.stroke();
+    drawRoomShape();
+    ctx.fillStyle = currentFloorPattern;
+    ctx.fill();
+    ctx.strokeStyle = PALETTE.trim;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  } else if (room.corridorPoly) {
     ctx.fillStyle = PALETTE.wall;
     room.corridorPoly.forEach((p) => ctx.fillRect(p.x - 4, p.y - 4, p.w + 8, p.h + 8));
 
@@ -452,6 +471,172 @@ function drawRoom() {
   room.interactables.forEach((obj) => {
     if (obj.type === "staticCharacter") {
       drawStaticCharacter(obj);
+
+    } else if (obj.type === "armorChest") {
+      ctx.fillStyle = "#21170f";
+      ctx.fillRect(obj.x - 2, obj.y + obj.h - 5, obj.w + 4, 7);
+      ctx.fillStyle = "#4d2b16";
+      ctx.fillRect(obj.x, obj.y + 10, obj.w, obj.h - 12);
+      ctx.fillStyle = "#74451f";
+      ctx.fillRect(obj.x + 2, obj.y + 12, obj.w - 4, obj.h - 15);
+      ctx.fillStyle = "#8a642e";
+      ctx.fillRect(obj.x, obj.y + 4, obj.w, 9);
+      ctx.fillStyle = "#b08a45";
+      ctx.fillRect(obj.x + 2, obj.y + 5, obj.w - 4, 3);
+      ctx.fillStyle = "#d3ad53";
+      ctx.fillRect(obj.x + obj.w / 2 - 2, obj.y + 10, 4, 8);
+      ctx.fillStyle = "#30241a";
+      ctx.fillRect(obj.x + obj.w / 2 - 1, obj.y + 12, 2, 3);
+
+    } else if (obj.type === "knightStatue") {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+      ctx.fillRect(obj.x + 1, obj.y + obj.h - 3, obj.w + 2, 4);
+      ctx.fillStyle = "#53584f";
+      ctx.fillRect(obj.x + 3, obj.y + 9, obj.w - 6, obj.h - 11);
+      ctx.fillStyle = "#777c70";
+      ctx.fillRect(obj.x + 2, obj.y + 6, obj.w - 4, 8);
+      ctx.fillStyle = "#909487";
+      ctx.fillRect(obj.x + 4, obj.y + 1, obj.w - 8, 8);
+      ctx.fillStyle = "#30352f";
+      ctx.fillRect(obj.x + 5, obj.y + 5, obj.w - 10, 2);
+      ctx.fillRect(obj.x + 2, obj.y + 13, 3, 7);
+      ctx.fillRect(obj.x + obj.w - 5, obj.y + 13, 3, 7);
+      ctx.fillStyle = "#b69b56";
+      ctx.fillRect(obj.x + obj.w / 2 - 1, obj.y + 10, 2, 6);
+      ctx.fillStyle = "#666b60";
+      ctx.fillRect(obj.x, obj.y + obj.h - 3, obj.w, 3);
+
+    } else if (obj.type === "puzzleGrate") {
+      ctx.fillStyle = "#171914";
+      ctx.fillRect(obj.x - 2, obj.y - 2, obj.w + 4, obj.h + 4);
+      ctx.fillStyle = "#41483e";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.strokeStyle = "#171d17";
+      ctx.lineWidth = 2;
+      for (let grateX = obj.x + 4; grateX < obj.x + obj.w; grateX += 5) {
+        ctx.beginPath();
+        ctx.moveTo(grateX, obj.y + 1);
+        ctx.lineTo(grateX, obj.y + obj.h - 1);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = "#73786b";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(obj.x + 1, obj.y + 1, obj.w - 2, obj.h - 2);
+
+    } else if (obj.type === "yawn") {
+      ctx.lineCap = "square";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = "#18251a";
+      ctx.lineWidth = 11;
+      ctx.beginPath();
+      ctx.moveTo(obj.x + 5, obj.y + obj.h - 5);
+      ctx.bezierCurveTo(obj.x + 4, obj.y + 6, obj.x + obj.w * 0.48, obj.y + 1, obj.x + obj.w * 0.52, obj.y + obj.h * 0.48);
+      ctx.bezierCurveTo(obj.x + obj.w * 0.56, obj.y + obj.h - 1, obj.x + obj.w * 0.86, obj.y + obj.h - 3, obj.x + obj.w - 13, obj.y + 12);
+      ctx.stroke();
+      ctx.strokeStyle = "#526b35";
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(obj.x + 5, obj.y + obj.h - 5);
+      ctx.bezierCurveTo(obj.x + 4, obj.y + 6, obj.x + obj.w * 0.48, obj.y + 1, obj.x + obj.w * 0.52, obj.y + obj.h * 0.48);
+      ctx.bezierCurveTo(obj.x + obj.w * 0.56, obj.y + obj.h - 1, obj.x + obj.w * 0.86, obj.y + obj.h - 3, obj.x + obj.w - 13, obj.y + 12);
+      ctx.stroke();
+      ctx.fillStyle = "#354426";
+      ctx.fillRect(obj.x + obj.w - 21, obj.y + 6, 18, 15);
+      ctx.fillStyle = "#a66a35";
+      ctx.fillRect(obj.x + obj.w - 8, obj.y + 14, 5, 3);
+      ctx.fillStyle = "#edcc4b";
+      ctx.fillRect(obj.x + obj.w - 12, obj.y + 8, 3, 3);
+      ctx.fillRect(obj.x + obj.w - 5, obj.y + 8, 3, 3);
+      ctx.lineCap = "butt";
+
+    } else if (obj.type === "pillar") {
+      ctx.fillStyle = "#151713";
+      ctx.fillRect(obj.x - 2, obj.y + obj.h - 4, obj.w + 4, 6);
+      ctx.fillStyle = "#62665b";
+      ctx.fillRect(obj.x + 2, obj.y + 3, obj.w - 4, obj.h - 5);
+      ctx.fillStyle = "#898b79";
+      ctx.fillRect(obj.x + 4, obj.y + 2, obj.w - 8, 4);
+      ctx.fillStyle = "#41443d";
+      ctx.fillRect(obj.x + 5, obj.y + 8, 3, obj.h - 13);
+      ctx.fillRect(obj.x + obj.w - 8, obj.y + 8, 3, obj.h - 13);
+      ctx.strokeStyle = "#252820";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(obj.x + 2, obj.y + 3, obj.w - 4, obj.h - 5);
+
+    } else if (obj.type === "richardBody") {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+      ctx.fillRect(obj.x + 1, obj.y + obj.h - 3, obj.w - 2, 3);
+      ctx.fillStyle = "#333b35";
+      ctx.fillRect(obj.x + 2, obj.y + 5, obj.w - 9, 7);
+      ctx.fillStyle = "#68705d";
+      ctx.fillRect(obj.x + 5, obj.y + 4, obj.w - 12, 3);
+      ctx.fillStyle = "#b89b7d";
+      ctx.fillRect(obj.x + obj.w - 9, obj.y + 3, 7, 7);
+      ctx.fillStyle = "#c9c9a2";
+      ctx.fillRect(obj.x + obj.w - 5, obj.y + 5, 2, 2);
+      ctx.fillStyle = "#573d37";
+      ctx.fillRect(obj.x + 4, obj.y + 11, 8, 2);
+
+    } else if (obj.type === "radio") {
+      ctx.fillStyle = "#171a17";
+      ctx.fillRect(obj.x, obj.y + 2, obj.w, obj.h - 2);
+      ctx.fillStyle = "#59604c";
+      ctx.fillRect(obj.x + 1, obj.y + 4, obj.w - 2, obj.h - 5);
+      ctx.fillStyle = "#20241e";
+      ctx.fillRect(obj.x + 2, obj.y + 5, 4, 3);
+      ctx.fillStyle = "#caa34d";
+      ctx.fillRect(obj.x + 7, obj.y + 5, 2, 2);
+      ctx.fillStyle = "#a3a18b";
+      ctx.fillRect(obj.x + 2, obj.y, 1, 4);
+
+    } else if (obj.type === "terraceGarden") {
+      ctx.fillStyle = "#176432";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.strokeStyle = "#102e19";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(obj.x + 1, obj.y + 1, obj.w - 2, obj.h - 2);
+      for (let plantX = obj.x + 9; plantX < obj.x + obj.w - 6; plantX += 18) {
+        const plantY = obj.y + 10 + ((plantX * 7) % 48);
+        ctx.fillStyle = "#24542b";
+        ctx.fillRect(plantX, plantY + 5, 8, 7);
+        ctx.fillStyle = "#3f8738";
+        ctx.fillRect(plantX + 1, plantY, 3, 8);
+        ctx.fillRect(plantX + 5, plantY + 2, 3, 7);
+        ctx.fillStyle = "#7d9b42";
+        ctx.fillRect(plantX + 3, plantY + 2, 2, 3);
+      }
+
+    } else if (obj.type === "terraceSeat") {
+      ctx.fillStyle = "#24180f";
+      ctx.fillRect(obj.x + 2, obj.y + 4, obj.w - 4, 6);
+      ctx.fillRect(obj.x + 3, obj.y + 10, 2, 4);
+      ctx.fillRect(obj.x + obj.w - 5, obj.y + 10, 2, 4);
+      ctx.fillStyle = "#78502e";
+      ctx.fillRect(obj.x + 1, obj.y + 2, obj.w - 2, 4);
+      ctx.fillStyle = "#a97943";
+      ctx.fillRect(obj.x + 3, obj.y + 3, obj.w - 6, 2);
+
+    } else if (obj.type === "spencerBody") {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+      ctx.fillRect(obj.x, obj.y + 9, obj.w, 3);
+      ctx.fillStyle = "#363b3b";
+      ctx.fillRect(obj.x + 1, obj.y + 7, 10, 4);
+      ctx.fillStyle = "#6a4938";
+      ctx.fillRect(obj.x + 9, obj.y + 4, 8, 6);
+      ctx.fillStyle = "#b99272";
+      ctx.fillRect(obj.x + 15, obj.y + 3, 5, 5);
+      ctx.fillStyle = "#5b3028";
+      ctx.fillRect(obj.x + 12, obj.y + 8, 4, 2);
+
+    } else if (obj.type === "bazooka") {
+      ctx.fillStyle = "#151915";
+      ctx.fillRect(obj.x, obj.y + 1, obj.w, obj.h - 1);
+      ctx.fillStyle = "#556249";
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 6, 3);
+      ctx.fillStyle = "#9a9b87";
+      ctx.fillRect(obj.x + obj.w - 5, obj.y, 4, obj.h);
+      ctx.fillStyle = "#302b20";
+      ctx.fillRect(obj.x + 5, obj.y + 4, 3, 3);
 
     } else if (obj.type === "elevator") {
       ctx.fillStyle = "#11130f";
@@ -819,6 +1004,29 @@ function drawRoom() {
     ctx.fillStyle = "#60452d";
     ctx.fillRect(obj.x + 4, obj.y + 7, obj.w - 7, 1);
 
+  } else if (obj.type === "sunCrest") {
+    ctx.fillStyle = "#17130c";
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#bb9a43";
+    ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+    ctx.fillStyle = "#e3cf7c";
+    ctx.fillRect(obj.x + 5, obj.y + 2, 2, 8);
+    ctx.fillRect(obj.x + 2, obj.y + 5, 8, 2);
+    ctx.fillRect(obj.x + 4, obj.y + 4, 4, 4);
+    ctx.fillStyle = "#755b2b";
+    ctx.fillRect(obj.x + 5, obj.y + 5, 2, 2);
+
+  } else if (obj.type === "moonCrest") {
+    ctx.fillStyle = "#17130c";
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#d4c58d";
+    ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+    ctx.fillStyle = "#8a7950";
+    ctx.fillRect(obj.x + 4, obj.y + 4, obj.w - 8, obj.h - 7);
+    ctx.fillStyle = "#e7dfbd";
+    ctx.fillRect(obj.x + 5, obj.y + 3, 3, 6);
+    ctx.fillRect(obj.x + 3, obj.y + 5, 7, 3);
+
   } else if (obj.type === "moDisk") {
     ctx.fillStyle = "#131713";
     ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
@@ -908,6 +1116,27 @@ function drawRoom() {
     ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
     ctx.fillStyle = "#4a2511";
     ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+
+  } else if (obj.type === "lighter") {
+    ctx.fillStyle = "#171512";
+    ctx.fillRect(obj.x, obj.y + 1, obj.w, obj.h - 1);
+    ctx.fillStyle = "#a33b28";
+    ctx.fillRect(obj.x + 1, obj.y + 2, obj.w - 3, obj.h - 3);
+    ctx.fillStyle = "#b7b6a5";
+    ctx.fillRect(obj.x + obj.w - 3, obj.y + 1, 2, 3);
+    ctx.fillStyle = "#e0bd55";
+    ctx.fillRect(obj.x + 3, obj.y + 1, 3, 1);
+
+  } else if (obj.type === "botanyBook") {
+    ctx.fillStyle = "#21140c";
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#31502b";
+    ctx.fillRect(obj.x + 2, obj.y + 1, obj.w - 4, obj.h - 2);
+    ctx.fillStyle = "#9a8044";
+    ctx.fillRect(obj.x + 3, obj.y + 3, 2, obj.h - 6);
+    ctx.fillStyle = "#c2b06a";
+    ctx.fillRect(obj.x + 7, obj.y + 3, 4, 1);
+    ctx.fillRect(obj.x + 7, obj.y + 6, 3, 1);
 
   } else if (obj.type === "doomBook1") {
     // Doom Book 1: Libro antiguo de cuero oscuro con relieve/símbolo dorado

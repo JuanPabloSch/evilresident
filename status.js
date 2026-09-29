@@ -14,7 +14,12 @@ const STATUS_ITEMS = {
   carBattery: "Batería de auto",
   acidRounds: "Acid Rounds",
   scrapbook: "Scrapbook",
-  moDisk: "MO Disk"
+  moDisk: "MO Disk",
+  radio: "Radio",
+  moonCrest: "Moon Crest",
+  sunCrest: "Sun Crest",
+  botanyBook: "Botany Book",
+  lighter: "Encendedor"
 };
 
 const STATUS = (() => {
