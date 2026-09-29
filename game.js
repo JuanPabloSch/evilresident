@@ -270,9 +270,11 @@ function updateInteractionPrompt() {
   const door = nearbyDoor();
   if (door) {
     const locked = door.keyRequired && !unlockedLocks.has(door.lockId);
-    interactionPrompt.textContent = locked
-      ? `E · Cerrada: ${STATUS.getItemName(door.keyRequired)}`
-      : `E · Abrir: ${ROOMS[door.targetRoom].name}`;
+    interactionPrompt.textContent = door.disabled || !ROOMS[door.targetRoom]
+      ? `E · ${door.blockedMessage || "Destino todavía no disponible."}`
+      : locked
+        ? `E · Cerrada: ${STATUS.getItemName(door.keyRequired)}`
+        : `E · Abrir: ${ROOMS[door.targetRoom].name}`;
     interactionPrompt.hidden = false;
     return;
   }
@@ -309,6 +311,10 @@ function transitionThroughDoor(door) {
 function interactNearby() {
   const door = nearbyDoor();
   if (door) {
+    if (door.disabled || !ROOMS[door.targetRoom]) {
+      STATUS.setPickupHint(door.blockedMessage || "Destino todavía no disponible.");
+      return;
+    }
     if (door.keyRequired && !unlockedLocks.has(door.lockId)) {
       if (!STATUS.hasItem(door.keyRequired)) {
         const keyName = STATUS.getItemName(door.keyRequired);
@@ -444,7 +450,20 @@ function drawRoom() {
 
 // 3. Dibujar Muebles y Elementos Específicos
   room.interactables.forEach((obj) => {
-    if (obj.type === "stairs" || obj.type === "stairsVertical") {
+    if (obj.type === "elevator") {
+      ctx.fillStyle = "#11130f";
+      ctx.fillRect(obj.x - 3, obj.y - 3, obj.w + 6, obj.h + 6);
+      ctx.fillStyle = "#3d4036";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.strokeStyle = PALETTE.trim;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+      ctx.fillStyle = "#171916";
+      ctx.fillRect(obj.x + 7, obj.y + 5, obj.w - 14, obj.h - 10);
+      ctx.fillStyle = "#d89a42";
+      ctx.fillRect(obj.x + obj.w - 7, obj.y + obj.h / 2 - 2, 3, 4);
+
+    } else if (obj.type === "stairs" || obj.type === "stairsVertical") {
       // Escalera con peldaños VERTICALES (para Elevator Stairway)
       ctx.fillStyle = PALETTE.stairs;
       ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
@@ -763,7 +782,7 @@ function drawRoom() {
     ctx.fillRect(obj.x, obj.y + obj.h - 2, obj.w, 2);
     ctx.fillRect(obj.x, obj.y, obj.w, 2);
 
-    } else if (obj.type === "acidRounds") {
+  } else if (obj.type === "acidRounds") {
     // Acid Rounds: Caja verde fluorescente/limón con letras o detalle oscuro
     ctx.fillStyle = "#000000";
     ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
@@ -771,6 +790,19 @@ function drawRoom() {
     ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, 2);
+
+  } else if (obj.type === "carBattery") {
+    ctx.fillStyle = "#101411";
+    ctx.fillRect(obj.x, obj.y + 2, obj.w, obj.h - 2);
+    ctx.fillStyle = "#59635a";
+    ctx.fillRect(obj.x + 2, obj.y + 4, obj.w - 4, obj.h - 6);
+    ctx.fillStyle = "#c8c5ae";
+    ctx.fillRect(obj.x + 2, obj.y, 4, 3);
+    ctx.fillRect(obj.x + obj.w - 6, obj.y, 4, 3);
+    ctx.fillStyle = "#b42d27";
+    ctx.fillRect(obj.x + 4, obj.y + 6, 3, 2);
+    ctx.fillStyle = "#d3d1c6";
+    ctx.fillRect(obj.x + 10, obj.y + 6, 3, 2);
 
   } else if (obj.type === "shotgunShells") {
     // Cartuchos de escopeta: Caja roja con borde negro

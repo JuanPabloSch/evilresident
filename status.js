@@ -10,7 +10,9 @@ const STATUS_ITEMS = {
   crankItem: "Manivela cuadrada",
   doomBook1: "Libro de la perdición I",
   redJewel: "Joya roja",
-  orders: "Orders"
+  orders: "Orders",
+  carBattery: "Batería de auto",
+  acidRounds: "Acid Rounds"
 };
 
 const STATUS = (() => {
