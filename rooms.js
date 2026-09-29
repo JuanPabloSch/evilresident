@@ -139,8 +139,8 @@ bar: {
     doors: [
       // Puerta inferior (pared izquierda) -> Vuelve a la Tea Room
       { id: "westDoorToTea", x: 206, y: 120, w: 8, h: 25, targetRoom: "teaRoom", spawnX: 250, spawnY: 125 },
-      // Puerta arriba a la izquierda (al final de las escaleras) -> Sube a Kitchen 2F
-      { id: "stairsToKitchen", x: 36, y: 38, w: 8, h: 24, targetRoom: "elevatorStairway", spawnX: 50, spawnY: 48 }
+      // Salida en la punta de la escalera hacia el tramo del subsuelo
+      { id: "stairsToBasement", x: 210, y: 38, w: 8, h: 24, targetRoom: "elevatorStairwayB1", spawnX: 245, spawnY: 80 }
     ],
     interactables: [
       // Objeto interactivo visual para dibujar las escaleras en el canvas
@@ -722,7 +722,8 @@ outsideBoiler: {
 
     doors: [
       // 'p' Arriba a la izquierda: Vuelve a East Stairway 1F
-      { id: "doorToEastStairway", x: 112, y: 50, w: 18, h: 6, targetRoom: "eastStairway1F", spawnX: 190, spawnY: 55 }
+      { id: "doorToEastStairway", x: 112, y: 50, w: 18, h: 6, targetRoom: "eastStairway1F", spawnX: 190, spawnY: 55 },
+      { id: "doorToCourtyardGarden", x: 158, y: 104, w: 18, h: 6, targetRoom: "courtyardGarden", spawnX: 260, spawnY: 155 }
     ],
 
     interactables: [
@@ -856,7 +857,7 @@ outsideBoiler: {
       { id: "doorToRoofedPassage", x: 30, y: 70, w: 8, h: 22, targetRoom: "roofedPassage", spawnX: 160, spawnY: 45 },
 
       // 'p' Derecha: Avanza hacia Courtyard Garden
-      { id: "doorToCourtyardGarden", x: 182, y: 70, w: 8, h: 22, targetRoom: "courtyardGarden", spawnX: 45, spawnY: 70 }
+      { id: "doorToCourtyardGarden", x: 182, y: 70, w: 8, h: 22, targetRoom: "courtyardGarden", spawnX: 70, spawnY: 120 }
     ],
 
     interactables: [
@@ -876,6 +877,59 @@ outsideBoiler: {
       // Barriles adicionales cerca de la pared derecha
       { type: "barrel", x: 160, y: 115, w: 12, h: 12, solid: true }
     ]
+  },
+  courtyardGarden: {
+    name: "Courtyard Garden",
+    floorType: "concrete",
+    bounds: { minX: 30, maxX: 290, minY: 10, maxY: 185 },
+    walkablePolygon: [
+      { x: 30, y: 95 },
+      { x: 190, y: 95 },
+      { x: 195, y: 12 },
+      { x: 290, y: 12 },
+      { x: 290, y: 185 },
+      { x: 250, y: 185 },
+      { x: 250, y: 145 },
+      { x: 30, y: 145 }
+    ],
+    constrainToWalkablePolygon: true,
+    doors: [
+      { id: "door1ToMansionStoreroom", x: 258, y: 177, w: 24, h: 8, targetRoom: "mansionStoreroom", spawnX: 160, spawnY: 90 },
+      { id: "door2ToWaterGate", x: 218, y: 10, w: 26, h: 8, targetRoom: "waterGate", spawnX: 145, spawnY: 138 },
+      { id: "elevatorToFalls", x: 33, y: 108, w: 28, h: 8, targetRoom: "falls", spawnX: 145, spawnY: 145, keyRequired: "carBattery", lockId: "courtyard-elevator" }
+    ],
+    interactables: [
+      { type: "elevator", x: 34, y: 112, w: 26, h: 28, solid: true },
+      { type: "greenHerb", x: 220, y: 26, w: 10, h: 10 },
+      { type: "greenHerb", x: 270, y: 26, w: 10, h: 10 },
+      { type: "blueHerb", x: 160, y: 126, w: 10, h: 10 },
+      { type: "blueHerb", x: 112, y: 128, w: 10, h: 10 },
+      { type: "redHerb", x: 205, y: 100, w: 10, h: 10 },
+      { type: "redHerb", x: 210, y: 125, w: 10, h: 10 },
+      { type: "flowerBed", x: 226, y: 38, w: 42, h: 14, solid: true },
+      { type: "zombieDog", x: 120, y: 112, w: 12, h: 12 },
+      { type: "zombieDog", x: 240, y: 92, w: 12, h: 12 }
+    ]
+  },
+  waterGate: {
+    name: "Water Gate",
+    floorType: "concrete",
+    bounds: { minX: 80, maxX: 240, minY: 45, maxY: 155 },
+    corridorPoly: [{ x: 80, y: 45, w: 160, h: 110 }],
+    doors: [
+      { id: "doorToCourtyardGarden", x: 130, y: 45, w: 28, h: 8, targetRoom: "courtyardGarden", spawnX: 230, spawnY: 30 }
+    ],
+    interactables: []
+  },
+  falls: {
+    name: "Falls",
+    floorType: "concrete",
+    bounds: { minX: 80, maxX: 240, minY: 45, maxY: 155 },
+    corridorPoly: [{ x: 80, y: 45, w: 160, h: 110 }],
+    doors: [
+      { id: "doorToCourtyardElevator", x: 130, y: 145, w: 28, h: 8, targetRoom: "courtyardGarden", spawnX: 70, spawnY: 120 }
+    ],
+    interactables: []
   },
   mainHall2F: {
     name: "Main Hall 2F",
@@ -1067,7 +1121,7 @@ outsideBoiler: {
     doors: [
       { id: "doorToRoughPassage", x: 20, y: 146, w: 10, h: 28, targetRoom: "roughPassage", spawnX: 250, spawnY: 154 },
       { id: "doorToCloset", x: 105, y: 180, w: 26, h: 10, targetRoom: "closet", spawnX: 118, spawnY: 90 },
-      { id: "elevatorToBasement", x: 170, y: 112, w: 10, h: 28, disabled: true, blockedMessage: "Ascensor bloqueado." },
+      { id: "elevatorToBasement", x: 170, y: 112, w: 10, h: 28, targetRoom: "kitchen", spawnX: 215, spawnY: 145 },
       { id: "doorToLargeLibrary", x: 60, y: 42, w: 10, h: 28, targetRoom: "largeLibrary", spawnX: 260, spawnY: 50 }
     ],
     interactables: [
@@ -1075,6 +1129,99 @@ outsideBoiler: {
       { type: "zombie", x: 200, y: 102, w: 12, h: 14 },
       { type: "zombie", x: 228, y: 154, w: 12, h: 14 },
       { type: "zombie", x: 78, y: 154, w: 12, h: 14 }
+    ]
+  },
+  elevatorStairwayB1: {
+    name: "Elevator Stairway B1",
+    floorType: "concrete",
+    bounds: { minX: 40, maxX: 280, minY: 55, maxY: 135 },
+    corridorPoly: [{ x: 40, y: 60, w: 240, h: 60 }],
+    doors: [
+      { id: "door1ToKitchen", x: 40, y: 76, w: 8, h: 28, targetRoom: "kitchen", spawnX: 43, spawnY: 30 },
+      { id: "doorToElevatorStairway1F", x: 272, y: 76, w: 8, h: 28, targetRoom: "elevatorStairway", spawnX: 215, spawnY: 44 }
+    ],
+    interactables: [
+      { type: "stairsVertical", x: 122, y: 63, w: 145, h: 54 }
+    ]
+  },
+  kitchen: {
+    name: "Kitchen",
+    floorType: "chess",
+    bounds: { minX: 30, maxX: 290, minY: 10, maxY: 190 },
+    walkablePolygon: [
+      { x: 30, y: 10 },
+      { x: 70, y: 10 },
+      { x: 70, y: 60 },
+      { x: 290, y: 60 },
+      { x: 290, y: 185 },
+      { x: 30, y: 185 }
+    ],
+    walls: [{ x: 70, y: 10, w: 220, h: 50 }],
+    doors: [
+      { id: "door1ToElevatorStairwayB1", x: 30, y: 24, w: 8, h: 28, targetRoom: "elevatorStairwayB1", spawnX: 55, spawnY: 82 },
+      { id: "door2ToUndergroundPassage2", x: 40, y: 182, w: 28, h: 8, targetRoom: "undergroundPassage2", spawnX: 100, spawnY: 160 },
+      { id: "doorToElevatorStairway2F", x: 236, y: 138, w: 30, h: 8, targetRoom: "elevatorStairway2F", spawnX: 180, spawnY: 145 }
+    ],
+    interactables: [
+      { type: "stainlessCounter", x: 82, y: 64, w: 128, h: 18, solid: true },
+      { type: "stainlessCounter", x: 102, y: 112, w: 72, h: 28, solid: true },
+      { type: "elevator", x: 236, y: 76, w: 30, h: 62, solid: true },
+      { type: "zombie", x: 190, y: 96, w: 12, h: 14 },
+      { type: "zombie", x: 164, y: 160, w: 12, h: 14 }
+    ]
+  },
+  undergroundPassage2: {
+    name: "Underground Passage 2",
+    floorType: "concrete",
+    constrainToWalkablePolygon: true,
+    bounds: { minX: 30, maxX: 290, minY: 10, maxY: 185 },
+    walkablePolygon: [
+      { x: 30, y: 143 },
+      { x: 140, y: 143 },
+      { x: 143, y: 20 },
+      { x: 290, y: 20 },
+      { x: 287, y: 58 },
+      { x: 201, y: 58 },
+      { x: 195, y: 140 },
+      { x: 288, y: 140 },
+      { x: 290, y: 180 },
+      { x: 30, y: 180 }
+    ],
+    doors: [
+      { id: "door1ToKitchen", x: 38, y: 176, w: 30, h: 8, targetRoom: "kitchen", spawnX: 52, spawnY: 168 },
+      { id: "door2ToUndergroundPassage1", x: 254, y: 16, w: 30, h: 8, targetRoom: "undergroundPassage1", spawnX: 45, spawnY: 140 }
+    ],
+    interactables: [
+      { type: "zombie", x: 153, y: 157, w: 12, h: 14 },
+      { type: "zombie", x: 164, y: 76, w: 12, h: 14 },
+      { type: "greenHerb", x: 250, y: 157, w: 10, h: 10 },
+      { type: "greenHerb", x: 270, y: 157, w: 10, h: 10 }
+    ]
+  },
+  undergroundPassage1: {
+    name: "Underground Passage 1",
+    floorType: "concrete",
+    bounds: { minX: 30, maxX: 290, minY: 10, maxY: 185 },
+    constrainToWalkablePolygon: true,
+    walkablePolygon: [
+      { x: 30, y: 127 },
+      { x: 190, y: 130 },
+      { x: 195, y: 13 },
+      { x: 290, y: 10 },
+      { x: 290, y: 58 },
+      { x: 247, y: 58 },
+      { x: 240, y: 128 },
+      { x: 290, y: 130 },
+      { x: 285, y: 180 },
+      { x: 30, y: 182 }
+    ],
+    doors: [
+      { id: "door1ToUndergroundPassage2", x: 26, y: 140, w: 8, h: 28, targetRoom: "undergroundPassage2", spawnX: 270, spawnY: 38 }
+    ],
+    interactables: [
+      { type: "zombie", x: 250, y: 22, w: 12, h: 14 },
+      { type: "zombie", x: 267, y: 38, w: 12, h: 14 },
+      { type: "shotgunShells", x: 278, y: 16, w: 10, h: 8 }
     ]
   },
   closet: {
@@ -1291,7 +1438,7 @@ outsideBoiler: {
       { id: "door2ToSmallLibrary", x: 40, y: 67, w: 8, h: 28, targetRoom: "smallLibrary", spawnX: 220, spawnY: 88 },
       { id: "door3ToEastStairway1F", x: 101, y: 10, w: 30, h: 8, targetRoom: "eastStairway1F", spawnX: 170, spawnY: 55 },
       { id: "door4ToDeerRoom", x: 178, y: 90, w: 30, h: 8, targetRoom: "deerRoom", spawnX: 150, spawnY: 58 },
-      { id: "door5ToLessonRoomEntry", x: 244, y: 177, w: 28, h: 8, targetRoom: "lessonRoomEntry", spawnX: 85, spawnY: 140 }
+      { id: "door5ToLessonRoomEntry", x: 244, y: 177, w: 28, h: 8, targetRoom: "lessonRoomEntry", spawnX: 190, spawnY: 48 }
     ],
     interactables: [
       { type: "stairsVisual", x: 78, y: 12, w: 78, h: 24 },
@@ -1348,14 +1495,38 @@ outsideBoiler: {
     bounds: { minX: 70, maxX: 230, minY: 35, maxY: 165 },
     corridorPoly: [{ x: 70, y: 35, w: 160, h: 130 }],
     doors: [{ id: "doorToDeerRoom", x: 70, y: 82, w: 8, h: 28, targetRoom: "deerRoom", spawnX: 195, spawnY: 88 }],
-    interactables: []
+    interactables: [
+      { type: "desk", x: 145, y: 128, w: 76, h: 30, solid: true },
+      { type: "butterflyShelf", x: 193, y: 49, w: 28, h: 76, solid: true },
+      { type: "acidRounds", x: 104, y: 67, w: 10, h: 10 },
+      { type: "inkRibbon", x: 126, y: 98, w: 10, h: 8 },
+      { type: "researcherWill", x: 176, y: 136, w: 14, h: 10 }
+    ]
   },
   lessonRoomEntry: {
     name: "Lesson Room Entry",
     floorType: "wood",
     bounds: { minX: 70, maxX: 230, minY: 35, maxY: 165 },
     corridorPoly: [{ x: 70, y: 35, w: 160, h: 130 }],
-    doors: [{ id: "doorToEastStairway2F", x: 70, y: 78, w: 8, h: 28, targetRoom: "eastStairway2F", spawnX: 260, spawnY: 145 }],
-    interactables: []
+    doors: [
+      { id: "door1ToEastStairway2F", x: 190, y: 35, w: 28, h: 8, targetRoom: "eastStairway2F", spawnX: 260, spawnY: 145 },
+      { id: "door2ToLessonRoom", x: 70, y: 58, w: 8, h: 28, targetRoom: "lessonRoom", spawnX: 242, spawnY: 58 }
+    ],
+    interactables: [
+      { type: "fireplace", x: 137, y: 123, w: 42, h: 40, solid: true },
+      { type: "mansionMapPicture", x: 145, y: 99, w: 26, h: 18, solid: true },
+      { type: "greenHerb", x: 190, y: 130, w: 10, h: 10 }
+    ]
+  },
+  lessonRoom: {
+    name: "Lesson Room",
+    floorType: "chess",
+    bounds: { minX: 50, maxX: 270, minY: 20, maxY: 180 },
+    corridorPoly: [{ x: 50, y: 20, w: 220, h: 160 }],
+    doors: [{ id: "door1ToLessonRoomEntry", x: 262, y: 52, w: 8, h: 28, targetRoom: "lessonRoomEntry", spawnX: 82, spawnY: 64 }],
+    interactables: [
+      { type: "piano", x: 60, y: 38, w: 36, h: 74, solid: true },
+      { type: "yawn", x: 162, y: 112, w: 96, h: 50 }
+    ]
   }
 };

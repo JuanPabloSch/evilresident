@@ -4,6 +4,7 @@ const STATUS_ITEMS = {
   magnumRounds: "Munición Magnum",
   inkRibbon: "Cinta de tinta",
   greenHerb: "Hierba verde",
+  redHerb: "Hierba roja",
   blueHerb: "Hierba azul",
   firstAidSpray: "Aerosol de primeros auxilios",
   armorKey: "Llave de la armadura",
@@ -19,7 +20,8 @@ const STATUS_ITEMS = {
   moonCrest: "Moon Crest",
   sunCrest: "Sun Crest",
   botanyBook: "Botany Book",
-  lighter: "Encendedor"
+  lighter: "Encendedor",
+  researcherWill: "Researcher's Will"
 };
 
 const STATUS = (() => {

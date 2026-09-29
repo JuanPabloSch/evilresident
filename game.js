@@ -68,6 +68,20 @@ concreteCtx.fillStyle = "#555555";
 concreteCtx.fillRect(7, 7, 2, 2);
 const concreteFloorPattern = ctx.createPattern(concreteTileCanvas, "repeat");
 
+const chessTileCanvas = document.createElement("canvas");
+chessTileCanvas.width = 32;
+chessTileCanvas.height = 32;
+const chessCtx = chessTileCanvas.getContext("2d");
+chessCtx.fillStyle = "#d8d3c2";
+chessCtx.fillRect(0, 0, 32, 32);
+chessCtx.fillStyle = "#292927";
+chessCtx.fillRect(0, 0, 16, 16);
+chessCtx.fillRect(16, 16, 16, 16);
+chessCtx.strokeStyle = "#77746a";
+chessCtx.lineWidth = 1;
+chessCtx.strokeRect(0, 0, 32, 32);
+const chessFloorPattern = ctx.createPattern(chessTileCanvas, "repeat");
+
 const upperFloorCanvas = document.createElement("canvas");
 upperFloorCanvas.width = 16;
 upperFloorCanvas.height = 16;
@@ -193,6 +207,24 @@ function checkCollision(rect1, rect2) {
   );
 }
 
+function rectangleInsidePolygon(rect, polygon) {
+  const containsPoint = (x, y) => {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const a = polygon[i];
+      const b = polygon[j];
+      if ((a.y > y) !== (b.y > y) && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+    }
+    return inside;
+  };
+  return [
+    [rect.x, rect.y],
+    [rect.x + rect.w, rect.y],
+    [rect.x, rect.y + rect.h],
+    [rect.x + rect.w, rect.y + rect.h]
+  ].every(([x, y]) => containsPoint(x, y));
+}
+
 function hasLineOfSight(x1, y1, x2, y2, room, observer) {
   const distance = Math.hypot(x2 - x1, y2 - y1);
   const steps = Math.ceil(distance / 4);
@@ -235,6 +267,7 @@ function updateEnemies(room) {
       const bounds = room.bounds;
       const box = { x, y, w: enemy.w, h: enemy.h };
       return x >= bounds.minX && y >= bounds.minY && x + enemy.w <= bounds.maxX && y + enemy.h <= bounds.maxY &&
+        (!room.constrainToWalkablePolygon || rectangleInsidePolygon(box, room.walkablePolygon)) &&
         !room.walls?.some((wall) => checkCollision(box, wall)) &&
         !obstacles.some((obstacle) => checkCollision(box, obstacle));
     };
@@ -376,6 +409,11 @@ function update() {
   let canMoveX = true;
   let canMoveY = true;
 
+  if (room.constrainToWalkablePolygon) {
+    canMoveX = rectangleInsidePolygon(playerRectX, room.walkablePolygon);
+    canMoveY = rectangleInsidePolygon(playerRectY, room.walkablePolygon);
+  }
+
   // Colisión con objetos
   room.interactables.forEach((obj) => {
     if (obj.solid) {
@@ -411,6 +449,8 @@ function drawRoom() {
     currentFloorPattern = concreteFloorPattern;
   } else if (room.floorType === "secondFloor") {
     currentFloorPattern = upperFloorPattern;
+  } else if (room.floorType === "chess") {
+    currentFloorPattern = chessFloorPattern;
   }
 
   // Fondo negro base
@@ -854,7 +894,19 @@ function drawRoom() {
     ctx.fillStyle = "#222222";
     ctx.fillRect(obj.x + 2, obj.y + 5, obj.w - 4, 3);
 
-  } else if (obj.type === "sinkTable") {
+    } else if (obj.type === "stainlessCounter") {
+      ctx.fillStyle = "#202423";
+      ctx.fillRect(obj.x - 1, obj.y + 3, obj.w + 2, obj.h - 1);
+      ctx.fillStyle = "#717a78";
+      ctx.fillRect(obj.x, obj.y + 2, obj.w, obj.h - 3);
+      ctx.fillStyle = "#c1c7c3";
+      ctx.fillRect(obj.x + 2, obj.y, obj.w - 4, 4);
+      ctx.fillStyle = "#9ba39f";
+      ctx.fillRect(obj.x + 3, obj.y + 6, obj.w - 6, 2);
+      ctx.fillStyle = "#d7dbd5";
+      ctx.fillRect(obj.x + 6, obj.y + 1, Math.max(2, obj.w - 18), 1);
+
+    } else if (obj.type === "sinkTable") {
     // Vanitory compacto
     ctx.fillStyle = "#654321"; // Mueble
     ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
@@ -1103,6 +1155,16 @@ function drawRoom() {
       ctx.fillStyle = trophyLightsOn ? "#d6bd68" : "#726b55";
       ctx.fillRect(obj.x + 2, obj.y + (trophyLightsOn ? 2 : 6), 4, 4);
 
+    } else if (obj.type === "researcherWill") {
+      ctx.fillStyle = "#302215";
+      ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
+      ctx.fillStyle = "#e5d9b7";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#75412d";
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, 1);
+      ctx.fillRect(obj.x + 2, obj.y + 5, obj.w - 5, 1);
+      ctx.fillRect(obj.x + 2, obj.y + 8, obj.w - 7, 1);
+
     } else if (obj.type === "orders") {
       ctx.fillStyle = "#eee2bd";
       ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
@@ -1247,6 +1309,22 @@ function drawRoom() {
       ctx.strokeStyle = PALETTE.trim;
       ctx.lineWidth = 1;
       ctx.strokeRect(mx, my, mw, mh);
+    } else if (obj.type === "mansionMapPicture") {
+      ctx.fillStyle = "#302016";
+      ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
+      ctx.fillStyle = "#b38b45";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#d6c48e";
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+      ctx.fillStyle = "#73815b";
+      ctx.fillRect(obj.x + 5, obj.y + 5, 4, 8);
+      ctx.fillRect(obj.x + 9, obj.y + 5, 5, 3);
+      ctx.fillRect(obj.x + 14, obj.y + 7, 5, 6);
+      ctx.fillStyle = "#7c3525";
+      ctx.fillRect(obj.x + 11, obj.y + 9, 2, 2);
+      ctx.fillStyle = "#5c4425";
+      ctx.fillRect(obj.x + 4, obj.y + 14, obj.w - 8, 1);
+
     } else if (obj.type === "fireplace") {
       ctx.fillStyle = PALETTE.fireplace;
       ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
@@ -1330,6 +1408,34 @@ function drawRoom() {
       ctx.fillStyle = PALETTE.trim;
       ctx.fillRect(obj.x + 2, obj.y + 16, obj.w - 4, 2);
       ctx.fillRect(obj.x + 2, obj.y + 32, obj.w - 4, 2);
+
+    } else if (obj.type === "butterflyShelf") {
+      ctx.fillStyle = "#21150d";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#59371f";
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+      ctx.fillStyle = "#9b7040";
+      ctx.fillRect(obj.x + 2, obj.y + 18, obj.w - 4, 2);
+      ctx.fillRect(obj.x + 2, obj.y + 38, obj.w - 4, 2);
+      ctx.fillRect(obj.x + 2, obj.y + 58, obj.w - 4, 2);
+      ctx.fillStyle = "#d9bd73";
+      ctx.fillRect(obj.x + 6, obj.y + 7, 5, 4);
+      ctx.fillRect(obj.x + 16, obj.y + 11, 5, 4);
+      ctx.fillStyle = "#7a8c63";
+      ctx.fillRect(obj.x + 8, obj.y + 8, 1, 5);
+      ctx.fillRect(obj.x + 18, obj.y + 12, 1, 5);
+      ctx.fillStyle = "#b56b52";
+      ctx.fillRect(obj.x + 5, obj.y + 28, 5, 4);
+      ctx.fillRect(obj.x + 15, obj.y + 31, 5, 4);
+      ctx.fillStyle = "#e0cfa3";
+      ctx.fillRect(obj.x + 7, obj.y + 29, 1, 5);
+      ctx.fillRect(obj.x + 17, obj.y + 32, 1, 5);
+      ctx.fillStyle = "#8f9870";
+      ctx.fillRect(obj.x + 7, obj.y + 48, 5, 4);
+      ctx.fillRect(obj.x + 16, obj.y + 51, 5, 4);
+      ctx.fillStyle = "#e4d5a7";
+      ctx.fillRect(obj.x + 9, obj.y + 49, 1, 5);
+      ctx.fillRect(obj.x + 18, obj.y + 52, 1, 5);
 
     } else if (obj.type === "serum") {
       // Frasco de Suero (Medicina en frasco de vidrio cristalino/azul)
@@ -1500,7 +1606,7 @@ function drawRoom() {
         ctx.fillRect(obj.x + obj.w, obj.y + 3, 2, 4);
       }
 
-      } else if (obj.type === "greenHerb") {
+    } else if (obj.type === "greenHerb") {
       // Planta verde de curación en maceta roja
       ctx.fillStyle = "#8b0000"; // Maceta
       ctx.fillRect(obj.x + 2, obj.y + 6, obj.w - 4, 4);
@@ -1513,7 +1619,27 @@ function drawRoom() {
       ctx.fillStyle = "#00aa00"; // Sombra de hojas
       ctx.fillRect(obj.x + 4, obj.y + 3, 2, 3);
 
-      
+    } else if (obj.type === "redHerb") {
+      ctx.fillStyle = "#8b0000";
+      ctx.fillRect(obj.x + 2, obj.y + 6, obj.w - 4, 4);
+      ctx.fillStyle = "#c62828";
+      ctx.fillRect(obj.x + 1, obj.y + 2, 3, 4);
+      ctx.fillRect(obj.x + 6, obj.y + 1, 3, 5);
+      ctx.fillRect(obj.x + 3, obj.y, 4, 3);
+      ctx.fillStyle = "#f06a55";
+      ctx.fillRect(obj.x + 4, obj.y + 3, 2, 3);
+
+    } else if (obj.type === "flowerBed") {
+      ctx.fillStyle = "#63391f";
+      ctx.fillRect(obj.x, obj.y + 5, obj.w, obj.h - 5);
+      ctx.fillStyle = "#8a5429";
+      ctx.fillRect(obj.x + 1, obj.y + 5, obj.w - 2, 2);
+      for (let flowerX = obj.x + 5; flowerX < obj.x + obj.w - 3; flowerX += 8) {
+        ctx.fillStyle = "#347844";
+        ctx.fillRect(flowerX + 1, obj.y + 2, 2, 5);
+        ctx.fillStyle = flowerX % 3 === 0 ? "#d94c54" : "#e2c45f";
+        ctx.fillRect(flowerX, obj.y, 4, 3);
+      }
 
     } else if (obj.type === "windowVertical") {
       // Ventana en pared derecha
