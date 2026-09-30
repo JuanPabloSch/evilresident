@@ -190,6 +190,7 @@ updateAmmoDisplay();
 
 const keys = new Set();
 window.addEventListener("keydown", (e) => {
+  if (e.target.closest?.("#debug-room-control")) return;
   const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   keys.add(key);
   if (key === "m" && !e.repeat) MANSION_MAP.toggle();
@@ -340,6 +341,64 @@ function transitionThroughDoor(door) {
   if (titleElem) titleElem.innerText = ROOMS[currentRoom].name;
   MANSION_MAP.setCurrentRoom(currentRoom);
 }
+
+function findRoomTestSpawn(room) {
+  const bounds = room.bounds;
+  const candidates = [];
+  for (let y = bounds.minY + 3; y <= bounds.maxY - PLAYER_HEIGHT - 3; y += 8) {
+    for (let x = bounds.minX + 3; x <= bounds.maxX - PLAYER_WIDTH - 3; x += 8) {
+      const playerRect = { x, y, w: PLAYER_WIDTH, h: PLAYER_HEIGHT };
+      const corners = [
+        [x, y], [x + PLAYER_WIDTH, y],
+        [x, y + PLAYER_HEIGHT], [x + PLAYER_WIDTH, y + PLAYER_HEIGHT]
+      ];
+      if (room.walkablePolygon && !rectangleInsidePolygon(playerRect, room.walkablePolygon)) continue;
+      if (room.corridorPoly && !room.corridorPoly.some((area) =>
+        corners.every(([px, py]) => px >= area.x && px <= area.x + area.w && py >= area.y && py <= area.y + area.h)
+      )) continue;
+      if (room.walls?.some((wall) => checkCollision(playerRect, wall))) continue;
+      if (room.interactables.some((obj) =>
+        (obj.solid || ENEMY_TYPES[obj.type]) && checkCollision(playerRect, obj)
+      )) continue;
+      if (room.doors?.some((door) => checkCollision(playerRect, door))) continue;
+      const centerX = (bounds.minX + bounds.maxX - PLAYER_WIDTH) / 2;
+      const centerY = (bounds.minY + bounds.maxY - PLAYER_HEIGHT) / 2;
+      candidates.push({ x, y, distance: Math.hypot(x - centerX, y - centerY) });
+    }
+  }
+  candidates.sort((a, b) => a.distance - b.distance);
+  return candidates[0] || {
+    x: bounds.minX + (bounds.maxX - bounds.minX - PLAYER_WIDTH) / 2,
+    y: bounds.minY + (bounds.maxY - bounds.minY - PLAYER_HEIGHT) / 2
+  };
+}
+
+const debugRoomSelect = document.getElementById("debug-room-select");
+const debugRoomGo = document.getElementById("debug-room-go");
+Object.entries(ROOMS)
+  .sort(([, roomA], [, roomB]) => roomA.name.localeCompare(roomB.name, "es"))
+  .forEach(([roomId, room]) => {
+    const option = document.createElement("option");
+    option.value = roomId;
+    option.textContent = room.name;
+    debugRoomSelect.appendChild(option);
+  });
+debugRoomSelect.addEventListener("change", () => {
+  debugRoomGo.disabled = !debugRoomSelect.value;
+});
+debugRoomGo.addEventListener("click", () => {
+  const roomId = debugRoomSelect.value;
+  const room = ROOMS[roomId];
+  if (!room) return;
+  const spawn = findRoomTestSpawn(room);
+  currentRoom = roomId;
+  player.x = spawn.x;
+  player.y = spawn.y;
+  document.getElementById("room-title").innerText = room.name;
+  MANSION_MAP.setCurrentRoom(roomId);
+  updateInteractionPrompt();
+  debugRoomGo.blur();
+});
 
 function interactNearby() {
   const door = nearbyDoor();
@@ -677,6 +736,27 @@ function drawRoom() {
       ctx.fillRect(obj.x + obj.w - 5, obj.y, 4, obj.h);
       ctx.fillStyle = "#302b20";
       ctx.fillRect(obj.x + 5, obj.y + 4, 3, 3);
+
+    } else if (obj.type === "waterArea") {
+      ctx.fillStyle = "#075582";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#1099ce";
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+      ctx.fillStyle = "#54c8ec";
+      ctx.fillRect(obj.x + 8, obj.y + 10, 19, 2);
+      ctx.fillRect(obj.x + 39, obj.y + 25, 22, 2);
+      ctx.fillRect(obj.x + 20, obj.y + 51, 16, 2);
+
+    } else if (obj.type === "crankSocket") {
+      ctx.fillStyle = "#23180f";
+      ctx.fillRect(obj.x, obj.y + 3, obj.w, obj.h - 3);
+      ctx.fillStyle = "#74604a";
+      ctx.fillRect(obj.x + 2, obj.y + 4, obj.w - 4, obj.h - 6);
+      ctx.fillStyle = "#211c16";
+      ctx.fillRect(obj.x + 8, obj.y + 7, 7, 7);
+      ctx.fillStyle = "#b5a27c";
+      ctx.fillRect(obj.x + 10, obj.y + 4, 3, 12);
+      ctx.fillRect(obj.x + 6, obj.y + 8, 11, 3);
 
     } else if (obj.type === "elevator") {
       ctx.fillStyle = "#11130f";

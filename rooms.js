@@ -722,8 +722,7 @@ outsideBoiler: {
 
     doors: [
       // 'p' Arriba a la izquierda: Vuelve a East Stairway 1F
-      { id: "doorToEastStairway", x: 112, y: 50, w: 18, h: 6, targetRoom: "eastStairway1F", spawnX: 190, spawnY: 55 },
-      { id: "doorToCourtyardGarden", x: 158, y: 104, w: 18, h: 6, targetRoom: "courtyardGarden", spawnX: 260, spawnY: 155 }
+      { id: "doorToEastStairway", x: 112, y: 50, w: 18, h: 6, targetRoom: "eastStairway1F", spawnX: 190, spawnY: 55 }
     ],
 
     interactables: [
@@ -843,7 +842,7 @@ outsideBoiler: {
     ]
   },
   storeroom: {
-    name: "Garden Shed / Storeroom",
+    name: "Garden Shed",
     floorType: "wood",
     bounds: { minX: 30, maxX: 190, minY: 40, maxY: 140 },
 
@@ -855,9 +854,7 @@ outsideBoiler: {
     doors: [
       // 'p' Izquierda: Vuelve a Roofed Passage
       { id: "doorToRoofedPassage", x: 30, y: 70, w: 8, h: 22, targetRoom: "roofedPassage", spawnX: 160, spawnY: 45 },
-
-      // 'p' Derecha: Avanza hacia Courtyard Garden
-      { id: "doorToCourtyardGarden", x: 182, y: 70, w: 8, h: 22, targetRoom: "courtyardGarden", spawnX: 70, spawnY: 120 }
+      { id: "doorToCourtyardGarden", x: 182, y: 70, w: 8, h: 22, targetRoom: "courtyardGarden", spawnX: 170, spawnY: 120 }
     ],
 
     interactables: [
@@ -894,8 +891,8 @@ outsideBoiler: {
     ],
     constrainToWalkablePolygon: true,
     doors: [
-      { id: "door1ToMansionStoreroom", x: 258, y: 177, w: 24, h: 8, targetRoom: "mansionStoreroom", spawnX: 160, spawnY: 90 },
-      { id: "door2ToWaterGate", x: 218, y: 10, w: 26, h: 8, targetRoom: "waterGate", spawnX: 145, spawnY: 138 },
+      { id: "door1ToGardenShed", x: 258, y: 177, w: 24, h: 8, targetRoom: "storeroom", spawnX: 145, spawnY: 85 },
+      { id: "door2ToWaterGate", x: 218, y: 10, w: 26, h: 8, targetRoom: "waterGate", spawnX: 131, spawnY: 129 },
       { id: "elevatorToFalls", x: 33, y: 108, w: 28, h: 8, targetRoom: "falls", spawnX: 145, spawnY: 145, keyRequired: "carBattery", lockId: "courtyard-elevator" }
     ],
     interactables: [
@@ -914,20 +911,66 @@ outsideBoiler: {
   waterGate: {
     name: "Water Gate",
     floorType: "concrete",
-    bounds: { minX: 80, maxX: 240, minY: 45, maxY: 155 },
-    corridorPoly: [{ x: 80, y: 45, w: 160, h: 110 }],
-    doors: [
-      { id: "doorToCourtyardGarden", x: 130, y: 45, w: 28, h: 8, targetRoom: "courtyardGarden", spawnX: 230, spawnY: 30 }
+    bounds: { minX: 28, maxX: 245, minY: 10, maxY: 182 },
+    walkablePolygon: [
+      { x: 30, y: 10 },
+      { x: 242, y: 10 },
+      { x: 238, y: 180 },
+      { x: 204, y: 180 },
+      { x: 204, y: 149 },
+      { x: 72, y: 149 },
+      { x: 72, y: 106 },
+      { x: 98, y: 106 },
+      { x: 101, y: 128 },
+      { x: 128, y: 128 },
+      { x: 128, y: 52 },
+      { x: 60, y: 50 },
+      { x: 59, y: 78 },
+      { x: 30, y: 77 },
+      { x: 29, y: 50 }
     ],
-    interactables: []
+    constrainToWalkablePolygon: true,
+    doors: [
+      { id: "door1ToCourtyardGarden", x: 210, y: 174, w: 24, h: 8, targetRoom: "courtyardGarden", spawnX: 153, spawnY: 97 },
+      { id: "elevator2ToFalls", x: 28, y: 55, w: 8, h: 24, targetRoom: "falls", spawnX: 150, spawnY: 70 }
+    ],
+    interactables: [
+      { type: "elevator", x: 31, y: 53, w: 27, h: 27, solid: true },
+      { type: "waterArea", x: 128, y: 54, w: 73, h: 72, solid: true },
+      { type: "crankSocket", x: 76, y: 111, w: 23, h: 19, solid: true }
+    ]
   },
   falls: {
     name: "Falls",
     floorType: "concrete",
+    bounds: { minX: 30, maxX: 290, minY: 10, maxY: 185 },
+    walkablePolygon: [
+      { x: 30, y: 10 },
+      { x: 290, y: 10 },
+      { x: 288, y: 100 },
+      { x: 205, y: 103 },
+      { x: 205, y: 183 },
+      { x: 100, y: 183 },
+      { x: 100, y: 100 },
+      { x: 30, y: 94 }
+    ],
+    constrainToWalkablePolygon: true,
+    doors: [
+      { id: "elevator1ToWaterGate", x: 244, y: 10, w: 34, h: 8, targetRoom: "waterGate", spawnX: 131, spawnY: 129 },
+      { id: "door2ToCourtyardGarden", x: 201, y: 143, w: 8, h: 28, targetRoom: "courtyardGarden", spawnX: 153, spawnY: 97, disabled: true, blockedMessage: "Esta puerta todavía no está habilitada." },
+      { id: "door4ToGuardhouseGate", x: 28, y: 48, w: 8, h: 28, targetRoom: "guardhouseGate", spawnX: 205, spawnY: 85 }
+    ],
+    interactables: [
+      { type: "elevator", x: 247, y: 13, w: 32, h: 24, solid: true }
+    ]
+  },
+  guardhouseGate: {
+    name: "Guardhouse Gate",
+    floorType: "concrete",
     bounds: { minX: 80, maxX: 240, minY: 45, maxY: 155 },
     corridorPoly: [{ x: 80, y: 45, w: 160, h: 110 }],
     doors: [
-      { id: "doorToCourtyardElevator", x: 130, y: 145, w: 28, h: 8, targetRoom: "courtyardGarden", spawnX: 70, spawnY: 120 }
+      { id: "doorToFalls", x: 232, y: 78, w: 8, h: 28, targetRoom: "falls", spawnX: 50, spawnY: 55 }
     ],
     interactables: []
   },
