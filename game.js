@@ -68,6 +68,35 @@ concreteCtx.fillStyle = "#555555";
 concreteCtx.fillRect(7, 7, 2, 2);
 const concreteFloorPattern = ctx.createPattern(concreteTileCanvas, "repeat");
 
+const waterTileCanvas = document.createElement("canvas");
+waterTileCanvas.width = 16;
+waterTileCanvas.height = 16;
+const waterCtx = waterTileCanvas.getContext("2d");
+waterCtx.fillStyle = "#079fc9";
+waterCtx.fillRect(0, 0, 16, 16);
+waterCtx.fillStyle = "#20b5d9";
+waterCtx.fillRect(2, 4, 7, 1);
+waterCtx.fillRect(10, 11, 5, 1);
+waterCtx.fillStyle = "#067fa8";
+waterCtx.fillRect(0, 15, 16, 1);
+const waterFloorPattern = ctx.createPattern(waterTileCanvas, "repeat");
+
+const caveTileCanvas = document.createElement("canvas");
+caveTileCanvas.width = 16;
+caveTileCanvas.height = 16;
+const caveCtx = caveTileCanvas.getContext("2d");
+caveCtx.fillStyle = "#484332";
+caveCtx.fillRect(0, 0, 16, 16);
+caveCtx.fillStyle = "#343b2b";
+caveCtx.fillRect(1, 2, 6, 4);
+caveCtx.fillRect(9, 10, 6, 5);
+caveCtx.fillStyle = "#66503a";
+caveCtx.fillRect(9, 1, 5, 4);
+caveCtx.fillRect(2, 11, 4, 3);
+caveCtx.fillStyle = "#252c24";
+caveCtx.fillRect(7, 6, 2, 2);
+const caveFloorPattern = ctx.createPattern(caveTileCanvas, "repeat");
+
 const chessTileCanvas = document.createElement("canvas");
 chessTileCanvas.width = 32;
 chessTileCanvas.height = 32;
@@ -81,6 +110,20 @@ chessCtx.strokeStyle = "#77746a";
 chessCtx.lineWidth = 1;
 chessCtx.strokeRect(0, 0, 32, 32);
 const chessFloorPattern = ctx.createPattern(chessTileCanvas, "repeat");
+
+const redCarpetCanvas = document.createElement("canvas");
+redCarpetCanvas.width = 16;
+redCarpetCanvas.height = 16;
+const redCarpetCtx = redCarpetCanvas.getContext("2d");
+redCarpetCtx.fillStyle = "#651b20";
+redCarpetCtx.fillRect(0, 0, 16, 16);
+redCarpetCtx.strokeStyle = "#451116";
+redCarpetCtx.lineWidth = 1;
+redCarpetCtx.strokeRect(0, 0, 16, 16);
+redCarpetCtx.fillStyle = "#7a292b";
+redCarpetCtx.fillRect(3, 3, 2, 2);
+redCarpetCtx.fillRect(11, 11, 2, 2);
+const redCarpetPattern = ctx.createPattern(redCarpetCanvas, "repeat");
 
 const upperFloorCanvas = document.createElement("canvas");
 upperFloorCanvas.width = 16;
@@ -100,6 +143,8 @@ const upperFloorPattern = ctx.createPattern(upperFloorCanvas, "repeat");
 // --- ESTADO DEL JUEGO ---
 let currentRoom = "mainHall";
 let trophyLightsOn = true;
+let waterDrained = false;
+let armsStorageUnlocked = false;
 
 let player = {
   x: 230,
@@ -118,11 +163,79 @@ let gameFrame = 0;
 let playerDamageCooldown = 0;
 const unlockedLocks = new Set();
 const interactionPrompt = document.getElementById("interaction-prompt");
+const doorCodeDialog = document.getElementById("door-code-dialog");
+const doorCodeForm = document.getElementById("door-code-form");
+const doorCodeDisplay = document.getElementById("door-code-display");
+const doorCodeMessage = document.getElementById("door-code-message");
+let pendingCodeDoor = null;
+let enteredDoorCode = "";
+
+function renderDoorCode() {
+  doorCodeDisplay.textContent = enteredDoorCode.padEnd(3, "_");
+}
+
+function addDoorCodeDigit(digit) {
+  if (enteredDoorCode.length >= 3) return;
+  enteredDoorCode += digit;
+  doorCodeMessage.textContent = "Ingresá el código numérico.";
+  renderDoorCode();
+}
+
+function submitDoorCode() {
+  if (!pendingCodeDoor) return;
+  if (enteredDoorCode !== pendingCodeDoor.codeRequired) {
+    enteredDoorCode = "";
+    doorCodeMessage.textContent = "Código incorrecto. Probá otra vez.";
+    renderDoorCode();
+    return;
+  }
+
+  const door = pendingCodeDoor;
+  unlockedLocks.add(door.lockId);
+  pendingCodeDoor = null;
+  doorCodeDialog.close();
+  transitionThroughDoor(door);
+  STATUS.setPickupHint("Código correcto. Puerta desbloqueada.");
+  updateInteractionPrompt();
+}
+
+doorCodeDialog.querySelectorAll("[data-code-digit]").forEach((button) => {
+  button.addEventListener("click", () => addDoorCodeDigit(button.dataset.codeDigit));
+});
+doorCodeDialog.querySelectorAll("[data-code-action]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const action = button.dataset.codeAction;
+    if (action === "cancel") {
+      doorCodeDialog.close();
+    } else if (action === "clear") {
+      enteredDoorCode = "";
+      doorCodeMessage.textContent = "Ingresá el código numérico.";
+      renderDoorCode();
+    } else if (action === "backspace") {
+      enteredDoorCode = enteredDoorCode.slice(0, -1);
+      renderDoorCode();
+    }
+  });
+});
+doorCodeForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  submitDoorCode();
+});
+doorCodeDialog.addEventListener("close", () => {
+  pendingCodeDoor = null;
+  enteredDoorCode = "";
+  renderDoorCode();
+  updateInteractionPrompt();
+});
 
 const ENEMY_TYPES = {
   zombie: { sight: 105, speed: 0.38, attackRange: 18, damage: 8, attackDelay: 52 },
   zombieDog: { sight: 145, speed: 0.82, attackRange: 21, damage: 12, attackDelay: 42 },
-  crow: { sight: 135, speed: 0.68, attackRange: 18, damage: 6, attackDelay: 46 }
+  spider: { sight: 120, speed: 0.46, attackRange: 19, damage: 9, attackDelay: 48 },
+  neptune: { sight: 170, speed: 0.62, attackRange: 24, damage: 14, attackDelay: 48 },
+  wasp: { sight: 150, speed: 0.92, attackRange: 16, damage: 5, attackDelay: 32 },
+  crow: { sight: 135, speed: 0.68, attackRange: 18, damage: 6, attackDelay: 46 },
+  hunter: { sight: 175, speed: 0.72, attackRange: 22, damage: 18, attackDelay: 38 }
 };
 
 function updateAmmoDisplay() {
@@ -146,7 +259,7 @@ function reloadWeapon() {
 }
 
 function fireWeapon() {
-  if (STATUS.isOpen() || weapon.loaded <= 0) return;
+  if (STATUS.isOpen() || doorCodeDialog.open || weapon.loaded <= 0) return;
   weapon.loaded--;
   weapon.shotFlash = 4;
   const originX = player.x + PLAYER_WIDTH / 2;
@@ -157,7 +270,7 @@ function fireWeapon() {
   const room = ROOMS[currentRoom];
 
   room.interactables.forEach((obj) => {
-    if (!["zombie", "zombieDog", "crow"].includes(obj.type)) return;
+    if (!["zombie", "zombieDog", "spider", "neptune", "wasp", "crow", "hunter"].includes(obj.type)) return;
     const dx = obj.x + obj.w / 2 - originX;
     const dy = obj.y + obj.h / 2 - originY;
     const along = dx * Math.cos(player.aimAngle) + dy * Math.sin(player.aimAngle);
@@ -190,6 +303,16 @@ updateAmmoDisplay();
 
 const keys = new Set();
 window.addEventListener("keydown", (e) => {
+  if (doorCodeDialog.open) {
+    e.preventDefault();
+    if (/^\d$/.test(e.key)) addDoorCodeDigit(e.key);
+    else if (e.key === "Enter") submitDoorCode();
+    else if (e.key === "Backspace") {
+      enteredDoorCode = enteredDoorCode.slice(0, -1);
+      renderDoorCode();
+    } else if (e.key === "Escape") doorCodeDialog.close();
+    return;
+  }
   if (e.target.closest?.("#debug-room-control")) return;
   const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   keys.add(key);
@@ -239,6 +362,29 @@ function hasLineOfSight(x1, y1, x2, y2, room, observer) {
 }
 
 function updateEnemies(room) {
+  const hive = room.interactables.find((obj) => obj.type === "giantBeehive");
+  if (hive) {
+    const activeWasps = room.interactables.some((obj) => obj.type === "wasp");
+    if (!activeWasps) {
+      hive.nextWaspAt ??= gameFrame + 360;
+      if (gameFrame >= hive.nextWaspAt) {
+        const offsets = [[-21, 25], [-15, 60], [-4, 68], [40, 22], [43, 62]];
+        offsets.forEach(([offsetX, offsetY]) => {
+          room.interactables.push({
+            type: "wasp",
+            x: hive.x + offsetX,
+            y: hive.y + offsetY,
+            w: 12,
+            h: 10
+          });
+        });
+        hive.nextWaspAt = undefined;
+      }
+    } else {
+      hive.nextWaspAt = undefined;
+    }
+  }
+
   const playerX = player.x + PLAYER_WIDTH / 2;
   const playerY = player.y + PLAYER_HEIGHT / 2;
   const obstacles = room.interactables.filter((obj) => obj.solid && !ENEMY_TYPES[obj.type]);
@@ -246,6 +392,11 @@ function updateEnemies(room) {
   room.interactables.forEach((enemy) => {
     const behavior = ENEMY_TYPES[enemy.type];
     if (!behavior) return;
+    if (enemy.type === "neptune" && waterDrained) {
+      enemy.alerted = false;
+      enemy.attackAt = undefined;
+      return;
+    }
     const enemyX = enemy.x + enemy.w / 2;
     const enemyY = enemy.y + enemy.h / 2;
     const distance = Math.hypot(playerX - enemyX, playerY - enemyY);
@@ -304,10 +455,15 @@ function updateInteractionPrompt() {
   const door = nearbyDoor();
   if (door) {
     const locked = door.keyRequired && !unlockedLocks.has(door.lockId);
+    const switchLocked = door.switchRequired === "armsStorageUnlocked" && !armsStorageUnlocked;
     interactionPrompt.textContent = door.disabled || !ROOMS[door.targetRoom]
       ? `E · ${door.blockedMessage || "Destino todavía no disponible."}`
+      : door.codeRequired && !unlockedLocks.has(door.lockId)
+        ? "E · Ingresar código"
       : locked
         ? `E · Cerrada: ${STATUS.getItemName(door.keyRequired)}`
+      : switchLocked
+        ? "E · Cerrada: activá el switch en Control Room B1"
         : `E · Abrir: ${ROOMS[door.targetRoom].name}`;
     interactionPrompt.hidden = false;
     return;
@@ -324,6 +480,16 @@ function updateInteractionPrompt() {
   const trophySwitch = room.interactables.find((obj) => obj.type === "trophySwitch" && checkCollision(switchReach, obj));
   if (trophySwitch) {
     interactionPrompt.textContent = `E · ${trophyLightsOn ? "Apagar" : "Encender"} la luz`;
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const controlSwitch = room.interactables.find((obj) =>
+    ["waterDrainSwitch", "armsStorageSwitch"].includes(obj.type) && checkCollision(switchReach, obj)
+  );
+  if (controlSwitch) {
+    interactionPrompt.textContent = controlSwitch.type === "waterDrainSwitch"
+      ? waterDrained ? "E · Drenaje activado" : "E · Drenar las habitaciones"
+      : armsStorageUnlocked ? "E · Puerta de Arms Storage abierta" : "E · Abrir Arms Storage";
     interactionPrompt.hidden = false;
     return;
   }
@@ -407,6 +573,18 @@ function interactNearby() {
       STATUS.setPickupHint(door.blockedMessage || "Destino todavía no disponible.");
       return;
     }
+    if (door.switchRequired === "armsStorageUnlocked" && !armsStorageUnlocked) {
+      STATUS.setPickupHint("La puerta de Arms Storage sigue cerrada. Activá el switch en Control Room B1.");
+      return;
+    }
+    if (door.codeRequired && !unlockedLocks.has(door.lockId)) {
+      pendingCodeDoor = door;
+      enteredDoorCode = "";
+      doorCodeMessage.textContent = "Ingresá el código numérico.";
+      renderDoorCode();
+      doorCodeDialog.showModal();
+      return;
+    }
     if (door.keyRequired && !unlockedLocks.has(door.lockId)) {
       if (!STATUS.hasItem(door.keyRequired)) {
         const keyName = STATUS.getItemName(door.keyRequired);
@@ -430,11 +608,25 @@ function interactNearby() {
     trophyLightsOn = !trophyLightsOn;
     return;
   }
+  const controlSwitch = room.interactables.find((obj) =>
+    ["waterDrainSwitch", "armsStorageSwitch"].includes(obj.type) && checkCollision(reach, obj)
+  );
+  if (controlSwitch) {
+    if (controlSwitch.type === "waterDrainSwitch") {
+      waterDrained = true;
+      STATUS.setPickupHint("El agua fue drenada de las habitaciones del nivel B1.");
+    } else {
+      armsStorageUnlocked = true;
+      STATUS.setPickupHint("La puerta de Arms Storage quedó abierta.");
+    }
+    updateInteractionPrompt();
+    return;
+  }
   collectNearbyItem();
 }
 
 function update() {
-  if (STATUS.isOpen()) return;
+  if (STATUS.isOpen() || doorCodeDialog.open) return;
   gameFrame++;
   if (playerDamageCooldown > 0) playerDamageCooldown--;
   if (weapon.shotFlash > 0) weapon.shotFlash--;
@@ -506,10 +698,16 @@ function drawRoom() {
     currentFloorPattern = woodFloorPattern;
   } else if (room.floorType === "concrete") {
     currentFloorPattern = concreteFloorPattern;
+  } else if (room.floorType === "water") {
+    currentFloorPattern = waterDrained ? concreteFloorPattern : waterFloorPattern;
+  } else if (room.floorType === "cave") {
+    currentFloorPattern = caveFloorPattern;
   } else if (room.floorType === "secondFloor") {
     currentFloorPattern = upperFloorPattern;
   } else if (room.floorType === "chess") {
     currentFloorPattern = chessFloorPattern;
+  } else if (room.floorType === "carpetRed") {
+    currentFloorPattern = redCarpetPattern;
   }
 
   // Fondo negro base
@@ -563,8 +761,18 @@ function drawRoom() {
   // (El resto de la función sigue igual hacia abajo con las puertas e interactables...)
 
   // 2. Dibujar Puertas
-  ctx.fillStyle = PALETTE.door;
-  room.doors.forEach((d) => ctx.fillRect(d.x, d.y, d.w, d.h));
+  room.doors.forEach((d) => {
+    if (d.switchRequired === "armsStorageUnlocked" && armsStorageUnlocked) {
+      ctx.fillStyle = "#111916";
+      ctx.fillRect(d.x, d.y, d.w, d.h);
+      ctx.strokeStyle = "#7c9383";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(d.x + 1, d.y + 1, d.w - 2, d.h - 2);
+    } else {
+      ctx.fillStyle = PALETTE.door;
+      ctx.fillRect(d.x, d.y, d.w, d.h);
+    }
+  });
 
 // 3. Dibujar Muebles y Elementos Específicos
   room.interactables.forEach((obj) => {
@@ -737,6 +945,121 @@ function drawRoom() {
       ctx.fillStyle = "#302b20";
       ctx.fillRect(obj.x + 5, obj.y + 4, 3, 3);
 
+    } else if (obj.type === "caveRock") {
+      ctx.fillStyle = "#252820";
+      ctx.beginPath();
+      ctx.moveTo(obj.x + 9, obj.y + 8);
+      ctx.lineTo(obj.x + obj.w * 0.28, obj.y + 3);
+      ctx.lineTo(obj.x + obj.w * 0.57, obj.y + 8);
+      ctx.lineTo(obj.x + obj.w - 7, obj.y + 18);
+      ctx.lineTo(obj.x + obj.w - 2, obj.y + obj.h * 0.55);
+      ctx.lineTo(obj.x + obj.w - 15, obj.y + obj.h - 8);
+      ctx.lineTo(obj.x + obj.w * 0.55, obj.y + obj.h - 2);
+      ctx.lineTo(obj.x + 10, obj.y + obj.h - 9);
+      ctx.lineTo(obj.x + 2, obj.y + obj.h * 0.52);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#514636";
+      ctx.beginPath();
+      ctx.moveTo(obj.x + 13, obj.y + 13);
+      ctx.lineTo(obj.x + obj.w * 0.3, obj.y + 8);
+      ctx.lineTo(obj.x + obj.w * 0.53, obj.y + 15);
+      ctx.lineTo(obj.x + obj.w - 15, obj.y + 24);
+      ctx.lineTo(obj.x + obj.w - 11, obj.y + obj.h * 0.54);
+      ctx.lineTo(obj.x + obj.w - 24, obj.y + obj.h - 15);
+      ctx.lineTo(obj.x + obj.w * 0.5, obj.y + obj.h - 10);
+      ctx.lineTo(obj.x + 14, obj.y + obj.h - 17);
+      ctx.lineTo(obj.x + 10, obj.y + obj.h * 0.52);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = "#69704a";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(obj.x + 21, obj.y + 20);
+      ctx.lineTo(obj.x + 39, obj.y + 15);
+      ctx.moveTo(obj.x + obj.w - 42, obj.y + obj.h - 24);
+      ctx.lineTo(obj.x + obj.w - 27, obj.y + obj.h - 31);
+      ctx.stroke();
+
+    } else if (obj.type === "waterPond") {
+      ctx.fillStyle = "#252f30";
+      ctx.beginPath();
+      ctx.ellipse(obj.x + obj.w / 2, obj.y + obj.h / 2, obj.w / 2, obj.h / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#087da4";
+      ctx.beginPath();
+      ctx.ellipse(obj.x + obj.w / 2, obj.y + obj.h / 2, obj.w / 2 - 3, obj.h / 2 - 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#12a9cf";
+      ctx.beginPath();
+      ctx.ellipse(obj.x + obj.w / 2 - 5, obj.y + obj.h / 2 - 4, obj.w / 2 - 13, obj.h / 2 - 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(190, 242, 248, 0.8)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(obj.x + 15, obj.y + 21);
+      ctx.lineTo(obj.x + 36, obj.y + 21);
+      ctx.moveTo(obj.x + obj.w - 34, obj.y + obj.h - 19);
+      ctx.lineTo(obj.x + obj.w - 14, obj.y + obj.h - 19);
+      ctx.stroke();
+
+    } else if (obj.type === "brokenGlassTank") {
+      ctx.fillStyle = "#263d43";
+      ctx.fillRect(obj.x - 3, obj.y - 3, obj.w + 6, obj.h + 6);
+      ctx.fillStyle = "rgba(165, 226, 235, 0.38)";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.strokeStyle = "#c8f5f5";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+
+      ctx.strokeStyle = "#e6ffff";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(obj.x + 61, obj.y + 3);
+      ctx.lineTo(obj.x + 57, obj.y + 18);
+      ctx.lineTo(obj.x + 66, obj.y + 27);
+      ctx.lineTo(obj.x + 54, obj.y + 39);
+      ctx.lineTo(obj.x + 62, obj.y + 50);
+      ctx.lineTo(obj.x + 48, obj.y + 63);
+      ctx.lineTo(obj.x + 52, obj.y + obj.h - 2);
+      ctx.moveTo(obj.x + 57, obj.y + 18);
+      ctx.lineTo(obj.x + 43, obj.y + 22);
+      ctx.lineTo(obj.x + 37, obj.y + 34);
+      ctx.moveTo(obj.x + 66, obj.y + 27);
+      ctx.lineTo(obj.x + 80, obj.y + 23);
+      ctx.lineTo(obj.x + 91, obj.y + 29);
+      ctx.moveTo(obj.x + 54, obj.y + 39);
+      ctx.lineTo(obj.x + 39, obj.y + 46);
+      ctx.lineTo(obj.x + 33, obj.y + 57);
+      ctx.stroke();
+
+      ctx.fillStyle = "#d6f7f7";
+      ctx.beginPath();
+      ctx.moveTo(obj.x + obj.w - 2, obj.y + 3);
+      ctx.lineTo(obj.x + obj.w - 18, obj.y + 3);
+      ctx.lineTo(obj.x + obj.w - 2, obj.y + 19);
+      ctx.closePath();
+      ctx.fill();
+
+    } else if (obj.type === "waterCrate") {
+      ctx.fillStyle = "#29190f";
+      ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
+      ctx.fillStyle = "#8b5631";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#b47a45";
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, 3);
+      ctx.fillStyle = "#5b351f";
+      ctx.fillRect(obj.x + 3, obj.y + 7, 3, obj.h - 14);
+      ctx.fillRect(obj.x + obj.w - 6, obj.y + 7, 3, obj.h - 14);
+      ctx.strokeStyle = "#c18a52";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(obj.x + 6, obj.y + 7);
+      ctx.lineTo(obj.x + obj.w - 6, obj.y + obj.h - 7);
+      ctx.moveTo(obj.x + obj.w - 6, obj.y + 7);
+      ctx.lineTo(obj.x + 6, obj.y + obj.h - 7);
+      ctx.stroke();
+
     } else if (obj.type === "waterArea") {
       ctx.fillStyle = "#075582";
       ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
@@ -823,6 +1146,19 @@ function drawRoom() {
       ctx.fillRect(obj.x + 4, obj.y + 5, obj.w - 8, obj.h - 10);
       ctx.fillStyle = "#8a5b2e";
       ctx.fillRect(obj.x + 12, obj.y + 8, obj.w - 24, obj.h - 16);
+    } else if (obj.type === "floorHole") {
+      ctx.fillStyle = "#21140b";
+      ctx.fillRect(obj.x - 2, obj.y + 2, obj.w + 4, obj.h);
+      ctx.fillStyle = "#080907";
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+      ctx.fillStyle = "#77502b";
+      ctx.fillRect(obj.x, obj.y, obj.w, 3);
+      ctx.fillRect(obj.x, obj.y + obj.h - 3, obj.w, 3);
+      ctx.fillRect(obj.x, obj.y + 3, 3, obj.h - 6);
+      ctx.fillRect(obj.x + obj.w - 3, obj.y + 3, 3, obj.h - 6);
+      ctx.fillStyle = "#a3723e";
+      ctx.fillRect(obj.x + 4, obj.y + 3, obj.w - 8, 1);
+
     } else if (obj.type === "pushableStatue") {
       ctx.fillStyle = "#171815";
       ctx.fillRect(obj.x + 2, obj.y + 21, obj.w - 4, 8);
@@ -908,12 +1244,112 @@ function drawRoom() {
       ctx.fillStyle = "#4169e1"; // Planta azul
       ctx.fillRect(obj.x, obj.y, 10, 6);
 
+    } else if (obj.type === "giantBeehive") {
+      ctx.fillStyle = "#50341a";
+      ctx.fillRect(obj.x + 3, obj.y + 1, obj.w - 6, obj.h - 2);
+      ctx.fillStyle = "#8a6228";
+      ctx.fillRect(obj.x + 6, obj.y + 3, obj.w - 12, obj.h - 6);
+      ctx.fillStyle = "#b88a3b";
+      ctx.fillRect(obj.x + 9, obj.y + 5, obj.w - 18, obj.h - 10);
+      ctx.fillStyle = "#553718";
+      ctx.fillRect(obj.x + 12, obj.y + 9, obj.w - 24, obj.h - 17);
+      ctx.fillStyle = "#120f0b";
+      ctx.fillRect(obj.x + 15, obj.y + 18, 8, 9);
+      ctx.fillStyle = "#d4ad61";
+      ctx.fillRect(obj.x + 2, obj.y + 8, 3, 14);
+      ctx.fillRect(obj.x + obj.w - 5, obj.y + 8, 3, 14);
+
+    } else if (obj.type === "keypadPanel") {
+      ctx.fillStyle = "#101313";
+      ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
+      ctx.fillStyle = "#59625b";
+      ctx.fillRect(obj.x + 1, obj.y + 1, obj.w - 2, obj.h - 2);
+      ctx.fillStyle = "#b5cf8d";
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, 3);
+      ctx.fillStyle = "#262a26";
+      for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 2; col++) {
+          ctx.fillRect(obj.x + 2 + col * 3, obj.y + 7 + row * 3, 2, 2);
+        }
+      }
+
+    } else if (obj.type === "room002Key") {
+      ctx.fillStyle = "#d7b64b";
+      ctx.fillRect(obj.x, obj.y, 5, 5);
+      ctx.fillRect(obj.x + 4, obj.y + 2, 7, 2);
+      ctx.fillRect(obj.x + 8, obj.y + 4, 2, 3);
+      ctx.fillStyle = "#725326";
+      ctx.fillRect(obj.x + 2, obj.y + 2, 2, 2);
+
+    } else if (obj.type === "room003Key") {
+      ctx.fillStyle = "#d5b34a";
+      ctx.fillRect(obj.x, obj.y + 1, 5, 5);
+      ctx.fillStyle = "#f2dc83";
+      ctx.fillRect(obj.x + 1, obj.y + 2, 3, 3);
+      ctx.fillStyle = "#95702f";
+      ctx.fillRect(obj.x + 4, obj.y + 3, 7, 2);
+      ctx.fillRect(obj.x + 9, obj.y + 5, 2, 2);
+
+    } else if (obj.type === "hunter") {
+      const step = obj.animFrame ? 1 : 0;
+      ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+      ctx.fillRect(obj.x + 2, obj.y + obj.h - 3, obj.w - 4, 4);
+      ctx.fillStyle = "#16351e";
+      ctx.fillRect(obj.x + 5, obj.y + 5, 16, 17);
+      ctx.fillRect(obj.x + 2, obj.y + 7, 7, 12);
+      ctx.fillRect(obj.x + 18, obj.y + 7, 7, 12);
+      ctx.fillStyle = "#367a31";
+      ctx.fillRect(obj.x + 7, obj.y + 3, 12, 12);
+      ctx.fillRect(obj.x + 4, obj.y + 8, 5, 8);
+      ctx.fillRect(obj.x + 19, obj.y + 8, 5, 8);
+      ctx.fillRect(obj.x + 7, obj.y + 19, 6, 8 - step);
+      ctx.fillRect(obj.x + 15, obj.y + 19, 6, 8 + step);
+      ctx.fillStyle = "#7fb84b";
+      ctx.fillRect(obj.x + 9, obj.y + 5, 8, 3);
+      ctx.fillRect(obj.x + 8, obj.y + 12, 10, 3);
+      ctx.fillStyle = "#b52a20";
+      ctx.fillRect(obj.x + 9, obj.y + 8, 2, 2);
+      ctx.fillRect(obj.x + 16, obj.y + 8, 2, 2);
+      ctx.fillStyle = "#d5d1a0";
+      ctx.fillRect(obj.x + 5, obj.y + 17, 3, 2);
+      ctx.fillRect(obj.x + 20, obj.y + 17, 3, 2);
+
+    } else if (obj.type === "wasp") {
+      ctx.fillStyle = "rgba(195, 220, 216, 0.65)";
+      ctx.fillRect(obj.x + 2, obj.y, 4, 3);
+      ctx.fillRect(obj.x + 7, obj.y, 4, 3);
+      ctx.fillStyle = "#17130d";
+      ctx.fillRect(obj.x + 1, obj.y + 3, 10, 5);
+      ctx.fillRect(obj.x + 8, obj.y + 4, 4, 4);
+      ctx.fillStyle = "#d8ac27";
+      ctx.fillRect(obj.x + 3, obj.y + 4, 6, 3);
+      ctx.fillStyle = "#14100d";
+      ctx.fillRect(obj.x + 5, obj.y + 4, 2, 3);
+      ctx.fillRect(obj.x + 11, obj.y + 6, 2, 4);
+
     } else if (obj.type === "armorKey") {
       // Llave de la Armadura
       ctx.fillStyle = "#ffd700"; // Dorado brillante
       ctx.fillRect(obj.x, obj.y, 4, 4);       // Cabeza
       ctx.fillRect(obj.x + 3, obj.y + 1, 5, 2); // Cuerpo
       ctx.fillRect(obj.x + 7, obj.y + 3, 2, 2); // Dientes
+
+    } else if (obj.type === "helmetKey") {
+      ctx.fillStyle = "#d9aa35";
+      ctx.fillRect(obj.x, obj.y + 1, 5, 5);
+      ctx.fillStyle = "#f2d36b";
+      ctx.fillRect(obj.x + 1, obj.y + 2, 3, 3);
+      ctx.fillStyle = "#b88225";
+      ctx.fillRect(obj.x + 4, obj.y + 3, obj.w - 4, 2);
+      ctx.fillRect(obj.x + obj.w - 3, obj.y + 5, 2, 2);
+
+    } else if (obj.type === "controlRoomKey") {
+      ctx.fillStyle = "#d9d5bf";
+      ctx.fillRect(obj.x, obj.y, 5, 5);
+      ctx.fillRect(obj.x + 4, obj.y + 2, 7, 2);
+      ctx.fillRect(obj.x + 8, obj.y + 4, 2, 3);
+      ctx.fillStyle = "#858678";
+      ctx.fillRect(obj.x + 2, obj.y + 2, 2, 2);
      
       } else if (obj.type === "column") {
       // Columna de la mansión (Base, cuerpo con sombras y capitel)
@@ -924,6 +1360,91 @@ function drawRoom() {
       ctx.fillStyle = PALETTE.trim; // Detalle dorado/moldura
       ctx.fillRect(obj.x + 1, obj.y + 1, obj.w - 2, 2);
       ctx.fillRect(obj.x + 1, obj.y + obj.h - 3, obj.w - 2, 2);
+
+} else if (obj.type === "plant42Roots") {
+      const centerX = obj.x + obj.w / 2;
+      const centerY = obj.y + obj.h / 2;
+      ctx.fillStyle = "#153a25";
+      ctx.beginPath();
+      ctx.ellipse(centerX, centerY, obj.w * 0.43, obj.h * 0.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "#3d7138";
+      ctx.lineWidth = 3;
+      const tendrils = [
+        [-18, -5, -24, -16, -25, -18],
+        [-13, -9, -10, -19, -7, -19],
+        [0, -11, 6, -20, 11, -18],
+        [15, -6, 24, -12, 23, -17],
+        [18, 2, 27, 7, 25, 13],
+        [10, 10, 15, 18, 20, 17],
+        [-3, 11, -8, 20, -13, 17],
+        [-17, 5, -26, 9, -25, 16]
+      ];
+      tendrils.forEach(([sx, sy, cx, cy, ex, ey], index) => {
+        ctx.beginPath();
+        ctx.moveTo(centerX + sx * 0.45, centerY + sy * 0.45);
+        ctx.quadraticCurveTo(centerX + cx, centerY + cy, centerX + ex, centerY + ey);
+        ctx.stroke();
+        if (index % 2 === 0) {
+          ctx.fillStyle = "#8b352b";
+          ctx.fillRect(centerX + ex - 1, centerY + ey - 1, 3, 3);
+        }
+      });
+
+      ctx.fillStyle = "#526b31";
+      ctx.beginPath();
+      ctx.ellipse(centerX, centerY, obj.w * 0.22, obj.h * 0.2, -0.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#78372b";
+      ctx.fillRect(centerX - 5, centerY - 3, 10, 6);
+
+} else if (obj.type === "hangingPlant42") {
+      const sway = Math.sin(performance.now() / 850);
+      const centerX = obj.x + obj.w / 2;
+      ctx.save();
+      ctx.lineCap = "round";
+
+      ctx.strokeStyle = "#294b2a";
+      ctx.lineWidth = 8;
+      for (let i = 0; i < 4; i++) {
+        const startX = obj.x + 25 + i * 24;
+        const endX = startX + sway * (5 + i * 1.5);
+        ctx.beginPath();
+        ctx.moveTo(startX, obj.y);
+        ctx.bezierCurveTo(startX - 4, obj.y + 30, endX + 8, obj.y + 47, endX, obj.y + 62 + (i % 2) * 8);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = "#24472a";
+      ctx.beginPath();
+      ctx.ellipse(centerX, obj.y + 65, 42, 29, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#477a3b";
+      ctx.beginPath();
+      ctx.ellipse(centerX - 7, obj.y + 62, 29, 22, -0.18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#8f3328";
+      ctx.beginPath();
+      ctx.ellipse(centerX + 2, obj.y + 70, 18, 16, 0.15, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#c24b32";
+      ctx.beginPath();
+      ctx.ellipse(centerX + 2, obj.y + 69, 10, 9, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = "#365f32";
+      ctx.lineWidth = 7;
+      for (let i = 0; i < 4; i++) {
+        const startX = centerX - 25 + i * 17;
+        const phase = sway * (i % 2 === 0 ? 1 : -1);
+        ctx.beginPath();
+        ctx.moveTo(startX, obj.y + 84);
+        ctx.bezierCurveTo(startX - 8, obj.y + 95, startX + phase * 5, obj.y + 107, startX + phase * 8, obj.y + 117);
+        ctx.stroke();
+      }
+      ctx.restore();
 
 } else if (obj.type === "brokenShotgun") {
       // Escopeta Rota (Cañón de metal con culata de madera tallada)
@@ -1111,6 +1632,24 @@ function drawRoom() {
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, 2);
 
+  } else if (obj.type === "explosiveRounds") {
+    ctx.fillStyle = "#080808";
+    ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
+    ctx.fillStyle = "#b33a24";
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#d6c18c";
+    ctx.fillRect(obj.x + 2, obj.y + 2, 2, obj.h - 4);
+    ctx.fillRect(obj.x + 6, obj.y + 2, 2, obj.h - 4);
+
+  } else if (obj.type === "flameRounds") {
+    ctx.fillStyle = "#080808";
+    ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
+    ctx.fillStyle = "#c66a24";
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#f2cf68";
+    ctx.fillRect(obj.x + 2, obj.y + 2, 2, obj.h - 4);
+    ctx.fillRect(obj.x + 6, obj.y + 2, 2, obj.h - 4);
+
   } else if (obj.type === "carBattery") {
     ctx.fillStyle = "#101411";
     ctx.fillRect(obj.x, obj.y + 2, obj.w, obj.h - 2);
@@ -1235,6 +1774,19 @@ function drawRoom() {
       ctx.fillStyle = trophyLightsOn ? "#d6bd68" : "#726b55";
       ctx.fillRect(obj.x + 2, obj.y + (trophyLightsOn ? 2 : 6), 4, 4);
 
+    } else if (obj.type === "waterDrainSwitch" || obj.type === "armsStorageSwitch") {
+      const isActive = obj.type === "waterDrainSwitch" ? waterDrained : armsStorageUnlocked;
+      ctx.fillStyle = "#1b211f";
+      ctx.fillRect(obj.x - 2, obj.y - 2, obj.w + 4, obj.h + 4);
+      ctx.fillStyle = "#69736c";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = isActive ? "#4bd16a" : "#bd342b";
+      ctx.fillRect(obj.x + 3, obj.y + 3, obj.w - 6, 4);
+      ctx.fillStyle = "#272e2b";
+      ctx.fillRect(obj.x + obj.w / 2 - 2, obj.y + 9, 4, 6);
+      ctx.fillStyle = isActive ? "#c1f3bd" : "#e2c2a0";
+      ctx.fillRect(obj.x + obj.w / 2 - 1, obj.y + (isActive ? 8 : 11), 2, 4);
+
     } else if (obj.type === "researcherWill") {
       ctx.fillStyle = "#302215";
       ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
@@ -1243,6 +1795,28 @@ function drawRoom() {
       ctx.fillStyle = "#75412d";
       ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, 1);
       ctx.fillRect(obj.x + 2, obj.y + 5, obj.w - 5, 1);
+      ctx.fillRect(obj.x + 2, obj.y + 8, obj.w - 7, 1);
+
+    } else if (obj.type === "plant42Report") {
+      ctx.fillStyle = "#302215";
+      ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
+      ctx.fillStyle = "#eee3c2";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#8b2525";
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, 2);
+      ctx.fillStyle = "#75654a";
+      ctx.fillRect(obj.x + 2, obj.y + 6, obj.w - 5, 1);
+      ctx.fillRect(obj.x + 2, obj.y + 8, obj.w - 7, 1);
+
+    } else if (obj.type === "vJoltReport") {
+      ctx.fillStyle = "#302215";
+      ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
+      ctx.fillStyle = "#eee3c2";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#42613b";
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, 2);
+      ctx.fillStyle = "#75654a";
+      ctx.fillRect(obj.x + 2, obj.y + 6, obj.w - 5, 1);
       ctx.fillRect(obj.x + 2, obj.y + 8, obj.w - 7, 1);
 
     } else if (obj.type === "orders") {
@@ -1268,6 +1842,16 @@ function drawRoom() {
     ctx.fillRect(obj.x + obj.w - 3, obj.y + 1, 2, 3);
     ctx.fillStyle = "#e0bd55";
     ctx.fillRect(obj.x + 3, obj.y + 1, 3, 1);
+
+  } else if (obj.type === "blankBook") {
+    ctx.fillStyle = "#170b0b";
+    ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
+    ctx.fillStyle = "#8b161d";
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#b83a32";
+    ctx.fillRect(obj.x + 2, obj.y + 1, obj.w - 4, 2);
+    ctx.fillStyle = "#d1ae69";
+    ctx.fillRect(obj.x + 2, obj.y + 2, 1, obj.h - 4);
 
   } else if (obj.type === "botanyBook") {
     ctx.fillStyle = "#21140c";
@@ -1541,6 +2125,16 @@ function drawRoom() {
       ctx.fillStyle = "#ffffff"; // Brillo diagonal
       ctx.fillRect(obj.x + 5, obj.y + 2, 3, 2);
 
+    } else if (obj.type === "armsShelf") {
+      ctx.fillStyle = "#192321";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#68736c";
+      ctx.fillRect(obj.x + 2, obj.y + 3, obj.w - 4, 3);
+      ctx.fillRect(obj.x + 2, obj.y + obj.h - 5, obj.w - 4, 3);
+      ctx.fillStyle = "#343d39";
+      ctx.fillRect(obj.x + 5, obj.y + 7, 3, obj.h - 14);
+      ctx.fillRect(obj.x + obj.w - 8, obj.y + 7, 3, obj.h - 14);
+
     } else if (obj.type === "bookshelfHorizontal") {
       // Biblioteca / Mueble largo dividiendo el ambiente
       ctx.fillStyle = "#221108";
@@ -1686,6 +2280,39 @@ function drawRoom() {
         ctx.fillRect(obj.x + obj.w, obj.y + 3, 2, 4);
       }
 
+    } else if (obj.type === "neptune") {
+      const renderY = obj.y - (waterDrained ? Math.abs(Math.sin(gameFrame / 5 + obj.x)) * 2 : 0);
+      const midY = renderY + obj.h / 2;
+      ctx.fillStyle = "#34464a";
+      ctx.beginPath();
+      ctx.moveTo(obj.x + 4, midY);
+      ctx.lineTo(obj.x - 2, renderY + 1);
+      ctx.lineTo(obj.x + 2, midY);
+      ctx.lineTo(obj.x - 2, renderY + obj.h - 1);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = obj.w > 20 ? "#6f8482" : "#7d9290";
+      ctx.beginPath();
+      ctx.ellipse(obj.x + obj.w * 0.56, midY, obj.w * 0.42, obj.h * 0.42, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#c1cebf";
+      ctx.beginPath();
+      ctx.ellipse(obj.x + obj.w * 0.62, midY + 1, obj.w * 0.27, obj.h * 0.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#536662";
+      ctx.beginPath();
+      ctx.moveTo(obj.x + obj.w * 0.38, midY - 1);
+      ctx.lineTo(obj.x + obj.w * 0.53, renderY - 2);
+      ctx.lineTo(obj.x + obj.w * 0.67, midY - 1);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#a52e2a";
+      ctx.fillRect(obj.x + obj.w - 4, midY + 1, 3, 1);
+      ctx.fillStyle = "#f4df97";
+      ctx.fillRect(obj.x + obj.w - 4, midY - 3, 2, 2);
+
     } else if (obj.type === "greenHerb") {
       // Planta verde de curación en maceta roja
       ctx.fillStyle = "#8b0000"; // Maceta
@@ -1728,6 +2355,31 @@ function drawRoom() {
       ctx.fillStyle = "#ffffff"; // Vidrio reflejante
       ctx.fillRect(obj.x + 1, obj.y + 2, obj.w - 2, obj.h - 4);
 
+    } else if (obj.type === "spider") {
+      ctx.strokeStyle = "#17110d";
+      ctx.lineWidth = 2;
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(obj.x + 11, obj.y + 9);
+        ctx.lineTo(obj.x + (side < 0 ? 2 : 22), obj.y + 2);
+        ctx.lineTo(obj.x + (side < 0 ? 0 : 24), obj.y + 7);
+        ctx.moveTo(obj.x + 11, obj.y + 12);
+        ctx.lineTo(obj.x + (side < 0 ? 2 : 22), obj.y + 11);
+        ctx.lineTo(obj.x + (side < 0 ? 0 : 24), obj.y + 15);
+        ctx.moveTo(obj.x + 11, obj.y + 15);
+        ctx.lineTo(obj.x + (side < 0 ? 4 : 20), obj.y + 19);
+        ctx.lineTo(obj.x + (side < 0 ? 1 : 23), obj.y + 21);
+        ctx.stroke();
+      }
+      ctx.fillStyle = "#20120f";
+      ctx.fillRect(obj.x + 5, obj.y + 4, 14, 12);
+      ctx.fillRect(obj.x + 9, obj.y + 14, 7, 6);
+      ctx.fillStyle = "#661b18";
+      ctx.fillRect(obj.x + 7, obj.y + 6, 10, 7);
+      ctx.fillStyle = "#e34b35";
+      ctx.fillRect(obj.x + 9, obj.y + 8, 2, 2);
+      ctx.fillRect(obj.x + 14, obj.y + 8, 2, 2);
+
     } else if (obj.type === "zombie") {
       // --- ZOMBIE PRIMER ENCUENTRO (De espaldas comiendo / arrodillado) ---
       // Sombra
@@ -1759,6 +2411,25 @@ function drawRoom() {
       ctx.fillStyle = "#990000";
       ctx.fillRect(obj.x, obj.y + 8, 2, 2);
       ctx.fillRect(obj.x + 10, obj.y + 8, 2, 2);
+    } else if (obj.type === "poolTable") {
+      ctx.fillStyle = "#20120b";
+      ctx.fillRect(obj.x - 2, obj.y - 2, obj.w + 4, obj.h + 4);
+      ctx.fillStyle = "#70431f";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#175139";
+      ctx.fillRect(obj.x + 7, obj.y + 7, obj.w - 14, obj.h - 14);
+      ctx.fillStyle = "#090b09";
+      for (const px of [obj.x + 4, obj.x + obj.w / 2 - 3, obj.x + obj.w - 10]) {
+        ctx.fillRect(px, obj.y + 3, 6, 5);
+        ctx.fillRect(px, obj.y + obj.h - 8, 6, 5);
+      }
+      ctx.fillRect(obj.x + 3, obj.y + obj.h / 2 - 3, 5, 6);
+      ctx.fillRect(obj.x + obj.w - 8, obj.y + obj.h / 2 - 3, 5, 6);
+      ctx.fillStyle = "#e4d7b1";
+      ctx.fillRect(obj.x + 32, obj.y + 26, 4, 4);
+      ctx.fillStyle = "#c9362b";
+      ctx.fillRect(obj.x + 72, obj.y + 34, 4, 4);
+
     } else if (obj.type === "barCounter") {
       // Barra de bebidas con sillas/banquetas
       ctx.fillStyle = "#3e2213";
@@ -1799,6 +2470,36 @@ function drawRoom() {
       for (let tx = obj.x + 6; tx < obj.x + obj.w - 8; tx += 4) {
         ctx.fillRect(tx, obj.y + obj.h - 6, 2, 2);
       }
+
+    } else if (obj.type === "emptyBottle") {
+      ctx.fillStyle = "#172b2b";
+      ctx.fillRect(obj.x + 2, obj.y + 3, obj.w - 4, obj.h - 4);
+      ctx.fillRect(obj.x + 3, obj.y + 1, obj.w - 6, 3);
+      ctx.fillStyle = "#7eaaa0";
+      ctx.fillRect(obj.x + 3, obj.y + 5, 1, obj.h - 8);
+      ctx.fillStyle = "#c4d9d1";
+      ctx.fillRect(obj.x + 3, obj.y, obj.w - 6, 2);
+
+    } else if (obj.type === "vaseShelf") {
+      ctx.fillStyle = "#25150e";
+      ctx.fillRect(obj.x, obj.y + 5, obj.w, obj.h - 5);
+      ctx.fillStyle = "#724722";
+      ctx.fillRect(obj.x + 2, obj.y + 5, obj.w - 4, obj.h - 9);
+      ctx.fillStyle = "#9a6b37";
+      ctx.fillRect(obj.x, obj.y + obj.h - 4, obj.w, 4);
+      ctx.fillStyle = "#382315";
+      for (let x = obj.x + 5; x < obj.x + obj.w; x += 18) {
+        ctx.fillRect(x, obj.y + 14, 2, obj.h - 18);
+      }
+
+    } else if (obj.type === "vase") {
+      ctx.fillStyle = "#69442e";
+      ctx.fillRect(obj.x + 3, obj.y + 2, obj.w - 6, obj.h - 5);
+      ctx.fillRect(obj.x + 1, obj.y + obj.h - 4, obj.w - 2, 3);
+      ctx.fillStyle = "#a97846";
+      ctx.fillRect(obj.x + 4, obj.y + 4, 2, obj.h - 9);
+      ctx.fillStyle = "#c49b5c";
+      ctx.fillRect(obj.x + 3, obj.y, obj.w - 6, 3);
 
     } else if (obj.type === "shelf") {
       // Estantería

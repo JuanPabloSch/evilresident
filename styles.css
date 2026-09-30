@@ -150,6 +150,48 @@ canvas {
 
 .interaction-prompt[hidden] { display: none; }
 
+.door-code-dialog {
+  width: 218px;
+  max-width: calc(100vw - 36px);
+  padding: 14px;
+  border: 2px solid #c49a4a;
+  background: #171511;
+  color: #eee4c6;
+  box-shadow: 0 8px 28px #000b;
+}
+
+.door-code-dialog::backdrop { background: #000a; }
+.door-code-dialog form { display: grid; gap: 10px; }
+.door-code-dialog h2 { margin: 0; color: #e2be68; font-size: 14px; text-align: center; }
+.door-code-display {
+  min-height: 32px;
+  padding: 5px;
+  border: 1px solid #71694d;
+  background: #080a08;
+  color: #b8d69a;
+  font: 20px/1.2 monospace;
+  letter-spacing: 0;
+  text-align: center;
+}
+.door-code-message { min-height: 13px; margin: 0; color: #c8c1a8; font-size: 10px; text-align: center; }
+.door-code-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.door-code-pad button,
+.door-code-actions button {
+  min-width: 0;
+  min-height: 34px;
+  border: 1px solid #71694d;
+  background: #30291c;
+  color: #f1e8ce;
+  font: inherit;
+  cursor: pointer;
+}
+.door-code-pad button:hover,
+.door-code-actions button:hover { background: #51432a; }
+.door-code-pad button:focus-visible,
+.door-code-actions button:focus-visible { outline: 2px solid #b8d69a; outline-offset: 1px; }
+.door-code-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.door-code-actions button[type="submit"] { border-color: #77915d; background: #344529; }
+
 .info {
   display: grid;
   gap: 9px;

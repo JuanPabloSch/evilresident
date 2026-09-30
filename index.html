@@ -14,6 +14,31 @@
           <canvas id="game" width="320" height="192" aria-label="Pantalla del juego"></canvas>
           <div class="ammo-display" aria-live="polite"><span id="ammo-loaded">12</span><i>/</i><span id="ammo-reserve">36</span><small>9MM</small></div>
           <div id="interaction-prompt" class="interaction-prompt" aria-live="polite"></div>
+          <dialog id="door-code-dialog" class="door-code-dialog" aria-labelledby="door-code-title">
+            <form id="door-code-form">
+              <h2 id="door-code-title">Panel de acceso</h2>
+              <output id="door-code-display" class="door-code-display" aria-live="polite">___</output>
+              <p id="door-code-message" class="door-code-message">Ingresá el código numérico.</p>
+              <div class="door-code-pad" aria-label="Teclado numérico">
+                <button type="button" data-code-digit="1">1</button>
+                <button type="button" data-code-digit="2">2</button>
+                <button type="button" data-code-digit="3">3</button>
+                <button type="button" data-code-digit="4">4</button>
+                <button type="button" data-code-digit="5">5</button>
+                <button type="button" data-code-digit="6">6</button>
+                <button type="button" data-code-digit="7">7</button>
+                <button type="button" data-code-digit="8">8</button>
+                <button type="button" data-code-digit="9">9</button>
+                <button type="button" data-code-action="clear">C</button>
+                <button type="button" data-code-digit="0">0</button>
+                <button type="button" data-code-action="backspace" aria-label="Borrar último dígito">Borrar</button>
+              </div>
+              <div class="door-code-actions">
+                <button type="button" data-code-action="cancel">Cancelar</button>
+                <button type="submit">Aceptar</button>
+              </div>
+            </form>
+          </dialog>
         </div>
         <div class="control-column">
           <ul class="info" aria-label="Controles">

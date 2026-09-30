@@ -8,20 +8,29 @@ const STATUS_ITEMS = {
   blueHerb: "Hierba azul",
   firstAidSpray: "Aerosol de primeros auxilios",
   armorKey: "Llave de la armadura",
+  helmetKey: "Helmet Key",
+  controlRoomKey: "Control Room Key",
+  room002Key: "002 Key",
+  room003Key: "003 Key",
   crankItem: "Manivela cuadrada",
   doomBook1: "Libro de la perdición I",
   redJewel: "Joya roja",
   orders: "Orders",
   carBattery: "Batería de auto",
   acidRounds: "Acid Rounds",
+  explosiveRounds: "Explosive Rounds",
+  flameRounds: "Flame Rounds",
   scrapbook: "Scrapbook",
   moDisk: "MO Disk",
   radio: "Radio",
   moonCrest: "Moon Crest",
   sunCrest: "Sun Crest",
   botanyBook: "Botany Book",
+  blankBook: "Blank Book",
   lighter: "Encendedor",
-  researcherWill: "Researcher's Will"
+  researcherWill: "Researcher's Will",
+  plant42Report: "Plant 42 Report",
+  vJoltReport: "V-Jolt Report"
 };
 
 const STATUS = (() => {

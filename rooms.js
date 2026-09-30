@@ -214,7 +214,7 @@ tigerStatueRoom: {
     ],
     doors: [
       // Puerta 'p' arriba a la derecha -> Vuelve a centralCorridor (eastArm)
-      { id: "doorToCentral", x: 220, y: 30, w: 25, h: 8, targetRoom: "centralCorridor", spawnX: 240, spawnY: 90 }
+      { id: "doorToCentral", x: 220, y: 30, w: 25, h: 8, targetRoom: "centralCorridor", spawnX: 266, spawnY: 84 }
     ],
     interactables: [
       // Ventana 'v' en la pared izquierda
@@ -958,21 +958,475 @@ outsideBoiler: {
     doors: [
       { id: "elevator1ToWaterGate", x: 244, y: 10, w: 34, h: 8, targetRoom: "waterGate", spawnX: 131, spawnY: 129 },
       { id: "door2ToCourtyardGarden", x: 201, y: 143, w: 8, h: 28, targetRoom: "courtyardGarden", spawnX: 153, spawnY: 97, disabled: true, blockedMessage: "Esta puerta todavía no está habilitada." },
-      { id: "door4ToGuardhouseGate", x: 28, y: 48, w: 8, h: 28, targetRoom: "guardhouseGate", spawnX: 205, spawnY: 85 }
+      { id: "door3ToUndergroundEntry", x: 137, y: 39, w: 30, h: 24, targetRoom: "undergroundEntry", spawnX: 254, spawnY: 138 },
+      { id: "door4ToGuardhouseGate", x: 28, y: 48, w: 8, h: 28, targetRoom: "guardhouseGate", spawnX: 260, spawnY: 150 }
     ],
     interactables: [
-      { type: "elevator", x: 247, y: 13, w: 32, h: 24, solid: true }
+      { type: "elevator", x: 247, y: 13, w: 32, h: 24, solid: true },
+      { type: "waterPond", x: 96, y: 18, w: 112, h: 58 },
+      { type: "stairsVertical", x: 136, y: 34, w: 32, h: 34 },
+      { type: "zombieDog", x: 68, y: 45, w: 12, h: 12 },
+      { type: "zombieDog", x: 153, y: 130, w: 12, h: 12 }
     ]
+  },
+  undergroundEntry: {
+    name: "Underground Entry",
+    floorType: "cave",
+    bounds: { minX: 20, maxX: 300, minY: 10, maxY: 190 },
+    corridorPoly: [{ x: 20, y: 10, w: 280, h: 180 }],
+    doors: [
+      { id: "stairsToFalls", x: 252, y: 137, w: 34, h: 28, targetRoom: "falls", spawnX: 145, spawnY: 70 },
+      { id: "door1ToBranchedPassage", x: 292, y: 112, w: 8, h: 28, targetRoom: "branchedPassage", spawnX: 210, spawnY: 95 },
+      { id: "door2ToBoulderPassage", x: 20, y: 145, w: 8, h: 28, targetRoom: "boulderPassage", spawnX: 105, spawnY: 95 }
+    ],
+    interactables: [
+      { type: "smallTable", x: 43, y: 31, w: 34, h: 25, solid: true },
+      { type: "typewriter", x: 50, y: 35, w: 21, h: 16 },
+      { type: "caveRock", x: 105, y: 70, w: 136, h: 96, solid: true },
+      { type: "stairsVertical", x: 253, y: 137, w: 32, h: 28 }
+    ]
+  },
+  branchedPassage: {
+    name: "Branched Passage",
+    floorType: "cave",
+    bounds: { minX: 12, maxX: 300, minY: 10, maxY: 166 },
+    walkablePolygon: [
+      { x: 132, y: 10 },
+      { x: 300, y: 10 },
+      { x: 300, y: 61 },
+      { x: 207, y: 69 },
+      { x: 207, y: 123 },
+      { x: 294, y: 124 },
+      { x: 294, y: 159 },
+      { x: 130, y: 158 },
+      { x: 132, y: 127 },
+      { x: 15, y: 121 },
+      { x: 12, y: 61 },
+      { x: 130, y: 61 }
+    ],
+    constrainToWalkablePolygon: true,
+    doors: [
+      { id: "door1ToUndergroundEntry", x: 12, y: 76, w: 8, h: 28, targetRoom: "undergroundEntry", spawnX: 267, spawnY: 122 },
+      { id: "door2ToGeneratorRoom", x: 202, y: 10, w: 28, h: 8, targetRoom: "generatorRoom", spawnX: 106, spawnY: 54 },
+      { id: "door3ToGeneratorRoom", x: 248, y: 158, w: 28, h: 8, targetRoom: "generatorRoom", spawnX: 204, spawnY: 54 }
+    ],
+    interactables: [
+      { type: "hunter", x: 148, y: 78, w: 26, h: 30 }
+    ]
+  },
+  generatorRoom: {
+    name: "Generator Room",
+    floorType: "cave",
+    bounds: { minX: 80, maxX: 240, minY: 45, maxY: 155 },
+    corridorPoly: [{ x: 80, y: 45, w: 160, h: 110 }],
+    doors: [
+      { id: "doorToBranchedPassageUpper", x: 94, y: 45, w: 28, h: 8, targetRoom: "branchedPassage", spawnX: 207, spawnY: 25 },
+      { id: "doorToBranchedPassageLower", x: 192, y: 147, w: 28, h: 8, targetRoom: "branchedPassage", spawnX: 250, spawnY: 132 }
+    ],
+    interactables: []
+  },
+  boulderPassage: {
+    name: "Boulder Passage",
+    floorType: "cave",
+    bounds: { minX: 80, maxX: 240, minY: 45, maxY: 155 },
+    corridorPoly: [{ x: 80, y: 45, w: 160, h: 110 }],
+    doors: [
+      { id: "doorToUndergroundEntry", x: 80, y: 82, w: 8, h: 28, targetRoom: "undergroundEntry", spawnX: 43, spawnY: 155 }
+    ],
+    interactables: []
   },
   guardhouseGate: {
     name: "Guardhouse Gate",
     floorType: "concrete",
+    bounds: { minX: 30, maxX: 290, minY: 10, maxY: 185 },
+    walkablePolygon: [
+      { x: 30, y: 10 },
+      { x: 80, y: 10 },
+      { x: 80, y: 70 },
+      { x: 285, y: 70 },
+      { x: 287, y: 185 },
+      { x: 235, y: 185 },
+      { x: 235, y: 125 },
+      { x: 30, y: 125 }
+    ],
+    constrainToWalkablePolygon: true,
+    doors: [
+      { id: "door1ToFalls", x: 249, y: 177, w: 26, h: 8, targetRoom: "falls", spawnX: 50, spawnY: 55 },
+      { id: "door2ToGuardhouseEntry", x: 46, y: 10, w: 26, h: 8, targetRoom: "guardhouseEntry", spawnX: 145, spawnY: 78 }
+    ],
+    interactables: [
+      { type: "greenHerb", x: 190, y: 110, w: 10, h: 10 },
+      { type: "blueHerb", x: 42, y: 58, w: 10, h: 10 },
+      { type: "zombieDog", x: 90, y: 98, w: 12, h: 12 },
+      { type: "zombieDog", x: 210, y: 92, w: 12, h: 12 }
+    ]
+  },
+  guardhouseEntry: {
+    name: "Guardhouse Entry",
+    floorType: "wood",
+    bounds: { minX: 30, maxX: 290, minY: 10, maxY: 185 },
+    walkablePolygon: [
+      { x: 30, y: 10 },
+      { x: 106, y: 10 },
+      { x: 94, y: 61 },
+      { x: 290, y: 61 },
+      { x: 290, y: 104 },
+      { x: 209, y: 104 },
+      { x: 208, y: 185 },
+      { x: 180, y: 185 },
+      { x: 180, y: 102 },
+      { x: 94, y: 102 },
+      { x: 91, y: 128 },
+      { x: 30, y: 128 }
+    ],
+    constrainToWalkablePolygon: true,
+    doors: [
+      { id: "door1ToGuardhouseGate", x: 45, y: 120, w: 28, h: 8, targetRoom: "guardhouseGate", spawnX: 48, spawnY: 35 },
+      { id: "door2ToGuardhouseSaveRoom", x: 132, y: 98, w: 26, h: 8, targetRoom: "guardhouseSaveRoom", spawnX: 146, spawnY: 105 },
+      { id: "door3ToRoom001", x: 162, y: 57, w: 26, h: 8, targetRoom: "room001", spawnX: 250, spawnY: 145 },
+      { id: "door4ToCentralCorridorGH", x: 181, y: 177, w: 26, h: 8, targetRoom: "centralCorridorGH", spawnX: 35, spawnY: 165 },
+      { id: "door5ToRecRoom", x: 282, y: 73, w: 8, h: 26, targetRoom: "recRoom", spawnX: 36, spawnY: 122 }
+    ],
+    interactables: [
+      { type: "blueHerb", x: 42, y: 24, w: 10, h: 10 },
+      { type: "blueHerb", x: 63, y: 24, w: 10, h: 10 },
+      { type: "floorHole", x: 135, y: 76, w: 24, h: 18 },
+      { type: "pushableStatue", x: 78, y: 16, w: 20, h: 28, solid: true },
+      { type: "floorHole", x: 222, y: 78, w: 22, h: 18 }
+    ]
+  },
+  centralCorridorGH: {
+    name: "Central Corridor GH",
+    floorType: "wood",
+    bounds: { minX: 20, maxX: 300, minY: 10, maxY: 190 },
+    walkablePolygon: [
+      { x: 250, y: 10 },
+      { x: 295, y: 10 },
+      { x: 295, y: 190 },
+      { x: 20, y: 190 },
+      { x: 20, y: 150 },
+      { x: 250, y: 150 }
+    ],
+    constrainToWalkablePolygon: true,
+    doors: [
+      { id: "door1ToGuardhouseEntry", x: 20, y: 158, w: 8, h: 26, targetRoom: "guardhouseEntry", spawnX: 190, spawnY: 150 },
+      { id: "door2ToBeehivePassage", x: 287, y: 111, w: 8, h: 26, targetRoom: "beehivePassage", spawnX: 35, spawnY: 124 },
+      { id: "door3ToRoom002", x: 287, y: 22, w: 8, h: 26, targetRoom: "room002", spawnX: 235, spawnY: 55 }
+    ],
+    interactables: [
+      { type: "greenHerb", x: 258, y: 55, w: 10, h: 10 },
+      { type: "greenHerb", x: 258, y: 72, w: 10, h: 10 },
+      { type: "greenHerb", x: 258, y: 89, w: 10, h: 10 }
+    ]
+  },
+  beehivePassage: {
+    name: "Beehive Passage",
+    floorType: "wood",
+    bounds: { minX: 20, maxX: 300, minY: 10, maxY: 190 },
+    walkablePolygon: [
+      { x: 120, y: 10 },
+      { x: 220, y: 10 },
+      { x: 220, y: 100 },
+      { x: 290, y: 100 },
+      { x: 290, y: 185 },
+      { x: 20, y: 185 },
+      { x: 20, y: 100 },
+      { x: 120, y: 100 }
+    ],
+    constrainToWalkablePolygon: true,
+    doors: [
+      { id: "door1ToCentralCorridorGH", x: 20, y: 116, w: 8, h: 28, targetRoom: "centralCorridorGH", spawnX: 260, spawnY: 118 },
+      { id: "door2ToDrugStoreroom", x: 120, y: 62, w: 8, h: 28, targetRoom: "drugStoreroom", spawnX: 270, spawnY: 150, codeRequired: "345", lockId: "drug-storeroom-code" },
+      { id: "door3ToRoom003", x: 212, y: 62, w: 8, h: 28, targetRoom: "room003", spawnX: 42, spawnY: 157 },
+      { id: "door4ToPlant42Room", x: 282, y: 116, w: 8, h: 28, targetRoom: "plant42Room", spawnX: 45, spawnY: 146 }
+    ],
+    interactables: [
+      { type: "giantBeehive", x: 151, y: 20, w: 38, h: 34, solid: true },
+      { type: "keypadPanel", x: 130, y: 65, w: 9, h: 18 },
+      { type: "room002Key", x: 184, y: 60, w: 10, h: 8 },
+      { type: "wasp", x: 130, y: 54, w: 12, h: 10 },
+      { type: "wasp", x: 145, y: 83, w: 12, h: 10 },
+      { type: "wasp", x: 192, y: 48, w: 12, h: 10 },
+      { type: "wasp", x: 194, y: 84, w: 12, h: 10 },
+      { type: "wasp", x: 163, y: 87, w: 12, h: 10 }
+    ]
+  },
+  drugStoreroom: {
+    name: "Drug Storeroom",
+    floorType: "wood",
+    bounds: { minX: 20, maxX: 300, minY: 10, maxY: 190 },
+    corridorPoly: [{ x: 20, y: 10, w: 280, h: 180 }],
+    doors: [
+      { id: "door1ToBeehivePassage", x: 292, y: 145, w: 8, h: 28, targetRoom: "beehivePassage", spawnX: 142, spawnY: 58 }
+    ],
+    interactables: [
+      { type: "smallTable", x: 50, y: 42, w: 64, h: 58, solid: true },
+      { type: "emptyBottle", x: 57, y: 52, w: 8, h: 14 },
+      { type: "emptyBottle", x: 72, y: 52, w: 8, h: 14 },
+      { type: "emptyBottle", x: 87, y: 52, w: 8, h: 14 },
+      { type: "emptyBottle", x: 102, y: 52, w: 8, h: 14 },
+      { type: "sinkTable", x: 50, y: 124, w: 58, h: 34, solid: true },
+      { type: "vaseShelf", x: 154, y: 30, w: 118, h: 36, solid: true },
+      { type: "vase", x: 188, y: 36, w: 12, h: 17 },
+      { type: "vase", x: 226, y: 36, w: 12, h: 17 }
+    ],
+  },
+  room003: {
+    name: "Room 003",
+    floorType: "carpetRed",
+    bounds: { minX: 20, maxX: 300, minY: 10, maxY: 190 },
+    walkablePolygon: [
+      { x: 195, y: 10 },
+      { x: 295, y: 10 },
+      { x: 295, y: 180 },
+      { x: 20, y: 180 },
+      { x: 20, y: 125 },
+      { x: 195, y: 125 }
+    ],
+    constrainToWalkablePolygon: true,
+    doors: [
+      { id: "door1ToBeehivePassage", x: 20, y: 145, w: 8, h: 28, targetRoom: "beehivePassage", spawnX: 202, spawnY: 38 },
+      { id: "door2ToRoom003Bathroom", x: 72, y: 125, w: 28, h: 8, targetRoom: "room003Bathroom", spawnX: 140, spawnY: 80 },
+      { id: "door3ToPlant42Room", x: 287, y: 78, w: 8, h: 28, targetRoom: "plant42Room", spawnX: 45, spawnY: 66 }
+    ],
+    interactables: [
+      { type: "bookshelfHorizontal", x: 210, y: 22, w: 70, h: 34, solid: true },
+      { type: "vJoltReport", x: 226, y: 32, w: 16, h: 12 },
+      { type: "inkRibbon", x: 252, y: 34, w: 10, h: 8 },
+      { type: "inkRibbon", x: 266, y: 34, w: 10, h: 8 }
+    ]
+  },
+  room003Bathroom: {
+    name: "Room 003 Bathroom",
+    floorType: "chess",
+    bounds: { minX: 100, maxX: 180, minY: 50, maxY: 115 },
+    corridorPoly: [{ x: 100, y: 50, w: 80, h: 65 }],
+    doors: [
+      { id: "doorToRoom003", x: 125, y: 107, w: 28, h: 8, targetRoom: "room003", spawnX: 88, spawnY: 145 }
+    ],
+    interactables: [
+      { type: "sinkTable", x: 105, y: 83, w: 22, h: 16, solid: true },
+      { type: "shower", x: 147, y: 54, w: 25, h: 25, solid: true },
+      { type: "flameRounds", x: 154, y: 62, w: 11, h: 6 },
+      { type: "zombie", x: 105, y: 55, w: 12, h: 14 }
+    ]
+  },
+  plant42Room: {
+    name: "Plant 42 Room",
+    floorType: "wood",
+    bounds: { minX: 20, maxX: 300, minY: 10, maxY: 190 },
+    corridorPoly: [{ x: 20, y: 10, w: 280, h: 180 }],
+    doors: [
+      { id: "door1ToRoom003", x: 20, y: 48, w: 8, h: 28, targetRoom: "room003", spawnX: 275, spawnY: 92 },
+      { id: "door2ToBeehivePassage", x: 20, y: 132, w: 8, h: 28, targetRoom: "beehivePassage", spawnX: 260, spawnY: 130 }
+    ],
+    interactables: [
+      { type: "helmetKey", x: 154, y: 28, w: 12, h: 8 },
+      { type: "hangingPlant42", x: 98, y: 10, w: 124, h: 130 }
+    ]
+  },
+  room002: {
+    name: "Room 002",
+    floorType: "carpetRed",
+    bounds: { minX: 20, maxX: 300, minY: 10, maxY: 190 },
+    walkablePolygon: [
+      { x: 205, y: 10 },
+      { x: 295, y: 10 },
+      { x: 295, y: 180 },
+      { x: 20, y: 180 },
+      { x: 20, y: 125 },
+      { x: 205, y: 125 }
+    ],
+    constrainToWalkablePolygon: true,
+    doors: [
+      { id: "door1ToCentralCorridorGH", x: 20, y: 145, w: 8, h: 28, targetRoom: "centralCorridorGH", spawnX: 267, spawnY: 90 },
+      { id: "door2ToRoom002Bathroom", x: 72, y: 125, w: 28, h: 8, targetRoom: "room002Bathroom", spawnX: 130, spawnY: 80 },
+      { id: "stairsToWaterTankEntry", x: 222, y: 20, w: 46, h: 26, targetRoom: "waterTankEntry", spawnX: 54, spawnY: 40 }
+    ],
+    interactables: [
+      { type: "stairsVertical", x: 222, y: 20, w: 46, h: 26 },
+      { type: "bedVertical", x: 255, y: 83, w: 38, h: 82, solid: true },
+      { type: "plant42Report", x: 256, y: 112, w: 15, h: 11 },
+      { type: "smallTable", x: 214, y: 148, w: 34, h: 26, solid: true },
+      { type: "shotgunShells", x: 226, y: 155, w: 10, h: 8 }
+    ]
+  },
+  room002Bathroom: {
+    name: "Room 002 Bathroom",
+    floorType: "chess",
+    bounds: { minX: 100, maxX: 180, minY: 50, maxY: 115 },
+    corridorPoly: [{ x: 100, y: 50, w: 80, h: 65 }],
+    doors: [
+      { id: "doorToRoom002", x: 125, y: 107, w: 28, h: 8, targetRoom: "room002", spawnX: 88, spawnY: 135 }
+    ],
+    interactables: [
+      { type: "sinkTable", x: 105, y: 83, w: 22, h: 16, solid: true },
+      { type: "shower", x: 147, y: 54, w: 25, h: 25, solid: true },
+      { type: "handgunAmmo", x: 154, y: 62, w: 11, h: 6 },
+      { type: "zombie", x: 105, y: 55, w: 12, h: 14 }
+    ]
+  },
+  waterTankEntry: {
+    name: "Water Tank Entry",
+    floorType: "concrete",
+    bounds: { minX: 20, maxX: 300, minY: 10, maxY: 190 },
+    walkablePolygon: [
+      { x: 20, y: 10 },
+      { x: 300, y: 10 },
+      { x: 300, y: 190 },
+      { x: 120, y: 190 },
+      { x: 120, y: 160 },
+      { x: 238, y: 160 },
+      { x: 238, y: 65 },
+      { x: 20, y: 65 }
+    ],
+    constrainToWalkablePolygon: true,
+    doors: [
+      { id: "door1StairsToRoom002", x: 40, y: 10, w: 42, h: 8, targetRoom: "room002", spawnX: 235, spawnY: 55 },
+      { id: "door2ToWaterTank", x: 120, y: 168, w: 28, h: 8, targetRoom: "waterTank", spawnX: 270, spawnY: 130 }
+    ],
+    interactables: [
+      { type: "stairsVertical", x: 42, y: 20, w: 38, h: 30 },
+      { type: "greenHerb", x: 210, y: 25, w: 10, h: 10 },
+      { type: "waterArea", x: 274, y: 65, w: 26, h: 95, solid: true },
+      { type: "waterArea", x: 140, y: 160, w: 80, h: 30 },
+      { type: "waterCrate", x: 242, y: 66, w: 28, h: 30 },
+      { type: "waterCrate", x: 242, y: 96, w: 28, h: 30 },
+      { type: "waterCrate", x: 242, y: 126, w: 28, h: 30 }
+    ],
+  },
+  waterTank: {
+    name: "Water Tank",
+    floorType: "water",
+    bounds: { minX: 20, maxX: 300, minY: 10, maxY: 190 },
+    corridorPoly: [{ x: 20, y: 10, w: 280, h: 180 }],
+    doors: [
+      { id: "door1ToWaterTankEntry", x: 292, y: 118, w: 8, h: 28, targetRoom: "waterTankEntry", spawnX: 150, spawnY: 168 },
+      { id: "door2ToMeetingRoom", x: 292, y: 55, w: 8, h: 28, targetRoom: "meetingRoom", spawnX: 106, spawnY: 120 },
+      { id: "door3ToArmsStorage", x: 20, y: 18, w: 8, h: 28, targetRoom: "armsStorage", spawnX: 210, spawnY: 95, switchRequired: "armsStorageUnlocked" },
+      { id: "door4ToControlRoomB1", x: 20, y: 78, w: 8, h: 28, targetRoom: "controlRoomB1", spawnX: 190, spawnY: 95 }
+    ],
+    interactables: [
+      { type: "brokenGlassTank", x: 110, y: 66, w: 100, h: 80, solid: true },
+      { type: "neptune", x: 142, y: 34, w: 30, h: 20 },
+      { type: "neptune", x: 42, y: 90, w: 16, h: 11 },
+      { type: "neptune", x: 165, y: 160, w: 16, h: 11 }
+    ]
+  },
+  meetingRoom: {
+    name: "Meeting Room",
+    floorType: "water",
+    bounds: { minX: 90, maxX: 230, minY: 45, maxY: 155 },
+    corridorPoly: [{ x: 90, y: 45, w: 140, h: 110 }],
+    doors: [
+      { id: "door1ToWaterTank", x: 90, y: 111, w: 8, h: 28, targetRoom: "waterTank", spawnX: 272, spawnY: 70 }
+    ],
+    interactables: [
+      { type: "plant42Roots", x: 145, y: 61, w: 52, h: 40 },
+      { type: "smallTable", x: 124, y: 104, w: 72, h: 25, solid: true },
+      { type: "bench", x: 131, y: 136, w: 20, h: 12, solid: true },
+      { type: "bench", x: 170, y: 136, w: 20, h: 12, solid: true }
+    ],
+  },
+  armsStorage: {
+    name: "Arms Storage",
+    floorType: "water",
     bounds: { minX: 80, maxX: 240, minY: 45, maxY: 155 },
     corridorPoly: [{ x: 80, y: 45, w: 160, h: 110 }],
     doors: [
-      { id: "doorToFalls", x: 232, y: 78, w: 8, h: 28, targetRoom: "falls", spawnX: 50, spawnY: 55 }
+      { id: "door1ToWaterTank", x: 232, y: 82, w: 8, h: 28, targetRoom: "waterTank", spawnX: 40, spawnY: 30 }
     ],
-    interactables: []
+    interactables: [
+      { type: "armsShelf", x: 112, y: 55, w: 100, h: 30, solid: true },
+      { type: "handgunAmmo", x: 122, y: 74, w: 10, h: 6 },
+      { type: "handgunAmmo", x: 143, y: 74, w: 10, h: 6 },
+      { type: "shotgunShells", x: 164, y: 73, w: 10, h: 8 },
+      { type: "shotgunShells", x: 183, y: 73, w: 10, h: 8 },
+      { type: "room003Key", x: 199, y: 72, w: 12, h: 8 }
+    ],
+  },
+  controlRoomB1: {
+    name: "Control Room B1",
+    floorType: "water",
+    bounds: { minX: 80, maxX: 240, minY: 45, maxY: 155 },
+    corridorPoly: [{ x: 80, y: 45, w: 160, h: 110 }],
+    doors: [
+      { id: "door1ToWaterTank", x: 232, y: 78, w: 8, h: 28, targetRoom: "waterTank", spawnX: 40, spawnY: 90 }
+    ],
+    interactables: [
+      { type: "waterDrainSwitch", x: 94, y: 130, w: 18, h: 18 },
+      { type: "armsStorageSwitch", x: 151, y: 49, w: 18, h: 18 }
+    ],
+  },
+  guardhouseSaveRoom: {
+    name: "Guardhouse Save Room",
+    floorType: "wood",
+    bounds: { minX: 80, maxX: 240, minY: 45, maxY: 155 },
+    corridorPoly: [{ x: 80, y: 45, w: 160, h: 110 }],
+    doors: [
+      { id: "doorToGuardhouseEntry", x: 140, y: 45, w: 28, h: 8, targetRoom: "guardhouseEntry", spawnX: 146, spawnY: 80 }
+    ],
+    interactables: [
+      { type: "itemChest", x: 96, y: 75, w: 36, h: 22, solid: true },
+      { type: "typewriter", x: 181, y: 64, w: 26, h: 20, solid: true },
+      { type: "explosiveRounds", x: 184, y: 108, w: 10, h: 8 },
+      { type: "firstAidSpray", x: 122, y: 119, w: 8, h: 8 }
+    ]
+  },
+  room001: {
+    name: "Room 001",
+    floorType: "carpetRed",
+    bounds: { minX: 30, maxX: 290, minY: 15, maxY: 190 },
+    walkablePolygon: [
+      { x: 30, y: 15 },
+      { x: 290, y: 15 },
+      { x: 290, y: 185 },
+      { x: 220, y: 185 },
+      { x: 220, y: 105 },
+      { x: 30, y: 105 }
+    ],
+    constrainToWalkablePolygon: true,
+    doors: [
+      { id: "door1ToGuardhouseEntry", x: 236, y: 177, w: 28, h: 8, targetRoom: "guardhouseEntry", spawnX: 170, spawnY: 75 },
+      { id: "door2ToRoom001Bathroom", x: 220, y: 124, w: 8, h: 28, targetRoom: "room001Bathroom", spawnX: 122, spawnY: 94 }
+    ],
+    interactables: [
+      { type: "shelfVertical", x: 40, y: 27, w: 30, h: 78, solid: true },
+      { type: "bed", x: 150, y: 34, w: 130, h: 36, solid: true },
+      { type: "blankBook", x: 220, y: 58, w: 12, h: 9 },
+      { type: "smallTable", x: 252, y: 76, w: 24, h: 18, solid: true }
+    ]
+  },
+  room001Bathroom: {
+    name: "Room 001 Bathroom",
+    floorType: "chess",
+    bounds: { minX: 112, maxX: 184, minY: 62, maxY: 118 },
+    corridorPoly: [{ x: 112, y: 62, w: 72, h: 56 }],
+    doors: [
+      { id: "doorToRoom001", x: 112, y: 82, w: 8, h: 28, targetRoom: "room001", spawnX: 232, spawnY: 137 }
+    ],
+    interactables: [
+      { type: "shower", x: 118, y: 66, w: 22, h: 18, solid: true },
+      { type: "controlRoomKey", x: 124, y: 70, w: 10, h: 8 },
+      { type: "toilet", x: 146, y: 66, w: 12, h: 14, solid: true },
+      { type: "sinkTable", x: 164, y: 66, w: 18, h: 14, solid: true }
+    ],
+  },
+  recRoom: {
+    name: "Rec Room",
+    floorType: "wood",
+    bounds: { minX: 20, maxX: 300, minY: 10, maxY: 190 },
+    corridorPoly: [{ x: 20, y: 10, w: 280, h: 180 }],
+    doors: [
+      { id: "door1ToGuardhouseEntry", x: 20, y: 116, w: 8, h: 28, targetRoom: "guardhouseEntry", spawnX: 265, spawnY: 78 }
+    ],
+    interactables: [
+      { type: "poolTable", x: 68, y: 47, w: 112, h: 58, solid: true },
+      { type: "inkRibbon", x: 118, y: 39, w: 10, h: 8 },
+      { type: "spider", x: 205, y: 48, w: 24, h: 22 },
+      { type: "spider", x: 157, y: 137, w: 24, h: 22 },
+      { type: "barCounter", x: 258, y: 22, w: 30, h: 156, solid: true }
+    ]
   },
   mainHall2F: {
     name: "Main Hall 2F",
