@@ -976,7 +976,7 @@ outsideBoiler: {
     corridorPoly: [{ x: 20, y: 10, w: 280, h: 180 }],
     doors: [
       { id: "stairsToFalls", x: 252, y: 137, w: 34, h: 28, targetRoom: "falls", spawnX: 145, spawnY: 70 },
-      { id: "door1ToBranchedPassage", x: 292, y: 112, w: 8, h: 28, targetRoom: "branchedPassage", spawnX: 210, spawnY: 95 },
+      { id: "door1ToBranchedPassage", x: 292, y: 112, w: 8, h: 28, targetRoom: "branchedPassage", spawnX: 35, spawnY: 80 },
       { id: "door2ToBoulderPassage", x: 20, y: 145, w: 8, h: 28, targetRoom: "boulderPassage", spawnX: 105, spawnY: 95 }
     ],
     interactables: [
@@ -1007,8 +1007,8 @@ outsideBoiler: {
     constrainToWalkablePolygon: true,
     doors: [
       { id: "door1ToUndergroundEntry", x: 12, y: 76, w: 8, h: 28, targetRoom: "undergroundEntry", spawnX: 267, spawnY: 122 },
-      { id: "door2ToGeneratorRoom", x: 202, y: 10, w: 28, h: 8, targetRoom: "generatorRoom", spawnX: 106, spawnY: 54 },
-      { id: "door3ToGeneratorRoom", x: 248, y: 158, w: 28, h: 8, targetRoom: "generatorRoom", spawnX: 204, spawnY: 54 }
+      { id: "door2ToGeneratorRoom", x: 292, y: 25, w: 8, h: 28, targetRoom: "generatorRoom", spawnX: 106, spawnY: 54 },
+      { id: "door3ToGeneratorRoom", x: 292, y: 127, w: 8, h: 28, targetRoom: "generatorRoom", spawnX: 60, spawnY: 160 }
     ],
     interactables: [
       { type: "hunter", x: 148, y: 78, w: 26, h: 30 }
@@ -1017,11 +1017,39 @@ outsideBoiler: {
   generatorRoom: {
     name: "Generator Room",
     floorType: "cave",
+    bounds: { minX: 24, maxX: 300, minY: 7, maxY: 191 },
+    walkablePolygon: [
+      { x: 24, y: 7 },
+      { x: 300, y: 7 },
+      { x: 300, y: 78 },
+      { x: 202, y: 78 },
+      { x: 202, y: 191 },
+      { x: 32, y: 191 },
+      { x: 32, y: 127 },
+      { x: 116, y: 127 },
+      { x: 116, y: 64 },
+      { x: 26, y: 64 }
+    ],
+    constrainToWalkablePolygon: true,
+    doors: [
+      { id: "door1ToBranchedPassage", x: 72, y: 7, w: 28, h: 8, targetRoom: "branchedPassage", spawnX: 250, spawnY: 25 },
+      { id: "door2ToBranchedPassage", x: 32, y: 151, w: 8, h: 28, targetRoom: "branchedPassage", spawnX: 250, spawnY: 132 },
+      { id: "door3ToEnricoRoom", x: 154, y: 183, w: 28, h: 8, targetRoom: "enricoRoom", spawnX: 146, spawnY: 82 }
+    ],
+    interactables: [
+      { type: "hunter", x: 151, y: 92, w: 26, h: 30 },
+      { type: "hunter", x: 155, y: 142, w: 26, h: 30 },
+      { type: "firstAidSpray", x: 277, y: 24, w: 8, h: 12 },
+      { type: "explosiveRounds", x: 276, y: 54, w: 10, h: 8 }
+    ]
+  },
+  enricoRoom: {
+    name: "Enrico Room",
+    floorType: "cave",
     bounds: { minX: 80, maxX: 240, minY: 45, maxY: 155 },
     corridorPoly: [{ x: 80, y: 45, w: 160, h: 110 }],
     doors: [
-      { id: "doorToBranchedPassageUpper", x: 94, y: 45, w: 28, h: 8, targetRoom: "branchedPassage", spawnX: 207, spawnY: 25 },
-      { id: "doorToBranchedPassageLower", x: 192, y: 147, w: 28, h: 8, targetRoom: "branchedPassage", spawnX: 250, spawnY: 132 }
+      { id: "doorToGeneratorRoom", x: 142, y: 147, w: 28, h: 8, targetRoom: "generatorRoom", spawnX: 160, spawnY: 162 }
     ],
     interactables: []
   },
