@@ -35,7 +35,10 @@ diningRoom: {
     interactables: [
       { type: "table", x: 85, y: 75, w: 150, h: 40, solid: true },
       { type: "fireplace", x: 12, y: 60, w: 6, h: 60 },
-      { type: "clockPuzzle", x: 254, y: 28, w: 30, h: 44, hour: 3, clueRead: false, solved: false },
+      { type: "mansionEmblem", x: 19, y: 82, w: 10, h: 12 },
+      { type: "fireplaceSocket", x: 19, y: 82, w: 10, h: 12, revealed: false, occupied: false },
+      { type: "bloodStain", x: 20, y: 119, w: 18, h: 9 },
+      { type: "clockPuzzle", x: 254, y: 28, w: 30, h: 44, hour: 3, solved: false, opened: false },
       { type: "shieldKey", x: 262, y: 76, w: 10, h: 8, revealed: false }
     ]
   },
@@ -62,6 +65,8 @@ diningRoom: {
     ],
     interactables: [
       { type: "kenneth", x: 35, y: 30, w: 16, h: 12, solid: true },
+      { type: "handgunAmmo", x: 55, y: 29, w: 10, h: 6 },
+      { type: "handgunAmmo", x: 55, y: 40, w: 10, h: 6 },
       { type: "zombie", x: 35, y: 55, w: 12, h: 14, solid: true },
       { type: "window", x: 30, y: 18, w: 26, h: 4 }
     ]
@@ -70,7 +75,7 @@ diningRoom: {
 bar: {
     name: "Bar 1F",
     // Reducimos el salón del bar haciendo que la pared superior empiece en Y: 45
-    bounds: { minX: 20, maxX: 300, minY: 45, maxY: 156 },
+    bounds: { minX: 20, maxX: 300, minY: 15, maxY: 156 },
     // Muros para dar forma al nicho secreto superior
     walls: [
       { x: 20, y: 0, w: 100, h: 45 },   // Bloque superior izquierdo
@@ -79,7 +84,7 @@ bar: {
     // Polígonos transitables (Salón principal + Pequeño pasillo secreto)
     corridorPoly: [
       { x: 20, y: 45, w: 280, h: 110 }, // Salón Principal del Bar
-      { x: 120, y: 15, w: 40, h: 30 }   // Pasillo Secreto (Emblema + Ventana)
+      { x: 120, y: 15, w: 40, h: 46 }   // Pasillo superior conectado al salón
     ],
     doors: [
       // Puerta Sur bajada a la parte inferior
@@ -91,8 +96,10 @@ bar: {
       { type: "shelf", x: 205, y: 47, w: 85, h: 16, solid: true },
       { type: "hiddenDoor", x: 120, y: 43, w: 40, h: 6, solid: true },
       // Elementos del pasillo secreto
-      { type: "emblem", x: 122, y: 20, w: 4, h: 10 },
-      { type: "window", x: 154, y: 20, w: 4, h: 16 }
+      { type: "emblemRecess", x: 140, y: 19, w: 10, h: 13, active: false },
+      { type: "window", x: 154, y: 20, w: 4, h: 16 },
+      { type: "musicNotes", x: 270, y: 49, w: 12, h: 10 },
+      { type: "goldEmblem", x: 124, y: 19, w: 12, h: 12, revealed: false }
     ]
   },
   centralCorridor: {
@@ -204,7 +211,7 @@ tigerStatueRoom: {
       { id: "doorToCentral", x: 125, y: 122, w: 30, h: 8, targetRoom: "centralCorridor", spawnX: 40, spawnY: 92 }
     ],
     interactables: [
-      { type: "tigerStatue", x: 125, y: 65, w: 30, h: 22, solid: true }
+      { type: "tigerStatue", x: 125, y: 65, w: 30, h: 22, solid: false }
     ]
   },
   greenhouse: {
@@ -226,18 +233,19 @@ tigerStatueRoom: {
       // Planta Monstruo 'mp' (bloquea la zona izquierda)
       { type: "monsterPlant", x: 60, y: 50, w: 35, h: 80, solid: true },
 
-      // Llave de la Armadura cerca de la ventana (detrás de la planta)
-      { type: "armorKey", x: 42, y: 80, w: 8, h: 6 },
+      // La planta mantiene la llave fuera de alcance hasta que se marchita.
+      { type: "armorKey", x: 42, y: 80, w: 8, h: 6, revealed: false },
 
       // Fuente/Motor de la bomba 'f'
       { type: "waterPump", x: 215, y: 75, w: 40, h: 25, solid: true },
 
-      // Hierba Azul 'b'
-      { type: "blueHerb", x: 170, y: 152, w: 10, h: 10 },
-
-      // Hierbas Verdes 'g' (dos macetas)
+      // Cuatro hierbas verdes y dos rojas
+      { type: "greenHerb", x: 145, y: 152, w: 10, h: 10 },
+      { type: "greenHerb", x: 170, y: 152, w: 10, h: 10 },
       { type: "greenHerb", x: 190, y: 152, w: 10, h: 10 },
-      { type: "greenHerb", x: 210, y: 152, w: 10, h: 10 }
+      { type: "greenHerb", x: 230, y: 152, w: 10, h: 10 },
+      { type: "redHerb", x: 115, y: 152, w: 10, h: 10 },
+      { type: "redHerb", x: 250, y: 125, w: 10, h: 10 }
     ]
   },
   westStairway1F: {
@@ -462,12 +470,13 @@ artRoom: {
       { type: "smallTable", x: 182, y: 70, w: 12, h: 30, solid: true },
 
       // Ventanas 'v' (una abajo en el piso sur y otra a la derecha en la pared este)
-      { type: "window", x: 130, y: 166, w: 25, h: 4 },
-      { type: "windowVertical", x: 226, y: 110, w: 4, h: 25 },
+      { type: "window", x: 130, y: 166, w: 25, h: 4, dogEntryId: "southWindowDog", triggerRadius: 34 },
+      { type: "windowVertical", x: 226, y: 110, w: 4, h: 25, dogEntryId: "eastWindowDog", triggerRadius: 36 },
 
-      // Perros zombi 'd' (Cerberus)
-      { type: "zombieDog", x: 150, y: 135, w: 16, h: 10 }, // Perro pasillo inferior
-      { type: "zombieDog", x: 200, y: 80, w: 10, h: 16 }   // Perro pasillo vertical
+      // Los perros esperan fuera y saltan por las ventanas cuando el jugador se acerca.
+      { type: "zombieDog", x: 135, y: 145, w: 16, h: 10, revealed: false, entryId: "southWindowDog", enterFromX: 135, enterFromY: 174, entryTargetX: 135, entryTargetY: 145 },
+      { type: "zombieDog", x: 200, y: 82, w: 10, h: 16, revealed: false, entryId: "eastWindowDog", enterFromX: 236, enterFromY: 114, entryTargetX: 207, entryTargetY: 114 },
+      { type: "handgunAmmo", x: 90, y: 127, w: 10, h: 6 }
     ]
   },
 windingPassage: {
@@ -716,33 +725,25 @@ outsideBoiler: {
   mansionStoreroom: {
     name: "Mansion Storeroom",
     floorType: "wood",
-    bounds: { minX: 100, maxX: 180, minY: 50, maxY: 110 },
+    bounds: { minX: 70, maxX: 250, minY: 30, maxY: 170 },
 
-    // Geometría compacta (80x60 px)
+    // Espacio ampliado para dejar accesibles los objetos y el mobiliario.
     corridorPoly: [
-      { x: 100, y: 50, w: 80, h: 60 }
+      { x: 70, y: 30, w: 180, h: 140 }
     ],
 
     doors: [
-      // 'p' Arriba a la izquierda: Vuelve a East Stairway 1F
-      { id: "doorToEastStairway", x: 112, y: 50, w: 18, h: 6, targetRoom: "eastStairway1F", spawnX: 190, spawnY: 55 }
+      { id: "doorToEastStairway", x: 105, y: 30, w: 22, h: 7, targetRoom: "eastStairway1F", spawnX: 190, spawnY: 55 }
     ],
 
     interactables: [
-      // 'a' Acid Rounds (Munición para lanzagranadas)
-      { type: "acidRounds", x: 140, y: 54, w: 8, h: 8 },
-
-      // 'm.m' Mesita con máquina de escribir (puedes reutilizar typewriterTable / typewriter)
-      { type: "typewriterTable", x: 160, y: 54, w: 14, h: 10, solid: true },
-
-      // 'c' Baúl de ítems (Item Chest / Cajón)
-      { type: "itemChest", x: 164, y: 74, w: 12, h: 12, solid: true },
-
-      // 's' Shells (Cartuchos de escopeta)
-      { type: "shotgunShells", x: 135, y: 98, w: 8, h: 8 },
-
-      // 'aero' First Aid Spray / Aerosol desodorante curativo
-      { type: "firstAidSpray", x: 160, y: 98, w: 8, h: 8 }
+      { type: "typewriter", x: 82, y: 43, w: 28, h: 22, solid: true },
+      { type: "itemChest", x: 207, y: 43, w: 24, h: 20, solid: true },
+      { type: "chemical", x: 145, y: 52, w: 10, h: 12 },
+      { type: "shotgunShells", x: 90, y: 122, w: 10, h: 8 },
+      { type: "firstAidSpray", x: 151, y: 126, w: 8, h: 12 },
+      { type: "acidRounds", x: 211, y: 119, w: 10, h: 8 },
+      { type: "shelfVertical", x: 224, y: 77, w: 14, h: 48, solid: true }
     ]
   },
   courtyardStudy: {
@@ -940,7 +941,7 @@ outsideBoiler: {
     interactables: [
       { type: "elevator", x: 31, y: 53, w: 27, h: 27, solid: true },
       { type: "waterArea", x: 128, y: 54, w: 73, h: 72, solid: true },
-      { type: "crankSocket", x: 76, y: 111, w: 23, h: 19, solid: true }
+      { type: "crankSocket", x: 76, y: 111, w: 23, h: 19, solid: true, crankType: "crankItem" }
     ]
   },
   falls: {
@@ -1102,14 +1103,15 @@ outsideBoiler: {
     corridorPoly: [{ x: 20, y: 10, w: 280, h: 180 }],
     doors: [
       { id: "door1ToBoulderPassage", x: 136, y: 10, w: 28, h: 8, targetRoom: "boulderPassage", spawnX: 273, spawnY: 140 },
-      { id: "door2ToStraightPassage", x: 136, y: 182, w: 28, h: 8, targetRoom: "straightPassage", spawnX: 150, spawnY: 84 }
+      { id: "door2ToStraightPassage", x: 136, y: 182, w: 28, h: 8, targetRoom: "straightPassage", spawnX: 150, spawnY: 84, webRequired: "black-tiger-straight-web" }
     ],
     interactables: [
       { type: "blackTiger", x: 112, y: 57, w: 92, h: 76 },
       { type: "barrel", x: 57, y: 132, w: 24, h: 30, solid: true },
       { type: "barrel", x: 225, y: 132, w: 24, h: 30, solid: true },
       { type: "handgunAmmo", x: 64, y: 120, w: 10, h: 6 },
-      { type: "combatKnife", x: 231, y: 119, w: 12, h: 12 }
+      { type: "combatKnife", x: 231, y: 119, w: 12, h: 12 },
+      { type: "doorWeb", x: 136, y: 174, w: 28, h: 14, hits: 0, lockId: "black-tiger-straight-web" }
     ]
   },
   straightPassage: {
@@ -1118,7 +1120,7 @@ outsideBoiler: {
     bounds: { minX: 20, maxX: 300, minY: 70, maxY: 130 },
     corridorPoly: [{ x: 20, y: 70, w: 280, h: 60 }],
     doors: [
-      { id: "door1ToBlackTigerRoom", x: 136, y: 70, w: 28, h: 8, targetRoom: "blackTigerRoom", spawnX: 150, spawnY: 160 },
+      { id: "door1ToBlackTigerRoom", x: 136, y: 70, w: 28, h: 8, targetRoom: "blackTigerRoom", spawnX: 150, spawnY: 160, webRequired: "black-tiger-straight-web" },
       { id: "door2ToBoulderPassage2", x: 20, y: 86, w: 8, h: 28, targetRoom: "boulderPassage2", spawnX: 105, spawnY: 95 },
       { id: "door3ToUndergroundSaveRoom", x: 260, y: 70, w: 28, h: 8, targetRoom: "undergroundSaveRoom", spawnX: 150, spawnY: 100 }
     ],
@@ -1153,7 +1155,7 @@ outsideBoiler: {
       { id: "elevatorToFountain", x: 278, y: 148, w: 8, h: 28, targetRoom: "fountain", spawnX: 35, spawnY: 148 }
     ],
     interactables: [
-      { type: "crankSocket", x: 147, y: 13, w: 23, h: 19, solid: true },
+      { type: "crankSocket", x: 147, y: 13, w: 23, h: 19, solid: true, crankType: "hexCrank" },
       { type: "elevator", x: 240, y: 148, w: 30, h: 28, solid: false },
       { type: "rollingBoulder", x: 22, y: 12, w: 58, h: 56, solid: true, rollSpeed: 1.6, direction: 1, stopX: 242, triggerRadius: 60, refugeX: 105, refugeY: 120 }
     ],
@@ -2122,7 +2124,7 @@ outsideBoiler: {
       { type: "lowerFloorTable", x: 92, y: 76, w: 136, h: 34 },
       { type: "zombie", x: 255, y: 22, w: 12, h: 14 },
       { type: "zombie", x: 25, y: 160, w: 12, h: 14 },
-      { type: "pushableStatue", x: 145, y: 150, w: 28, h: 30, solid: true }
+      { type: "pushableStatue", x: 145, y: 150, w: 28, h: 30, solid: true, fallToRoom: "diningRoom", reward: "blueJewel" }
     ]
   },
   cPassage: {
@@ -2548,9 +2550,10 @@ outsideBoiler: {
     corridorPoly: [{ x: 95, y: 10, w: 130, h: 180 }],
     doors: [{ id: "doorToAtticEntry", x: 98, y: 182, w: 28, h: 8, targetRoom: "atticEntry", spawnX: 220, spawnY: 145, keyRequired: "shieldKey", lockId: "attic-shield-key" }],
     interactables: [
-      { type: "yawn", x: 105, y: 32, w: 105, h: 46 },
+      { type: "yawnChimney", x: 136, y: 14, w: 44, h: 24, linkedRoom: "lessonRoom" },
+      { type: "yawn", x: 136, y: 12, w: 44, h: 32, encounter: "atticFirst", phase: "dormant", revealed: false },
       { type: "pillar", x: 149, y: 86, w: 28, h: 32, solid: true },
-      { type: "moonCrest", x: 112, y: 133, w: 12, h: 12 },
+      { type: "moonCrest", x: 112, y: 133, w: 12, h: 12, revealed: false },
       { type: "shotgunShells", x: 182, y: 146, w: 12, h: 9 }
     ]
   },
@@ -2561,8 +2564,10 @@ outsideBoiler: {
     corridorPoly: [{ x: 50, y: 20, w: 200, h: 160 }],
     doors: [{ id: "doorToCPassage", x: 242, y: 84, w: 8, h: 28, targetRoom: "cPassage", spawnX: 265, spawnY: 96, keyRequired: "armorKey", lockId: "armor-room-armor" }],
     interactables: [
-      { type: "armorChest", x: 62, y: 74, w: 32, h: 44, solid: true },
-      { type: "sunCrest", x: 98, y: 102, w: 12, h: 12 },
+      { type: "armorChest", x: 62, y: 74, w: 32, h: 44, solid: true, opened: false },
+      { type: "sunCrest", x: 98, y: 102, w: 12, h: 12, revealed: false },
+      { type: "armorPuzzleReset", x: 66, y: 78, w: 8, h: 7 },
+      { type: "armorRoomSwitch", x: 220, y: 48, w: 14, h: 14, activated: false },
       { type: "knightStatue", x: 76, y: 38, w: 15, h: 23, solid: true },
       { type: "knightStatue", x: 119, y: 38, w: 15, h: 23, solid: true },
       { type: "knightStatue", x: 162, y: 38, w: 15, h: 23, solid: true },
@@ -2571,10 +2576,10 @@ outsideBoiler: {
       { type: "knightStatue", x: 162, y: 137, w: 15, h: 23, solid: true },
       { type: "knightStatue", x: 76, y: 137, w: 15, h: 23, solid: true },
       { type: "knightStatue", x: 205, y: 137, w: 15, h: 23, solid: true },
-      { type: "pushableStatue", x: 112, y: 87, w: 22, h: 28, solid: true },
-      { type: "pushableStatue", x: 197, y: 87, w: 22, h: 28, solid: true },
-      { type: "puzzleGrate", x: 148, y: 86, w: 16, h: 30 },
-      { type: "puzzleGrate", x: 171, y: 86, w: 16, h: 30 }
+      { type: "puzzleGrate", x: 148, y: 92, w: 16, h: 20, ventId: "left" },
+      { type: "puzzleGrate", x: 171, y: 92, w: 16, h: 20, ventId: "right" },
+      { type: "pushableStatue", x: 112, y: 87, w: 22, h: 28, solid: true, puzzleId: "armorRoom", startX: 112, startY: 87 },
+      { type: "pushableStatue", x: 197, y: 87, w: 22, h: 28, solid: true, puzzleId: "armorRoom", startX: 197, startY: 87 }
     ]
   },
   eastStairway2F: {
@@ -2694,8 +2699,10 @@ outsideBoiler: {
     corridorPoly: [{ x: 50, y: 20, w: 220, h: 160 }],
     doors: [{ id: "door1ToLessonRoomEntry", x: 262, y: 52, w: 8, h: 28, targetRoom: "lessonRoomEntry", spawnX: 82, spawnY: 64, keyRequired: "helmetKey", lockId: "lesson-room-helmet" }],
     interactables: [
-      { type: "piano", x: 60, y: 38, w: 36, h: 74, solid: true },
-      { type: "yawn", x: 162, y: 112, w: 96, h: 50 }
+      { type: "piano", x: 60, y: 38, w: 36, h: 74, solid: true, interactive: false },
+      { type: "yawnChimney", x: 143, y: 14, w: 44, h: 24, linkedRoom: "attic" },
+      { type: "yawn", x: 143, y: 12, w: 44, h: 32, encounter: "lessonSecond", phase: "dormant", revealed: false },
+      { type: "floorHole", x: 102, y: 118, w: 26, h: 18, revealed: false }
     ]
   }
 };

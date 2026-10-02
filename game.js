@@ -223,7 +223,7 @@ const WEAPON_NAMES = {
   handgun: "Berreta",
   knife: "Cuchillo de supervivencia",
   shotgun: "Escopeta",
-  colt: "Colt",
+  colt: "Colt Python",
   grenadeLauncher: "Lanzagranadas",
   bazooka: "Bazooka",
   rocketLauncher: "Rocket Launcher"
@@ -399,6 +399,35 @@ function fireWeapon() {
     equippedWeapon = "handgun";
     updateAmmoDisplay();
   }
+  const room = ROOMS[currentRoom];
+  const originX = player.x + PLAYER_WIDTH / 2;
+  const originY = player.y + PLAYER_HEIGHT / 2;
+  const doorWeb = room.interactables.find((obj) => {
+    if (obj.type !== "doorWeb") return false;
+    const dx = obj.x + obj.w / 2 - originX;
+    const dy = obj.y + obj.h / 2 - originY;
+    const along = dx * Math.cos(player.aimAngle) + dy * Math.sin(player.aimAngle);
+    const across = Math.abs(dx * Math.sin(player.aimAngle) - dy * Math.cos(player.aimAngle));
+    return along > 0 && along <= 34 && across < 9;
+  });
+  if (doorWeb) {
+    if (equippedWeapon !== "knife") {
+      STATUS.setPickupHint("La telaraña es demasiado gruesa. Usá el Cuchillo de supervivencia.");
+      return;
+    }
+    doorWeb.hits++;
+    weaponCooldown = 14;
+    weapon.shotFlash = 4;
+    if (doorWeb.hits >= 6) {
+      room.interactables.splice(room.interactables.indexOf(doorWeb), 1);
+      unlockedLocks.add(doorWeb.lockId);
+      STATUS.setPickupHint("Cortaste la telaraña. El paso a Straight Passage quedó libre.");
+    } else {
+      STATUS.setPickupHint(`Cortando telaraña: ${doorWeb.hits}/6 cuchillazos.`);
+    }
+    updateInteractionPrompt();
+    return;
+  }
   const ammo = equippedWeapon === "shotgun" ? AMMO_INFO.shotgun
     : equippedWeapon === "colt" ? AMMO_INFO.colt
       : AMMO_INFO[selectedLauncherAmmo];
@@ -428,17 +457,18 @@ function fireWeapon() {
   else if (equippedWeapon === "rocketLauncher") STATUS.consumeRocket();
   weaponCooldown = equippedWeapon === "knife" ? 14 : 8;
   weapon.shotFlash = 4;
-  const originX = player.x + PLAYER_WIDTH / 2;
-  const originY = player.y + PLAYER_HEIGHT / 2;
   const range = equippedWeapon === "knife" ? 28 : ["rocketLauncher", "bazooka"].includes(equippedWeapon) ? 220 : 150;
   let target = null;
   let targetDistance = range;
-  const room = ROOMS[currentRoom];
 
   room.interactables.forEach((obj) => {
     if (!["zombie", "zombieDog", "spider", "neptune", "wasp", "crow", "adder", "hunter", "blackTiger", "yawn", "chimera"].includes(obj.type)) return;
+    const scriptedYawn = obj.type === "yawn" && ["atticFirst", "lessonSecond"].includes(obj.encounter);
+    if (scriptedYawn && obj.phase !== "circling") return;
     const dx = obj.x + obj.w / 2 - originX;
     const dy = obj.y + obj.h / 2 - originY;
+    if (scriptedYawn &&
+      !hasLineOfSight(originX, originY, obj.x + obj.w / 2, obj.y + obj.h / 2, room, obj)) return;
     const along = dx * Math.cos(player.aimAngle) + dy * Math.sin(player.aimAngle);
     const across = Math.abs(dx * Math.sin(player.aimAngle) - dy * Math.cos(player.aimAngle));
     if (along > 0 && along < targetDistance && across < Math.max(5, Math.min(obj.w, obj.h) * 0.65)) {
@@ -450,15 +480,26 @@ function fireWeapon() {
   if (target) {
     const smallEnemy = ["crow", "adder", "wasp"].includes(target.type);
     const boss = ["blackTiger", "yawn", "tyrant"].includes(target.type);
-    const defaultHitPoints = smallEnemy ? 10 : target.type === "zombieDog" ? 10 : boss ? 300 : 100;
+    const scriptedYawn = target.type === "yawn" && ["atticFirst", "lessonSecond"].includes(target.encounter);
+    const defaultHitPoints = scriptedYawn ? 400 : smallEnemy ? 10 : target.type === "zombieDog" ? 60 : boss ? 300 : 100;
     const hunterSized = ["hunter", "chimera"].includes(target.type);
-    const damage = equippedWeapon === "knife" ? 10
+    const damage = scriptedYawn && equippedWeapon === "shotgun" ? 34
+      : target.type === "zombieDog" ? equippedWeapon === "handgun" ? 20 : 100
+      : equippedWeapon === "knife" ? 10
       : equippedWeapon === "handgun" ? 20
         : equippedWeapon === "shotgun" ? hunterSized ? 34 : 50
           : equippedWeapon === "colt" ? hunterSized ? 50 : 100
             : equippedWeapon === "rocketLauncher" ? 250 : 50;
     const remaining = (weapon.hitPoints.get(target) ?? defaultHitPoints) - damage;
-    if (remaining <= 0) room.interactables.splice(room.interactables.indexOf(target), 1);
+    if (remaining <= 0 && scriptedYawn) {
+      target.phase = target.encounter === "atticFirst" ? "retreating" : "dying";
+      target.alerted = false;
+      target.attackAt = undefined;
+      if (target.encounter === "lessonSecond") {
+        const hole = room.interactables.find((obj) => obj.type === "floorHole");
+        if (hole) hole.revealed = true;
+      }
+    } else if (remaining <= 0) room.interactables.splice(room.interactables.indexOf(target), 1);
     else weapon.hitPoints.set(target, remaining);
   }
   updateAmmoDisplay();
@@ -548,6 +589,199 @@ function hasLineOfSight(x1, y1, x2, y2, room, observer) {
   return true;
 }
 
+function updateAtticYawnEncounter(room, yawn) {
+  const chimney = room.interactables.find((obj) => obj.type === "yawnChimney");
+  if (!chimney) return;
+  if (yawn.phase === "dormant") {
+    yawn.phase = "emerging";
+    yawn.revealed = true;
+    yawn.alerted = true;
+    yawn.x = chimney.x;
+    yawn.y = chimney.y - 4;
+    yawn.attackAt = gameFrame + 60;
+    chimney.opened = true;
+    STATUS.setPickupHint("Algo enorme está saliendo de la chimenea.");
+  }
+  if (yawn.phase === "emerging") {
+    yawn.y += 0.8;
+    if (yawn.y >= 42) {
+      yawn.y = 42;
+      yawn.phase = "circling";
+      yawn.routeIndex = 0;
+    }
+    return;
+  }
+  if (yawn.phase === "retreating") {
+    const targetX = chimney.x;
+    const targetY = chimney.y - 4;
+    const dx = targetX - yawn.x;
+    const dy = targetY - yawn.y;
+    const distance = Math.hypot(dx, dy);
+    const step = Math.min(1.25, distance);
+    if (distance <= step) {
+      room.interactables.splice(room.interactables.indexOf(yawn), 1);
+      room.yawnFirstFightComplete = true;
+      const crest = room.interactables.find((obj) => obj.type === "moonCrest");
+      if (crest) crest.revealed = true;
+      STATUS.setPickupHint("Yawn se retiró por la chimenea. Algo quedó en el piso: Moon Crest.");
+      return;
+    }
+    yawn.facing = dx < 0 ? -1 : 1;
+    yawn.x += dx / distance * step;
+    yawn.y += dy / distance * step;
+    return;
+  }
+
+  const route = [
+    { x: 140, y: 42 }, { x: 164, y: 42 }, { x: 177, y: 55 },
+    { x: 177, y: 105 }, { x: 177, y: 125 }, { x: 160, y: 125 },
+    { x: 120, y: 125 }, { x: 102, y: 125 }, { x: 95, y: 110 },
+    { x: 95, y: 65 }, { x: 102, y: 48 }, { x: 120, y: 42 }
+  ];
+  const waypoint = route[yawn.routeIndex % route.length];
+  const dx = waypoint.x - yawn.x;
+  const dy = waypoint.y - yawn.y;
+  const distance = Math.hypot(dx, dy);
+  const step = Math.min(1.15, distance);
+  if (distance <= step) {
+    yawn.x = waypoint.x;
+    yawn.y = waypoint.y;
+    yawn.routeIndex = (yawn.routeIndex + 1) % route.length;
+  } else {
+    yawn.facing = dx < 0 ? -1 : 1;
+    yawn.x += dx / distance * step;
+    yawn.y += dy / distance * step;
+  }
+
+  const playerX = player.x + PLAYER_WIDTH / 2;
+  const playerY = player.y + PLAYER_HEIGHT / 2;
+  const yawnX = yawn.x + yawn.w / 2;
+  const yawnY = yawn.y + yawn.h / 2;
+  const distanceToPlayer = Math.hypot(playerX - yawnX, playerY - yawnY);
+  if (distanceToPlayer <= ENEMY_TYPES.yawn.attackRange &&
+    hasLineOfSight(yawnX, yawnY, playerX, playerY, room, yawn)) {
+    yawn.attackAt ??= gameFrame + 45;
+    if (gameFrame >= yawn.attackAt && playerDamageCooldown === 0) {
+      STATUS.setHealth(STATUS.getHealth() - ENEMY_TYPES.yawn.damage);
+      STATUS.setPoison(true);
+      playerDamageCooldown = 24;
+      yawn.attackAt = gameFrame + ENEMY_TYPES.yawn.attackDelay;
+    }
+  }
+}
+
+function updateLessonYawnEncounter(room, yawn) {
+  if (!ROOMS.attic.yawnFirstFightComplete) {
+    yawn.revealed = false;
+    return;
+  }
+  const chimney = room.interactables.find((obj) => obj.type === "yawnChimney");
+  if (!chimney) return;
+  if (yawn.phase === "dormant") {
+    yawn.phase = "emerging";
+    yawn.revealed = true;
+    yawn.alerted = true;
+    yawn.x = chimney.x;
+    yawn.y = chimney.y - 4;
+    yawn.attackAt = gameFrame + 60;
+    chimney.opened = true;
+    STATUS.setPickupHint("La chimenea se abre. Yawn llegó desde el Attic.");
+  }
+  if (yawn.phase === "emerging") {
+    yawn.y += 0.8;
+    if (yawn.y >= 42) {
+      yawn.y = 42;
+      yawn.phase = "circling";
+      yawn.routeIndex = 0;
+    }
+    return;
+  }
+  if (yawn.phase === "dying") {
+    const hole = room.interactables.find((obj) => obj.type === "floorHole");
+    if (!hole) return;
+    const targetX = hole.x + (hole.w - yawn.w) / 2;
+    const targetY = hole.y + (hole.h - yawn.h) / 2;
+    const dx = targetX - yawn.x;
+    const dy = targetY - yawn.y;
+    const distance = Math.hypot(dx, dy);
+    const step = Math.min(1.35, distance);
+    if (distance <= step) {
+      room.interactables.splice(room.interactables.indexOf(yawn), 1);
+      hole.revealed = true;
+      room.yawnSecondFightComplete = true;
+      STATUS.setPickupHint("Yawn murió y se hundió en el piso. Se abrió un agujero junto al piano.");
+      return;
+    }
+    yawn.facing = dx < 0 ? -1 : 1;
+    yawn.x += dx / distance * step;
+    yawn.y += dy / distance * step;
+    return;
+  }
+
+  const route = [
+    { x: 112, y: 42 }, { x: 150, y: 31 }, { x: 198, y: 42 },
+    { x: 222, y: 65 }, { x: 222, y: 104 }, { x: 202, y: 139 },
+    { x: 166, y: 146 }, { x: 126, y: 137 }, { x: 108, y: 112 },
+    { x: 128, y: 94 }, { x: 176, y: 82 }, { x: 207, y: 96 },
+    { x: 180, y: 120 }, { x: 145, y: 110 }, { x: 112, y: 120 }
+  ];
+  const waypoint = route[yawn.routeIndex % route.length];
+  const dx = waypoint.x - yawn.x;
+  const dy = waypoint.y - yawn.y;
+  const distance = Math.hypot(dx, dy);
+  const step = Math.min(1.35, distance);
+  if (distance <= step) {
+    yawn.x = waypoint.x;
+    yawn.y = waypoint.y;
+    yawn.routeIndex = (yawn.routeIndex + 1) % route.length;
+  } else {
+    yawn.facing = dx < 0 ? -1 : 1;
+    yawn.x += dx / distance * step;
+    yawn.y += dy / distance * step;
+  }
+
+  const playerX = player.x + PLAYER_WIDTH / 2;
+  const playerY = player.y + PLAYER_HEIGHT / 2;
+  const yawnX = yawn.x + yawn.w / 2;
+  const yawnY = yawn.y + yawn.h / 2;
+  const distanceToPlayer = Math.hypot(playerX - yawnX, playerY - yawnY);
+  if (distanceToPlayer <= ENEMY_TYPES.yawn.attackRange &&
+    hasLineOfSight(yawnX, yawnY, playerX, playerY, room, yawn)) {
+    yawn.attackAt ??= gameFrame + 45;
+    if (gameFrame >= yawn.attackAt && playerDamageCooldown === 0) {
+      STATUS.setHealth(STATUS.getHealth() - ENEMY_TYPES.yawn.damage);
+      STATUS.setPoison(true);
+      playerDamageCooldown = 24;
+      yawn.attackAt = gameFrame + ENEMY_TYPES.yawn.attackDelay;
+    }
+  }
+}
+
+function updateBarryLessonScene(room) {
+  if (!room.yawnSecondFightComplete || room.lessonBarrySceneDone) return;
+  let barry = room.interactables.find((obj) => obj.type === "staticCharacter" && obj.lessonBarry);
+  if (!barry) {
+    barry = {
+      type: "staticCharacter", character: "redVest", x: 248, y: 54, w: 18, h: 22,
+      lessonBarry: true, sceneStartedAt: gameFrame, rewardGiven: false
+    };
+    room.interactables.push(barry);
+  }
+
+  const targetX = 216;
+  if (barry.x > targetX) {
+    barry.x = Math.max(targetX, barry.x - 0.7);
+    return;
+  }
+  if (gameFrame - barry.sceneStartedAt < 85 || barry.rewardGiven) return;
+
+  STATUS.addItem("rope");
+  STATUS.addItem("passNumber");
+  barry.rewardGiven = true;
+  room.lessonBarrySceneDone = true;
+  STATUS.setPickupHint("Barry entró por la puerta y te dio la Rope y el archivo Pass Number.");
+}
+
 function updateEnemies(room) {
   const hive = room.interactables.find((obj) => obj.type === "giantBeehive");
   if (hive) {
@@ -574,12 +808,79 @@ function updateEnemies(room) {
 
   const playerX = player.x + PLAYER_WIDTH / 2;
   const playerY = player.y + PLAYER_HEIGHT / 2;
+  if (room.gasActive) {
+    room.nextGasDamageAt ??= gameFrame + 60;
+    if (gameFrame >= room.nextGasDamageAt && playerDamageCooldown === 0) {
+      STATUS.setHealth(STATUS.getHealth() - 1);
+      playerDamageCooldown = 16;
+      room.nextGasDamageAt = gameFrame + 60;
+    }
+  } else {
+    room.nextGasDamageAt = undefined;
+  }
+  const monsterPlant = room.interactables.find((obj) => obj.type === "monsterPlant");
+  if (monsterPlant) {
+    const plantReach = {
+      x: monsterPlant.x - 24,
+      y: monsterPlant.y - 24,
+      w: monsterPlant.w + 48,
+      h: monsterPlant.h + 48
+    };
+    if (checkCollision({ x: player.x, y: player.y, w: PLAYER_WIDTH, h: PLAYER_HEIGHT }, plantReach)) {
+      monsterPlant.nextAttackAt ??= gameFrame + 60;
+      monsterPlant.animFrame = Math.floor(gameFrame / 8) % 2;
+      if (gameFrame >= monsterPlant.nextAttackAt && playerDamageCooldown === 0) {
+        STATUS.setHealth(STATUS.getHealth() - 2);
+        playerDamageCooldown = 24;
+        monsterPlant.nextAttackAt = gameFrame + 90;
+      }
+    } else {
+      monsterPlant.animFrame = 0;
+    }
+  }
+  room.interactables.forEach((window) => {
+    if (!window.dogEntryId || window.dogTriggered) return;
+    const distance = Math.hypot(playerX - (window.x + window.w / 2), playerY - (window.y + window.h / 2));
+    if (distance > (window.triggerRadius ?? 34)) return;
+    const dog = room.interactables.find((obj) => obj.type === "zombieDog" && obj.entryId === window.dogEntryId);
+    window.dogTriggered = true;
+    if (!dog) return;
+    dog.x = dog.enterFromX;
+    dog.y = dog.enterFromY;
+    dog.revealed = true;
+    dog.entering = true;
+  });
   const obstacles = room.interactables.filter((obj) => obj.solid && !ENEMY_TYPES[obj.type]);
 
   room.interactables.forEach((enemy) => {
+    if (enemy.type === "yawn" && enemy.encounter === "atticFirst") {
+      updateAtticYawnEncounter(room, enemy);
+      return;
+    }
+    if (enemy.type === "yawn" && enemy.encounter === "lessonSecond") {
+      updateLessonYawnEncounter(room, enemy);
+      return;
+    }
     const behavior = ENEMY_TYPES[enemy.type];
     if (!behavior) return;
     if (enemy.revealed === false) return;
+    if (enemy.entering) {
+      const dx = enemy.entryTargetX - enemy.x;
+      const dy = enemy.entryTargetY - enemy.y;
+      const distance = Math.hypot(dx, dy);
+      const step = Math.min(enemy.entrySpeed ?? 1.5, distance);
+      if (distance <= step) {
+        enemy.x = enemy.entryTargetX;
+        enemy.y = enemy.entryTargetY;
+        enemy.entering = false;
+        enemy.alerted = true;
+      } else {
+        enemy.x += dx / distance * step;
+        enemy.y += dy / distance * step;
+      }
+      enemy.animFrame = Math.floor(gameFrame / 6) % 2;
+      return;
+    }
     if (enemy.type === "neptune" && waterDrained) {
       enemy.alerted = false;
       enemy.attackAt = undefined;
@@ -665,10 +966,26 @@ function collectNearbyItem() {
     return;
   }
   const item = room.interactables[itemIndex];
+  if (item.type === "goldEmblem" && !STATUS.hasItem("mansionEmblem")) {
+    STATUS.setPickupHint("No te lleves el Gold Emblem sin el Emblem del Dining Room; podrías quedar encerrado.");
+    return;
+  }
   if (STATUS.addItem(item.type)) {
     room.interactables.splice(itemIndex, 1);
+    if (item.type === "mansionEmblem") {
+      const socket = room.interactables.find((obj) => obj.type === "fireplaceSocket");
+      if (socket) socket.revealed = true;
+      STATUS.setPickupHint("Recogiste el Emblem. Quedó libre el hueco de la chimenea.");
+    } else if (item.type === "goldEmblem") {
+      const hiddenDoor = room.interactables.find((obj) => obj.type === "hiddenDoor");
+      const recess = room.interactables.find((obj) => obj.type === "emblemRecess");
+      if (hiddenDoor) hiddenDoor.solid = true;
+      if (recess) recess.active = true;
+      STATUS.setPickupHint("El pasaje se cerró. Colocá el Emblem en el hueco para volver a abrirlo.");
+    }
     if (item.giftFrom) STATUS.setPickupHint(`${item.giftFrom} te dio el ${STATUS.getItemName(item.type)}.`);
     updateAmmoDisplay();
+    updateInteractionPrompt();
   }
 }
 
@@ -698,6 +1015,91 @@ function pushStepLadder(room, ladder, dx, dy) {
   return true;
 }
 
+function pushPuzzleStatue(room, statue, dx, dy) {
+  const next = { ...statue, x: statue.x + dx, y: statue.y + dy };
+  if (next.x < room.bounds.minX || next.y < room.bounds.minY || next.x + next.w > room.bounds.maxX || next.y + next.h > room.bounds.maxY) return false;
+  if (room.interactables.some((obj) => obj !== statue && obj.solid && !ENEMY_TYPES[obj.type] && checkCollision(next, obj))) return false;
+  statue.x = next.x;
+  statue.y = next.y;
+  return true;
+}
+
+function armorRoomVentsCovered(room) {
+  const grates = room.interactables.filter((obj) => obj.type === "puzzleGrate");
+  const statues = room.interactables.filter((obj) => obj.type === "pushableStatue" && obj.puzzleId === "armorRoom");
+  const coveringStatues = new Set();
+  return grates.length === 2 && grates.every((grate) => {
+    const statue = statues.find((candidate) => !coveringStatues.has(candidate) &&
+      candidate.x <= grate.x && candidate.y <= grate.y &&
+      candidate.x + candidate.w >= grate.x + grate.w && candidate.y + candidate.h >= grate.y + grate.h);
+    if (!statue) return false;
+    coveringStatues.add(statue);
+    return true;
+  });
+}
+
+function updateArmorRoomPuzzle(room) {
+  if (currentRoom !== "armorRoom") return;
+  const switchObj = room.interactables.find((obj) => obj.type === "armorRoomSwitch");
+  if (!switchObj) return;
+  const ventsCovered = armorRoomVentsCovered(room);
+  room.gasActive = switchObj.activated && !ventsCovered;
+  if (switchObj.activated && ventsCovered && !switchObj.solved) {
+    switchObj.solved = true;
+    const chest = room.interactables.find((obj) => obj.type === "armorChest");
+    const crest = room.interactables.find((obj) => obj.type === "sunCrest");
+    if (chest) chest.opened = true;
+    if (crest) crest.revealed = true;
+    STATUS.setPickupHint("Las dos rejillas quedaron cubiertas. El cajón se abrió y apareció el Sun Crest.");
+  }
+}
+
+function resetArmorRoomPuzzle(room) {
+  room.interactables
+    .filter((obj) => obj.type === "pushableStatue" && obj.puzzleId === "armorRoom")
+    .forEach((statue) => {
+      statue.x = statue.startX;
+      statue.y = statue.startY;
+    });
+  const switchObj = room.interactables.find((obj) => obj.type === "armorRoomSwitch");
+  if (switchObj) switchObj.activated = false;
+  room.gasActive = false;
+  room.nextGasDamageAt = undefined;
+  if (!switchObj?.solved) {
+    const chest = room.interactables.find((obj) => obj.type === "armorChest");
+    const crest = room.interactables.find((obj) => obj.type === "sunCrest");
+    if (chest) chest.opened = false;
+    if (crest) crest.revealed = false;
+  }
+}
+
+function nearbyTigerStatue(room) {
+  const reach = { x: player.x - 24, y: player.y - 28, w: PLAYER_WIDTH + 48, h: PLAYER_HEIGHT + 56 };
+  return room.interactables.find((obj) => obj.type === "tigerStatue" && checkCollision(reach, obj));
+}
+
+function tigerStatueJewelType(statue) {
+  if (!statue.blueJewelUsed && STATUS.hasItem("blueJewel")) return "blueJewel";
+  if (!statue.redJewelUsed && STATUS.hasItem("redJewel")) return "redJewel";
+  return null;
+}
+
+function useTigerStatue(room, statue) {
+  const jewelType = tigerStatueJewelType(statue);
+  if (!jewelType) return false;
+  STATUS.consumeItem(jewelType);
+  if (jewelType === "blueJewel") {
+    statue.blueJewelUsed = true;
+    STATUS.addItem("windCrest");
+    STATUS.setPickupHint("La Blue Jewel encaja en el ojo. Recibiste el Wind Crest.");
+  } else {
+    statue.redJewelUsed = true;
+    STATUS.addItem("colt");
+    STATUS.setPickupHint("La Red Jewel encaja en el ojo. Recibiste la Colt Python.");
+  }
+  return true;
+}
+
 function updateInteractionPrompt() {
   const room = ROOMS[currentRoom];
   const movableLadder = room.interactables.find((obj) => obj.type === "stepLadder" && obj.resettable);
@@ -708,10 +1110,24 @@ function updateInteractionPrompt() {
     interactionPrompt.hidden = false;
     return;
   }
+  const tigerStatue = nearbyTigerStatue(room);
+  const tigerJewel = tigerStatue && tigerStatueJewelType(tigerStatue);
+  if (tigerJewel) {
+    interactionPrompt.textContent = `E · Colocar ${STATUS.getItemName(tigerJewel)}`;
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const chemicalPump = room.interactables.find((obj) => obj.type === "waterPump" && !obj.chemicalUsed && checkCollision(ladderReach, obj));
+  if (chemicalPump && STATUS.hasItem("chemical")) {
+    interactionPrompt.textContent = "E · Usar Chemical en el motor";
+    interactionPrompt.hidden = false;
+    return;
+  }
   const door = nearbyDoor();
   if (door) {
     const locked = door.keyRequired && !unlockedLocks.has(door.lockId);
     const fileLocked = door.fileRequired && !unlockedLocks.has(door.lockId);
+    const webLocked = door.webRequired && !unlockedLocks.has(door.webRequired);
     const missingCrests = door.crestsRequired?.filter((crest) => !STATUS.hasItem(crest)) || [];
     const crestsLocked = missingCrests.length > 0 && !unlockedLocks.has(door.lockId);
     const sideLocked = door.unlockFromSide && !unlockedLocks.has(door.lockId);
@@ -725,6 +1141,8 @@ function updateInteractionPrompt() {
         ? `E · Cerrada: ${STATUS.getItemName(door.keyRequired)}`
       : fileLocked
         ? `E · Falta archivo: ${STATUS.getItemName(door.fileRequired)}`
+      : webLocked
+        ? "Telaraña gruesa: cortala con el Cuchillo desde Black Tiger Room"
       : crestsLocked
         ? `E · Faltan: ${missingCrests.map((crest) => STATUS.getItemName(crest)).join(", ")}`
       : sideLocked
@@ -744,11 +1162,33 @@ function updateInteractionPrompt() {
     interactionPrompt.hidden = false;
     return;
   }
-  const clockPuzzle = room.interactables.find((obj) =>
-    obj.type === "clockPuzzle" && !obj.solved && checkCollision(reach, obj)
-  );
-  if (clockPuzzle) {
-    interactionPrompt.textContent = clockPuzzle.clueRead ? "E · Mover la aguja" : "E · Examinar el reloj";
+  const fallingStatue = room.interactables.find((obj) => obj.type === "pushableStatue" && obj.fallToRoom && checkCollision(reach, obj));
+  if (fallingStatue) {
+    interactionPrompt.textContent = "E · Tirar la estatua";
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const piano = room.interactables.find((obj) => obj.type === "piano" && obj.interactive !== false && checkCollision(reach, obj));
+  if (piano) {
+    interactionPrompt.textContent = STATUS.hasFile("musicNotes")
+      ? "E · Tocar Moonlight Sonata"
+      : "E · Examinar el piano";
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const emblemRecess = room.interactables.find((obj) => obj.type === "emblemRecess" && obj.active && checkCollision(reach, obj));
+  if (emblemRecess) {
+    interactionPrompt.textContent = STATUS.hasItem("mansionEmblem")
+      ? "E · Colocar Emblem"
+      : "Falta un Emblem para abrir el pasaje";
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const fireplaceSocket = room.interactables.find((obj) => obj.type === "fireplaceSocket" && obj.revealed && checkCollision(reach, obj));
+  if (fireplaceSocket) {
+    interactionPrompt.textContent = fireplaceSocket.occupied
+      ? "Gold Emblem colocado"
+      : STATUS.hasItem("goldEmblem") ? "E · Colocar Gold Emblem" : "Falta el Gold Emblem";
     interactionPrompt.hidden = false;
     return;
   }
@@ -769,9 +1209,25 @@ function updateInteractionPrompt() {
     interactionPrompt.hidden = false;
     return;
   }
+  const armorSwitch = room.interactables.find((obj) => obj.type === "armorRoomSwitch" && checkCollision(switchReach, obj));
+  if (armorSwitch) {
+    interactionPrompt.textContent = armorSwitch.activated ? "E · Apagar switch" : "E · Activar switch";
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const armorReset = room.interactables.find((obj) => obj.type === "armorPuzzleReset" && checkCollision(switchReach, obj));
+  if (armorReset) {
+    interactionPrompt.textContent = "E · Reiniciar puzzle";
+    interactionPrompt.hidden = false;
+    return;
+  }
   const itemReach = { x: player.x - 8, y: player.y - 8, w: PLAYER_WIDTH + 16, h: PLAYER_HEIGHT + 16 };
   const item = room.interactables.find((obj) => STATUS.getItemName(obj.type) && obj.revealed !== false && (!obj.requiresDark || !trophyLightsOn) && checkCollision(itemReach, obj));
-  interactionPrompt.textContent = item ? `E · Recoger: ${STATUS.getItemName(item.type)}` : "";
+  interactionPrompt.textContent = item
+    ? item.type === "goldEmblem" && !STATUS.hasItem("mansionEmblem")
+      ? "Primero necesitás el Emblem del Dining Room"
+      : `E · Recoger: ${STATUS.getItemName(item.type)}`
+    : "";
   interactionPrompt.hidden = !item;
 }
 
@@ -854,6 +1310,25 @@ function interactNearby() {
     updateInteractionPrompt();
     return;
   }
+  const tigerStatue = nearbyTigerStatue(room);
+  if (tigerStatue && useTigerStatue(room, tigerStatue)) {
+    updateInteractionPrompt();
+    return;
+  }
+  const chemicalPump = room.interactables.find((obj) => obj.type === "waterPump" && !obj.chemicalUsed && checkCollision(ladderReach, obj));
+  if (chemicalPump && STATUS.consumeItem("chemical")) {
+    chemicalPump.chemicalUsed = true;
+    const monsterPlant = room.interactables.find((obj) => obj.type === "monsterPlant");
+    if (monsterPlant) {
+      monsterPlant.type = "deadMonsterPlant";
+      monsterPlant.solid = false;
+    }
+    const armorKey = room.interactables.find((obj) => obj.type === "armorKey");
+    if (armorKey) armorKey.revealed = true;
+    STATUS.setPickupHint("Vertiste el Chemical en el motor. La planta se marchitó y dejó la Armor Key al descubierto.");
+    updateInteractionPrompt();
+    return;
+  }
   const door = nearbyDoor();
   if (door) {
     if (door.disabled || !ROOMS[door.targetRoom]) {
@@ -862,6 +1337,10 @@ function interactNearby() {
     }
     if (door.stepLadderTarget && !isStepLadderInPlace(ROOMS[currentRoom], door.stepLadderTarget)) {
       STATUS.setPickupHint("Primero tenés que mover la escalerita bajo el conducto de ventilación.");
+      return;
+    }
+    if (door.webRequired && !unlockedLocks.has(door.webRequired)) {
+      STATUS.setPickupHint("La telaraña bloquea el paso. Cortala con el Cuchillo desde Black Tiger Room.");
       return;
     }
     if (door.switchRequired === "armsStorageUnlocked" && !armsStorageUnlocked) {
@@ -918,24 +1397,74 @@ function interactNearby() {
     STATUS.openChest();
     return;
   }
-  const clockPuzzle = room.interactables.find((obj) =>
-    obj.type === "clockPuzzle" && !obj.solved && checkCollision(reach, obj)
-  );
-  if (clockPuzzle) {
-    if (!clockPuzzle.clueRead) {
-      clockPuzzle.clueRead = true;
-      STATUS.setPickupHint("El grabado dice: «La cena se sirve a las seis».");
-    } else {
-      clockPuzzle.hour = clockPuzzle.hour % 12 + 1;
-      if (clockPuzzle.hour === 6) {
-        clockPuzzle.solved = true;
-        const shieldKey = room.interactables.find((obj) => obj.type === "shieldKey");
-        if (shieldKey) shieldKey.revealed = true;
-        STATUS.setPickupHint("El reloj se abre y revela una Shield Key detrás.");
-      } else {
-        STATUS.setPickupHint(`La aguja marca las ${clockPuzzle.hour}.`);
-      }
+  const fallingStatueIndex = room.interactables.findIndex((obj) => obj.type === "pushableStatue" && obj.fallToRoom && checkCollision(reach, obj));
+  if (fallingStatueIndex !== -1) {
+    const statue = room.interactables[fallingStatueIndex];
+    const landingRoom = ROOMS[statue.fallToRoom];
+    room.interactables.splice(fallingStatueIndex, 1);
+    if (landingRoom) {
+      landingRoom.interactables.push(
+        { type: "brokenStatue", x: 145, y: 121, w: 30, h: 22 },
+        { type: statue.reward || "blueJewel", x: 158, y: 137, w: 10, h: 10 }
+      );
     }
+    STATUS.setPickupHint("La estatua cayó al Dining Room 1F y se hizo pedazos. Algo azul cayó entre los restos.");
+    updateInteractionPrompt();
+    return;
+  }
+  const piano = room.interactables.find((obj) => obj.type === "piano" && obj.interactive !== false && checkCollision(reach, obj));
+  if (piano) {
+    if (!STATUS.hasFile("musicNotes")) {
+      STATUS.setPickupHint("No conocés la melodía. Buscá las Music Notes en la estantería.");
+      return;
+    }
+    const hiddenDoor = room.interactables.find((obj) => obj.type === "hiddenDoor");
+    const goldEmblem = room.interactables.find((obj) => obj.type === "goldEmblem");
+    if (hiddenDoor?.solid) {
+      hiddenDoor.solid = false;
+      if (goldEmblem) goldEmblem.revealed = true;
+      STATUS.setPickupHint("Tocaste Moonlight Sonata. Se abrió el pasaje secreto.");
+    } else {
+      STATUS.setPickupHint("Moonlight Sonata resuena en la habitación.");
+    }
+    updateInteractionPrompt();
+    return;
+  }
+  const emblemRecess = room.interactables.find((obj) => obj.type === "emblemRecess" && obj.active && checkCollision(reach, obj));
+  if (emblemRecess) {
+    if (!STATUS.consumeItem("mansionEmblem")) {
+      STATUS.setPickupHint("El hueco necesita el Emblem de la chimenea del Dining Room.");
+      return;
+    }
+    emblemRecess.active = false;
+    const hiddenDoor = room.interactables.find((obj) => obj.type === "hiddenDoor");
+    if (hiddenDoor) hiddenDoor.solid = false;
+    STATUS.setPickupHint("El Emblem encaja y el pasaje vuelve a abrirse.");
+    updateInteractionPrompt();
+    return;
+  }
+  const fireplaceSocket = room.interactables.find((obj) => obj.type === "fireplaceSocket" && obj.revealed && checkCollision(reach, obj));
+  if (fireplaceSocket) {
+    if (fireplaceSocket.occupied) {
+      STATUS.setPickupHint("El Gold Emblem ya está colocado en la chimenea.");
+      return;
+    }
+    if (!STATUS.consumeItem("goldEmblem")) {
+      STATUS.setPickupHint("Necesitás el Gold Emblem que estaba en el pasaje secreto del bar.");
+      return;
+    }
+    fireplaceSocket.occupied = true;
+    const clockPuzzle = room.interactables.find((obj) => obj.type === "clockPuzzle");
+    const shieldKey = room.interactables.find((obj) => obj.type === "shieldKey");
+    if (clockPuzzle) {
+      clockPuzzle.solved = true;
+      clockPuzzle.opened = true;
+      clockPuzzle.openedAt = gameFrame;
+      clockPuzzle.startHour = clockPuzzle.hour;
+      clockPuzzle.hour = 6;
+    }
+    if (shieldKey) shieldKey.revealed = true;
+    STATUS.setPickupHint("El reloj se mueve y abre un hueco. La Shield Key cayó al piso.");
     updateInteractionPrompt();
     return;
   }
@@ -955,6 +1484,24 @@ function interactNearby() {
       armsStorageUnlocked = true;
       STATUS.setPickupHint("La puerta de Arms Storage quedó abierta.");
     }
+    updateInteractionPrompt();
+    return;
+  }
+  const armorSwitch = room.interactables.find((obj) => obj.type === "armorRoomSwitch" && checkCollision(ladderReach, obj));
+  if (armorSwitch) {
+    armorSwitch.activated = !armorSwitch.activated;
+    updateArmorRoomPuzzle(room);
+    STATUS.setPickupHint(armorSwitch.activated
+      ? room.gasActive ? "El switch activó el sistema. ¡Gas! Las rejillas siguen descubiertas."
+        : "El switch activó el sistema con las rejillas cubiertas. El cajón se abrió."
+      : "Apagaste el sistema de ventilación.");
+    updateInteractionPrompt();
+    return;
+  }
+  const armorReset = room.interactables.find((obj) => obj.type === "armorPuzzleReset" && checkCollision(ladderReach, obj));
+  if (armorReset) {
+    resetArmorRoomPuzzle(room);
+    STATUS.setPickupHint("Las estatuas volvieron a su posición inicial y el switch quedó apagado.");
     updateInteractionPrompt();
     return;
   }
@@ -1009,8 +1556,8 @@ function update() {
   // Colisión con objetos
   room.interactables.forEach((obj) => {
     if (obj.solid) {
-      if (checkCollision(playerRectX, obj) && !(obj.type === "stepLadder" && player.dx && pushStepLadder(room, obj, player.dx, 0))) canMoveX = false;
-      if (checkCollision(playerRectY, obj) && !(obj.type === "stepLadder" && player.dy && pushStepLadder(room, obj, 0, player.dy))) canMoveY = false;
+      if (checkCollision(playerRectX, obj) && !(obj.type === "stepLadder" && player.dx && pushStepLadder(room, obj, player.dx, 0)) && !(obj.type === "pushableStatue" && obj.puzzleId === "armorRoom" && player.dx && pushPuzzleStatue(room, obj, player.dx, 0))) canMoveX = false;
+      if (checkCollision(playerRectY, obj) && !(obj.type === "stepLadder" && player.dy && pushStepLadder(room, obj, 0, player.dy)) && !(obj.type === "pushableStatue" && obj.puzzleId === "armorRoom" && player.dy && pushPuzzleStatue(room, obj, 0, player.dy))) canMoveY = false;
     }
   });
 
@@ -1025,7 +1572,9 @@ function update() {
   if (canMoveX) player.x = nextX;
   if (canMoveY) player.y = nextY;
 
+  updateArmorRoomPuzzle(room);
   updateEnemies(room);
+  if (currentRoom === "lessonRoom") updateBarryLessonScene(room);
   if (room.interactables.some((obj) => obj.type === "rollingBoulder")) updateBoulderEncounter(room);
   updateInteractionPrompt();
 }
@@ -1106,6 +1655,11 @@ function drawRoom() {
     ctx.strokeRect(18, 24, WIDTH - 36, HEIGHT - 42);
   }
 
+  if (room.gasActive) {
+    ctx.fillStyle = `rgba(132, 190, 91, ${0.08 + (Math.sin(gameFrame / 24) + 1) * 0.025})`;
+    ctx.fillRect(room.bounds.minX, room.bounds.minY, room.bounds.maxX - room.bounds.minX, room.bounds.maxY - room.bounds.minY);
+  }
+
   // (El resto de la función sigue igual hacia abajo con las puertas e interactables...)
 
   // 2. Dibujar Puertas
@@ -1125,18 +1679,41 @@ function drawRoom() {
 // 3. Dibujar Muebles y Elementos Específicos
   room.interactables.forEach((obj) => {
     if (obj.revealed === false) return;
-    if (obj.type === "staticCharacter") {
+    if (obj.requiresDark && trophyLightsOn) return;
+    if (obj.type === "doorWeb") {
+      ctx.fillStyle = "rgba(26, 24, 21, 0.72)";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.strokeStyle = "#c9c3ac";
+      ctx.lineWidth = 1.5;
+      ctx.globalAlpha = 1 - obj.hits * 0.09;
+      ctx.beginPath();
+      ctx.moveTo(obj.x, obj.y);
+      ctx.lineTo(obj.x + obj.w, obj.y + obj.h);
+      ctx.moveTo(obj.x + obj.w, obj.y);
+      ctx.lineTo(obj.x, obj.y + obj.h);
+      for (let strand = 1; strand < 5; strand++) {
+        const x = obj.x + (obj.w * strand) / 5;
+        ctx.moveTo(x, obj.y);
+        ctx.lineTo(obj.x + obj.w / 2, obj.y + obj.h / 2);
+        ctx.lineTo(x, obj.y + obj.h);
+      }
+      ctx.moveTo(obj.x, obj.y + obj.h / 2);
+      ctx.lineTo(obj.x + obj.w, obj.y + obj.h / 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+
+    } else if (obj.type === "staticCharacter") {
       drawStaticCharacter(obj);
 
     } else if (obj.type === "armorChest") {
       ctx.fillStyle = "#21170f";
       ctx.fillRect(obj.x - 2, obj.y + obj.h - 5, obj.w + 4, 7);
-      ctx.fillStyle = "#4d2b16";
+      ctx.fillStyle = obj.opened ? "#17130e" : "#4d2b16";
       ctx.fillRect(obj.x, obj.y + 10, obj.w, obj.h - 12);
-      ctx.fillStyle = "#74451f";
+      ctx.fillStyle = obj.opened ? "#090907" : "#74451f";
       ctx.fillRect(obj.x + 2, obj.y + 12, obj.w - 4, obj.h - 15);
-      ctx.fillStyle = "#8a642e";
-      ctx.fillRect(obj.x, obj.y + 4, obj.w, 9);
+      ctx.fillStyle = obj.opened ? "#604321" : "#8a642e";
+      ctx.fillRect(obj.x, obj.opened ? obj.y : obj.y + 4, obj.w, 9);
       ctx.fillStyle = "#b08a45";
       ctx.fillRect(obj.x + 2, obj.y + 5, obj.w - 4, 3);
       ctx.fillStyle = "#d3ad53";
@@ -1179,7 +1756,26 @@ function drawRoom() {
       ctx.lineWidth = 1;
       ctx.strokeRect(obj.x + 1, obj.y + 1, obj.w - 2, obj.h - 2);
 
+    } else if (obj.type === "yawnChimney") {
+      ctx.fillStyle = "#29251e";
+      ctx.fillRect(obj.x - 3, obj.y, obj.w + 6, obj.h);
+      ctx.fillStyle = "#11120e";
+      ctx.fillRect(obj.x + 4, obj.y + 5, obj.w - 8, obj.h - 2);
+      ctx.fillStyle = "#65533c";
+      ctx.fillRect(obj.x - 4, obj.y + obj.h - 4, obj.w + 8, 5);
+      ctx.fillStyle = "#42372a";
+      ctx.fillRect(obj.x - 2, obj.y + 2, obj.w + 4, 2);
+      if (obj.opened) {
+        ctx.fillStyle = "#7c3426";
+        ctx.fillRect(obj.x + 5, obj.y + obj.h - 2, obj.w - 10, 2);
+      }
+
     } else if (obj.type === "yawn") {
+      ctx.save();
+      if (obj.facing === -1) {
+        ctx.translate(obj.x * 2 + obj.w, 0);
+        ctx.scale(-1, 1);
+      }
       ctx.lineCap = "square";
       ctx.lineJoin = "round";
       ctx.strokeStyle = "#18251a";
@@ -1204,6 +1800,7 @@ function drawRoom() {
       ctx.fillRect(obj.x + obj.w - 12, obj.y + 8, 3, 3);
       ctx.fillRect(obj.x + obj.w - 5, obj.y + 8, 3, 3);
       ctx.lineCap = "butt";
+      ctx.restore();
 
     } else if (obj.type === "pillar") {
       ctx.fillStyle = "#151713";
@@ -1864,6 +2461,26 @@ function drawRoom() {
       ctx.fillRect(obj.x + 9, obj.y + 3, obj.w - 18, 6);
       ctx.fillStyle = "#d5bc45";
       ctx.fillRect(obj.x + 12, obj.y + 11, 4, 5);
+    } else if (obj.type === "brokenStatue") {
+      ctx.fillStyle = "#20211d";
+      ctx.fillRect(obj.x + 2, obj.y + 15, obj.w - 4, 5);
+      ctx.fillStyle = "#777b70";
+      ctx.fillRect(obj.x + 1, obj.y + 10, 10, 7);
+      ctx.fillRect(obj.x + 13, obj.y + 7, 8, 11);
+      ctx.fillRect(obj.x + 22, obj.y + 12, 7, 6);
+      ctx.fillStyle = "#a5a99a";
+      ctx.fillRect(obj.x + 5, obj.y + 8, 5, 4);
+      ctx.fillRect(obj.x + 16, obj.y + 3, 5, 6);
+    } else if (obj.type === "blueJewel" || obj.type === "redJewel") {
+      const jewelColor = obj.type === "blueJewel" ? "#26c6e8" : "#dc143c";
+      const jewelHighlight = obj.type === "blueJewel" ? "#b8f5ff" : "#ffb0bd";
+      ctx.fillStyle = "#16120f";
+      ctx.fillRect(obj.x + 2, obj.y, obj.w - 4, obj.h);
+      ctx.fillRect(obj.x, obj.y + 2, obj.w, obj.h - 4);
+      ctx.fillStyle = jewelColor;
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+      ctx.fillStyle = jewelHighlight;
+      ctx.fillRect(obj.x + 3, obj.y + 2, 2, 2);
     } else if (obj.type === "stairsHorizontal") {
       // Escalera con peldaños HORIZONTALES (para Main Hall)
       ctx.fillStyle = PALETTE.stairs;
@@ -1901,6 +2518,17 @@ function drawRoom() {
         ctx.stroke();
       }
 
+      } else if (obj.type === "deadMonsterPlant") {
+      ctx.fillStyle = "#493b25";
+      ctx.fillRect(obj.x + 10, obj.y, 15, obj.h);
+      ctx.fillStyle = "#70504a";
+      ctx.fillRect(obj.x + 5, obj.y + 25, 25, 30);
+      ctx.fillStyle = "#62543b";
+      ctx.fillRect(obj.x, obj.y + 10, 10, 4);
+      ctx.fillRect(obj.x + 25, obj.y + 5, 10, 4);
+      ctx.fillRect(obj.x - 5, obj.y + 50, 12, 5);
+      ctx.fillRect(obj.x + 28, obj.y + 60, 12, 5);
+
       } else if (obj.type === "monsterPlant") {
       // Planta Monstruo (Planta 42 / Tentáculos)
       ctx.fillStyle = "#1e4d2b"; // Base tallo verde oscuro
@@ -1927,7 +2555,7 @@ function drawRoom() {
       ctx.fillRect(obj.x + 3, obj.y + 3, obj.w - 6, obj.h - 6);
       
       // Tapa del depósito / Filtro químico (Verde radioactivo)
-      ctx.fillStyle = "#32cd32";
+      ctx.fillStyle = obj.chemicalUsed ? "#b5bd68" : "#32cd32";
       ctx.fillRect(obj.x + 6, obj.y + 6, 12, 8);
       ctx.fillStyle = "#d89a42"; // Válvula de bronce
       ctx.fillRect(obj.x + obj.w - 12, obj.y + 8, 8, 8);
@@ -2272,12 +2900,15 @@ function drawRoom() {
     ctx.fillStyle = "#ff3300"; // Brasas rojas
     ctx.fillRect(obj.x + 4, obj.y + 5, obj.w - 8, 4);
 
-  } else if (obj.type === "chemicalItem") {
-    // Bidón químico rojo con amarillo
-    ctx.fillStyle = "#ff0000";
-    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-    ctx.fillStyle = "#ffff00";
-    ctx.fillRect(obj.x + 1, obj.y + 2, obj.w - 2, 4);
+  } else if (obj.type === "chemicalItem" || obj.type === "chemical") {
+    ctx.fillStyle = "#171b16";
+    ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
+    ctx.fillStyle = "#b7c76a";
+    ctx.fillRect(obj.x + 1, obj.y + 2, obj.w - 2, obj.h - 3);
+    ctx.fillStyle = "#e7dfb0";
+    ctx.fillRect(obj.x + 2, obj.y + 4, obj.w - 4, 3);
+    ctx.fillStyle = "#526346";
+    ctx.fillRect(obj.x + 3, obj.y, obj.w - 6, 3);
 
     } else if (obj.type === "shower") {
     // Ducha compacta
@@ -2665,6 +3296,24 @@ function drawRoom() {
         ctx.fillRect(obj.x + 19, obj.y + 4, 9, 9);
       }
 
+    } else if (obj.type === "armorRoomSwitch") {
+      ctx.fillStyle = "#1b211f";
+      ctx.fillRect(obj.x - 2, obj.y - 2, obj.w + 4, obj.h + 4);
+      ctx.fillStyle = "#69736c";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = obj.activated ? "#4bd16a" : "#bd342b";
+      ctx.fillRect(obj.x + 3, obj.y + 3, obj.w - 6, 4);
+      ctx.fillStyle = "#272e2b";
+      ctx.fillRect(obj.x + obj.w / 2 - 2, obj.y + 9, 4, 4);
+
+    } else if (obj.type === "armorPuzzleReset") {
+      ctx.fillStyle = "#21170f";
+      ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
+      ctx.fillStyle = "#d5bc45";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#745a22";
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+
     } else if (obj.type === "trophySwitch") {
       ctx.fillStyle = "#21150d";
       ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
@@ -2937,8 +3586,67 @@ function drawRoom() {
       ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
       ctx.fillStyle = PALETTE.fire;
       ctx.fillRect(obj.x + 2, obj.y + 22, 3, 16);
-      ctx.fillStyle = PALETTE.emblem;
-      ctx.fillRect(obj.x + 1, obj.y + 8, 4, 6);
+
+    } else if (obj.type === "fireplaceSocket") {
+      ctx.fillStyle = "#24150d";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      if (obj.occupied) {
+        ctx.fillStyle = "#9c6b1e";
+        ctx.fillRect(obj.x + 1, obj.y + 1, obj.w - 2, obj.h - 2);
+        ctx.fillStyle = "#f3cb55";
+        ctx.fillRect(obj.x + 3, obj.y + 3, obj.w - 6, obj.h - 6);
+        ctx.fillStyle = "#d6a62f";
+        ctx.fillRect(obj.x + 4, obj.y + 5, obj.w - 8, 2);
+      } else {
+        ctx.strokeStyle = "#d09a38";
+        ctx.strokeRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+      }
+
+    } else if (obj.type === "bloodStain") {
+      ctx.fillStyle = "rgba(68, 5, 8, 0.78)";
+      ctx.fillRect(obj.x + 3, obj.y + 2, obj.w - 6, obj.h - 4);
+      ctx.fillRect(obj.x + 1, obj.y + 4, obj.w - 2, obj.h - 7);
+      ctx.fillStyle = "rgba(112, 12, 14, 0.72)";
+      ctx.fillRect(obj.x + 5, obj.y + 3, obj.w - 10, 2);
+      ctx.fillRect(obj.x + 4, obj.y + 6, 5, 1);
+
+    } else if (obj.type === "mansionEmblem") {
+      ctx.fillStyle = "#4c2a0e";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#c28b2d";
+      ctx.fillRect(obj.x + 2, obj.y + 1, obj.w - 4, obj.h - 2);
+      ctx.fillStyle = "#f0d274";
+      ctx.fillRect(obj.x + 3, obj.y + 3, obj.w - 6, obj.h - 6);
+      ctx.fillStyle = "#80551c";
+      ctx.fillRect(obj.x + 4, obj.y + 5, obj.w - 8, 2);
+      ctx.fillRect(obj.x + 5, obj.y + 4, 2, obj.h - 8);
+
+    } else if (obj.type === "goldEmblem") {
+      ctx.fillStyle = "#7a4c12";
+      ctx.fillRect(obj.x, obj.y + 1, obj.w, obj.h - 2);
+      ctx.fillStyle = "#d8a632";
+      ctx.fillRect(obj.x + 2, obj.y, obj.w - 4, obj.h);
+      ctx.fillStyle = "#ffe16a";
+      ctx.fillRect(obj.x + 4, obj.y + 2, obj.w - 8, obj.h - 4);
+      ctx.fillStyle = "#a96d19";
+      ctx.fillRect(obj.x + 5, obj.y + 4, 2, obj.h - 8);
+      ctx.fillRect(obj.x + 3, obj.y + 5, obj.w - 6, 2);
+
+    } else if (obj.type === "musicNotes") {
+      ctx.fillStyle = "#ece5c9";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.strokeStyle = "#665b42";
+      ctx.lineWidth = 1;
+      for (let row = 2; row < obj.h - 1; row += 2) {
+        ctx.beginPath();
+        ctx.moveTo(obj.x + 2, obj.y + row);
+        ctx.lineTo(obj.x + obj.w - 2, obj.y + row);
+        ctx.stroke();
+      }
+      ctx.fillStyle = "#24201a";
+      ctx.fillRect(obj.x + 4, obj.y + 3, 2, 2);
+      ctx.fillRect(obj.x + 8, obj.y + 5, 2, 2);
+
     } else if (obj.type === "clockPuzzle") {
       ctx.fillStyle = "#241309";
       ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
@@ -2952,7 +3660,10 @@ function drawRoom() {
       ctx.fillRect(obj.x + 9, obj.y + 7, obj.w - 18, 15);
       const centerX = obj.x + obj.w / 2;
       const centerY = obj.y + 14;
-      const hourAngle = ((obj.hour % 12) / 12) * Math.PI * 2 - Math.PI / 2;
+      const startAngle = (((obj.startHour ?? obj.hour) % 12) / 12) * Math.PI * 2 - Math.PI / 2;
+      const progress = obj.opened ? Math.min(1, (gameFrame - obj.openedAt) / 48) : 0;
+      const targetAngle = (6 / 12) * Math.PI * 2 - Math.PI / 2;
+      const hourAngle = obj.opened ? startAngle + (targetAngle - startAngle) * progress : startAngle;
       ctx.strokeStyle = "#e5d9b4";
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -2965,8 +3676,17 @@ function drawRoom() {
       ctx.moveTo(centerX, centerY);
       ctx.lineTo(centerX, centerY - 8);
       ctx.stroke();
+      if (obj.opened) {
+        ctx.fillStyle = "#090705";
+        ctx.fillRect(obj.x + 8, obj.y + 27, obj.w - 16, 13);
+        ctx.strokeStyle = "#b48a3a";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(obj.x + 8, obj.y + 27, obj.w - 16, 13);
+      } else {
+        ctx.fillStyle = "#d7ad4d";
+        ctx.fillRect(obj.x + 13, obj.y + 29, 4, 8);
+      }
       ctx.fillStyle = "#d7ad4d";
-      ctx.fillRect(obj.x + 13, obj.y + 29, 4, 8);
       ctx.fillRect(obj.x + 7, obj.y + obj.h - 5, obj.w - 14, 3);
 
     } else if (obj.type === "clock") {
@@ -3569,12 +4289,28 @@ function drawRoom() {
       ctx.fillRect(obj.x + 53, obj.y + 8, 6, 1);
 
     } else if (obj.type === "hiddenDoor") {
-      // Panel/Puerta secreta de madera en la pared superior
-      ctx.fillStyle = "#221108";
+      if (obj.solid) {
+        ctx.fillStyle = "#221108";
+        ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+        ctx.strokeStyle = PALETTE.trim;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(obj.x, obj.y, obj.w, obj.h);
+      } else {
+        ctx.fillStyle = "#090807";
+        ctx.fillRect(obj.x, obj.y - 2, obj.w, obj.h + 4);
+        ctx.strokeStyle = "#8a6337";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(obj.x + 1, obj.y - 1, obj.w - 2, obj.h + 2);
+      }
+
+    } else if (obj.type === "emblemRecess") {
+      ctx.fillStyle = "#302014";
       ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-      ctx.strokeStyle = PALETTE.trim;
+      ctx.strokeStyle = obj.active ? "#dfb64a" : "#79552d";
       ctx.lineWidth = 1;
-      ctx.strokeRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.strokeRect(obj.x + 1, obj.y + 1, obj.w - 2, obj.h - 2);
+      ctx.fillStyle = "#0d0b08";
+      ctx.fillRect(obj.x + 3, obj.y + 3, obj.w - 6, obj.h - 6);
 
     } else if (obj.type === "emblem") {
       // Emblema en la pared izquierda del pasillo secreto

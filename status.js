@@ -12,15 +12,19 @@ const STATUS_ITEMS = {
   helmetKey: "Helmet Key",
   shieldKey: "Shield Key",
   lockpick: "Lockpick",
+  rope: "Rope",
   controlRoomKey: "Control Room Key",
   powerRoomKey: "Power Room Key",
   masterKey: "Master Key",
+  mansionEmblem: "Emblem",
+  goldEmblem: "Gold Emblem",
   combatKnife: "Cuchillo de supervivencia",
   shotgunWall: "Escopeta",
-  colt: "Colt",
+  colt: "Colt Python",
   grenadeLauncher: "Lanzagranadas",
   bazooka: "Bazooka",
   securitySystem: "Security System",
+  musicNotes: "Music Notes",
   slides: "Slides",
   fax: "Fax",
   room002Key: "002 Key",
@@ -30,6 +34,7 @@ const STATUS_ITEMS = {
   doomBook1: "Libro de la perdición I",
   doomBook2: "Doom Book 2",
   redJewel: "Joya roja",
+  blueJewel: "Joya azul",
   orders: "Orders",
   passNumber: "Pass Number",
   carBattery: "Batería de auto",
@@ -52,10 +57,11 @@ const STATUS_ITEMS = {
   researcherWill: "Researcher's Will",
   researcherLetter: "Researcher's Letter",
   plant42Report: "Plant 42 Report",
-  vJoltReport: "V-Jolt Report"
+  vJoltReport: "V-Jolt Report",
+  chemical: "Chemical (Herbicide)"
 };
-const STATUS_FILES = new Set(["securitySystem", "fax", "scrapbook", "researcherWill", "researcherLetter", "plant42Report", "vJoltReport", "orders", "passNumber"]);
-const STATUS_KEY_ITEMS = new Set(["lockpick"]);
+const STATUS_FILES = new Set(["securitySystem", "musicNotes", "fax", "scrapbook", "researcherWill", "researcherLetter", "plant42Report", "vJoltReport", "orders", "passNumber"]);
+const STATUS_KEY_ITEMS = new Set(["lockpick", "rope"]);
 const AMMO_PICKUP_QUANTITIES = {
   handgunAmmo: 15,
   shotgunShells: 7,
@@ -140,7 +146,7 @@ const STATUS = (() => {
         slot.appendChild(label);
         const herb = ["Hierba verde", "Hierba roja", "Hierba azul", "Mezcla verde ×2"].includes(name);
         const usable = ["Hierba verde", "Hierba azul", "Mezcla verde ×2", "Mezcla verde ×3", "Mezcla verde y roja", "Mezcla verde y azul"].includes(name);
-        const weaponItem = ["Berreta", "Cuchillo de supervivencia", "Escopeta", "Colt", "Lanzagranadas", "Bazooka", "Rocket Launcher"].includes(name);
+        const weaponItem = ["Berreta", "Cuchillo de supervivencia", "Escopeta", "Colt Python", "Lanzagranadas", "Bazooka", "Rocket Launcher"].includes(name);
         const launcherAmmo = ["Flame Rounds", "Acid Rounds", "Explosive Rounds"].includes(name);
         if (usable || herb || weaponItem || launcherAmmo) {
           const actions = document.createElement("span");
