@@ -64,6 +64,108 @@ const MANSION_FLOOR_MAPS = {
       smallLibrary: [67.7, 25.3],
       eastStairway2F: [73.3, 20.8]
     }
+  },
+  "B1": {
+    title: "Mansion Spencer · B1",
+    image: "Assets/mansion-b1-map.png",
+    markers: {
+      undergroundPassage1: [83.7, 37.8],
+      undergroundPassage2: [38.1, 37.8],
+      kitchen: [14.5, 61.5],
+      elevatorStairwayB1: [11.8, 37.2]
+    }
+  },
+  "Courtyard": {
+    title: "Courtyard",
+    image: "Assets/courtyard-map.png",
+    markers: {
+      courtyardGarden: [87.7, 58.6],
+      waterGate: [87.1, 40.2],
+      falls: [56.4, 52.5],
+      guardhouseGate: [22.7, 24.2],
+      fountain: [42.6, 78.8],
+      heliport: [17.2, 66.9]
+    }
+  },
+  "Underground": {
+    title: "Underground",
+    image: "Assets/underground-map.png",
+    markers: {
+      undergroundEntry: [51.0, 17.6],
+      branchedPassage: [69.2, 26.1],
+      generatorRoom: [81.2, 13.9],
+      enricoRoom: [82.3, 66.4],
+      boulderPassage: [41.0, 36.6],
+      blackTigerRoom: [48.4, 62.7],
+      straightPassage: [50.1, 72.2],
+      undergroundSaveRoom: [66.1, 62.4],
+      boulderPassage2: [28.2, 72.2],
+      itemChamber: [10.5, 70.2]
+    }
+  },
+  "Guardhouse 1F": {
+    title: "Guardhouse · 1F",
+    image: "Assets/guardhouse-1f-map.png",
+    markers: {
+      guardhouseEntry: [7.4, 54.9],
+      guardhouseSaveRoom: [17.2, 70.5],
+      room001Bathroom: [15.7, 40.4],
+      room001: [18.1, 21.8],
+      recRoom: [37.2, 50.8],
+      centralCorridorGH: [47.0, 53.4],
+      room002Bathroom: [54.7, 19.7],
+      room002: [57.9, 35.2],
+      drugStoreroom: [53.0, 50.3],
+      beehivePassage: [61.0, 67.4],
+      room003Bathroom: [71.7, 47.2],
+      room003: [76.8, 58.5],
+      plant42Room: [89.4, 75.1]
+    }
+  },
+  "Laboratory B1": {
+    title: "Laboratory · B1",
+    image: "Assets/laboratory-b1-map.png",
+    markers: {
+      laboratoryEntry: [87.5, 79.3],
+      emergencyTunnel: [49.5, 79.3]
+    }
+  },
+  "Laboratory B2": {
+    title: "Laboratory · B2",
+    image: "Assets/laboratory-b2-map.png",
+    markers: {
+      ladderRoom: [82.2, 47.7],
+      stairway: [59.3, 90.7],
+      visualDataRoom: [25.2, 58.1]
+    }
+  },
+  "Laboratory B3": {
+    title: "Laboratory · B3",
+    image: "Assets/laboratory-b3-map.png",
+    markers: {
+      oRoom: [45.1, 34.7],
+      morgue: [53.7, 25.5],
+      smallLab: [54.1, 11.9],
+      xRayRoom: [7.0, 20.4],
+      privateCorridor: [20.5, 19.1],
+      privateRoom: [29.1, 12.2],
+      cellRoom: [14.3, 11.9],
+      cellEntry: [6.6, 11.9],
+      operatingRoom: [75.8, 27.1],
+      elevatorEntry: [85.7, 35.9],
+      labSaveRoom: [95.1, 31.9],
+      powerMaze1: [79.9, 57.1],
+      powerMaze2: [91.0, 77.8],
+      powerRoom: [92.6, 93.9]
+    }
+  },
+  "Laboratory B4": {
+    title: "Laboratory · B4",
+    image: "Assets/laboratory-b4-map.png",
+    markers: {
+      mainLabEntryB4: [46.3, 9.3],
+      mainLab: [48.1, 28.4]
+    }
   }
 };
 
