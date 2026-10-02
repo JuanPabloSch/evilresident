@@ -292,76 +292,52 @@ canvas {
   gap: 5px;
 }
 
-.legend-room {
-  width: 9px;
-  height: 9px;
-  border: 1px solid #6d8c68;
-  background: #164b17;
-}
-
-.legend-room.visited {
-  background: #218c27;
-}
-
-.legend-room.current {
-  border-color: #f2c34e;
-  background: #b18422;
+.legend-location {
+  width: 8px;
+  height: 8px;
+  border: 1px solid #fff1b7;
+  border-radius: 50%;
+  background: #f2c34e;
 }
 
 .map-frame {
+  position: relative;
   border: 1px solid #484b40;
   background: #050605;
-  padding: 8px;
+  overflow: hidden;
 }
 
-.map-frame svg {
+.map-image {
   display: block;
   width: 100%;
   height: auto;
 }
 
-.plan-floor {
-  fill: #007500;
+.map-location {
+  position: absolute;
+  z-index: 1;
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  transform: translate(-50%, -50%);
+  border: 2px solid #fff1b7;
+  border-radius: 50%;
+  background: #f2c34e;
+  box-shadow: 0 0 0 3px rgba(242, 195, 78, 0.28), 0 0 12px #f2c34e;
+  pointer-events: none;
 }
 
-.plan-excluded {
-  fill: #050605;
-  stroke: none;
+.map-location[hidden] {
+  display: none;
 }
 
-.map-marker circle {
-  fill: transparent;
-  stroke: transparent;
-}
-
-.map-marker.visited circle {
-  fill: #62d45a;
-  stroke: #102110;
-  stroke-width: 1;
-}
-
-.map-marker.current circle {
-  fill: #f2c34e;
-  stroke: #fff1b7;
-  stroke-width: 2;
-  r: 4px;
-}
-
-.plan-walls {
-  fill: none;
-  stroke: #999c8e;
-  stroke-width: 1.4;
-  stroke-linecap: square;
-  stroke-linejoin: miter;
-}
-
-.plan-door {
-  fill: #d89a25;
-}
-
-.plan-stair {
-  stroke: #09110a;
-  stroke-width: 1.5;
+.map-unavailable {
+  margin: 0;
+  padding: 28px 12px;
+  border: 1px solid #484b40;
+  color: #a9aa9d;
+  font-size: 11px;
+  text-align: center;
 }
 
 .map-toggle {

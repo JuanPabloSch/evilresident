@@ -20,6 +20,7 @@ const STATUS_ITEMS = {
   goldEmblem: "Gold Emblem",
   combatKnife: "Cuchillo de supervivencia",
   shotgunWall: "Escopeta",
+  brokenShotgun: "Escopeta rota",
   colt: "Colt Python",
   grenadeLauncher: "Lanzagranadas",
   bazooka: "Bazooka",
@@ -33,6 +34,8 @@ const STATUS_ITEMS = {
   hexCrank: "Hex Crank",
   doomBook1: "Libro de la perdición I",
   doomBook2: "Doom Book 2",
+  eagleMedal: "Eagle Medal",
+  wolfMedal: "Wolf Medal",
   redJewel: "Joya roja",
   blueJewel: "Joya azul",
   orders: "Orders",
@@ -61,7 +64,7 @@ const STATUS_ITEMS = {
   chemical: "Chemical (Herbicide)"
 };
 const STATUS_FILES = new Set(["securitySystem", "musicNotes", "fax", "scrapbook", "researcherWill", "researcherLetter", "plant42Report", "vJoltReport", "orders", "passNumber"]);
-const STATUS_KEY_ITEMS = new Set(["lockpick", "rope"]);
+const STATUS_KEY_ITEMS = new Set(["lockpick", "rope", "brokenShotgun", "eagleMedal", "wolfMedal"]);
 const AMMO_PICKUP_QUANTITIES = {
   handgunAmmo: 15,
   shotgunShells: 7,
@@ -145,7 +148,7 @@ const STATUS = (() => {
         label.textContent = `${name} ×${count}`;
         slot.appendChild(label);
         const herb = ["Hierba verde", "Hierba roja", "Hierba azul", "Mezcla verde ×2"].includes(name);
-        const usable = ["Hierba verde", "Hierba azul", "Mezcla verde ×2", "Mezcla verde ×3", "Mezcla verde y roja", "Mezcla verde y azul"].includes(name);
+        const usable = ["Hierba verde", "Hierba azul", "Mezcla verde ×2", "Mezcla verde ×3", "Mezcla verde y roja", "Mezcla verde y azul", STATUS_ITEMS.doomBook1, STATUS_ITEMS.doomBook2].includes(name);
         const weaponItem = ["Berreta", "Cuchillo de supervivencia", "Escopeta", "Colt Python", "Lanzagranadas", "Bazooka", "Rocket Launcher"].includes(name);
         const launcherAmmo = ["Flame Rounds", "Acid Rounds", "Explosive Rounds"].includes(name);
         if (usable || herb || weaponItem || launcherAmmo) {
@@ -205,6 +208,19 @@ const STATUS = (() => {
   }
 
   function useItem(name) {
+    const bookMedal = name === STATUS_ITEMS.doomBook1 ? "eagleMedal"
+      : name === STATUS_ITEMS.doomBook2 ? "wolfMedal" : null;
+    if (bookMedal) {
+      if (!consumeItem(name)) return;
+      keyItems.add(bookMedal);
+      renderKeyItems();
+      renderInventory();
+      hint.textContent = bookMedal === "eagleMedal"
+        ? "Abriste el libro y encontraste la Eagle Medal. El Doom Book 1 se descartó."
+        : "Abriste el libro y encontraste la Wolf Medal. El Doom Book 2 se descartó.";
+      if (!chestPanel.hidden) renderChest();
+      return;
+    }
     const effects = {
       "Hierba verde": { heal: 33 },
       "Hierba azul": { curePoison: true },
@@ -444,6 +460,10 @@ const STATUS = (() => {
     getItemCount(type) { return keyItems.has(type) ? 1 : items.get(STATUS_ITEMS[type]) || 0; },
     consumeItem(type, count = 1) {
       const name = STATUS_ITEMS[type];
+      if (count === 1 && keyItems.delete(type)) {
+        renderKeyItems();
+        return true;
+      }
       if (!name || !consumeItem(name, count)) return false;
       renderInventory();
       if (!chestPanel.hidden) renderChest();

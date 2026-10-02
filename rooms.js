@@ -615,7 +615,7 @@ outsideBoiler: {
     ],
 
     interactables: [
-      // (Acá podemos sumar la estatua/mecanismo cuando hagamos la lógica de la trampa)
+      { type: "ceilingTrap", x: 106, y: 48, w: 68, h: 18, revealed: false }
     ]
   },
   livingRoom: {
@@ -641,8 +641,10 @@ outsideBoiler: {
       { type: "bench", x: 85, y: 115, w: 22, h: 18, solid: true },
 
       // 's' Escopeta colgada en la pared derecha (recolectable)
-      { type: "shotgunWall", x: 212, y: 80, w: 6, h: 20 }
-    ]
+      { type: "shotgunMount", x: 212, y: 80, w: 6, h: 20, hasShotgun: true }
+    ],
+    shotgunTaken: false,
+    brokenShotgunPlaced: false
   },
   backPassage: {
     name: "Back Passage",
@@ -790,7 +792,7 @@ outsideBoiler: {
 
     // Pared central horizontal que divide la galería
     walls: [
-      { x: 40, y: 95, w: 130, h: 8 }
+      { x: 40, y: 95, w: 165, h: 8 }
     ],
 
     doors: [
@@ -804,15 +806,21 @@ outsideBoiler: {
       { type: "crow", x: 110, y: 145, w: 10, h: 10 },
       { type: "crow", x: 180, y: 145, w: 10, h: 10 },
 
-      // 'c' Cuadros en el lado norte de la pared divisoria (de izquierda a derecha)
-      { type: "painting", id: "p1", x: 75, y: 86, w: 14, h: 8, title: "Recién nacido" },
-      { type: "painting", id: "p2", x: 120, y: 86, w: 14, h: 8, title: "Niño feliz" },
-      { type: "painting", id: "p3", x: 160, y: 86, w: 14, h: 8, title: "Joven audaz" },
-
-      // 'c' Cuadros en el lado sur / paredes inferiores
-      { type: "painting", id: "p4", x: 48, y: 125, w: 8, h: 14, title: "Hombre maduro" },
-      { type: "painting", id: "p5", x: 100, y: 108, w: 14, h: 8, title: "Anciano sabio" },
-      { type: "painting", id: "p6", x: 145, y: 108, w: 14, h: 8, title: "Cuadro final / Cuadro del bebé" }
+      { type: "painting", id: "p4", x: 45, y: 78, w: 14, h: 18, title: "A Young Man" },
+      { type: "painting", id: "p1", x: 68, y: 78, w: 14, h: 18, title: "A Newborn Baby" },
+      { type: "painting", id: "p6", x: 91, y: 78, w: 14, h: 18, title: "An Old Man" },
+      { type: "painting", id: "p3", x: 114, y: 78, w: 14, h: 18, title: "A Lively Boy" },
+      { type: "painting", id: "p7", x: 137, y: 78, w: 14, h: 18, title: "The End of Life" },
+      { type: "painting", id: "p2", x: 160, y: 78, w: 14, h: 18, title: "An Infant" },
+      { type: "painting", id: "p5", x: 183, y: 78, w: 14, h: 18, title: "A Middle-aged Man" },
+      { type: "paintingSwitch", paintingId: "p4", x: 48, y: 105, w: 8, h: 6, order: 3 },
+      { type: "paintingSwitch", paintingId: "p1", x: 71, y: 105, w: 8, h: 6, order: 0 },
+      { type: "paintingSwitch", paintingId: "p6", x: 94, y: 105, w: 8, h: 6, order: 5 },
+      { type: "paintingSwitch", paintingId: "p3", x: 117, y: 105, w: 8, h: 6, order: 2 },
+      { type: "paintingSwitch", paintingId: "p7", x: 140, y: 105, w: 8, h: 6, order: 6 },
+      { type: "paintingSwitch", paintingId: "p2", x: 163, y: 105, w: 8, h: 6, order: 1 },
+      { type: "paintingSwitch", paintingId: "p5", x: 186, y: 105, w: 8, h: 6, order: 4 },
+      { type: "starCrest", x: 139, y: 116, w: 12, h: 12, revealed: false }
     ]
   },
   roofedPassage: {
@@ -842,7 +850,9 @@ outsideBoiler: {
 
     interactables: [
       // 'c' Relieve en la pared para insertar las 4 crestas (Crests Wall Relief)
-      { type: "crestRelief", x: 130, y: 30, w: 22, h: 8, solid: true }
+      { type: "crestRelief", x: 130, y: 30, w: 22, h: 8, solid: true },
+      { type: "zombieDog", x: 44, y: 112, w: 12, h: 12 },
+      { type: "zombieDog", x: 130, y: 43, w: 12, h: 12 }
     ]
   },
   storeroom: {
@@ -862,14 +872,14 @@ outsideBoiler: {
     ],
 
     interactables: [
-      // Escalera de mano / Peldaños
-      { type: "ladder", x: 80, y: 45, w: 16, h: 20, solid: true },
+      // Escalerita movible para alcanzar el estante
+      { type: "stepLadder", x: 66, y: 80, w: 18, h: 20, solid: true },
 
       // Estante con la Manivela (Square Crank)
       { type: "shelfWithCrank", x: 110, y: 42, w: 25, h: 12, solid: true },
 
       // 'crank' Objeto recolectable: Square Crank (sobre el estante)
-      { type: "crankItem", x: 118, y: 44, w: 10, h: 8 },
+      { type: "crankItem", x: 118, y: 44, w: 10, h: 8, requiresLadder: { x: 90, y: 58, tolerance: 10 } },
 
       // Barriles de madera en la esquina inferior izquierda
       { type: "barrel", x: 45, y: 115, w: 12, h: 12, solid: true },
@@ -897,10 +907,11 @@ outsideBoiler: {
     doors: [
       { id: "door1ToGardenShed", x: 258, y: 177, w: 24, h: 8, targetRoom: "storeroom", spawnX: 145, spawnY: 85, crestsRequired: ["sunCrest", "moonCrest", "starCrest", "windCrest"], lockId: "garden-storeroom-crests" },
       { id: "door2ToWaterGate", x: 218, y: 10, w: 26, h: 8, targetRoom: "waterGate", spawnX: 131, spawnY: 129 },
-      { id: "elevatorToFalls", x: 33, y: 108, w: 28, h: 8, targetRoom: "falls", spawnX: 145, spawnY: 145, keyRequired: "carBattery", lockId: "courtyard-elevator" }
+      { id: "elevatorToFalls", x: 33, y: 108, w: 28, h: 8, targetRoom: "falls", spawnX: 145, spawnY: 145, disabled: true, blockedMessage: "El ascensor necesita una batería." }
     ],
     interactables: [
       { type: "elevator", x: 34, y: 112, w: 26, h: 28, solid: true },
+      { type: "batterySocket", x: 62, y: 115, w: 18, h: 20, solid: false, elevatorDoorId: "elevatorToFalls", pairedRoomId: "falls", pairedDoorId: "door2ToCourtyardGarden", batteryInstalled: false },
       { type: "greenHerb", x: 220, y: 26, w: 10, h: 10 },
       { type: "greenHerb", x: 270, y: 26, w: 10, h: 10 },
       { type: "blueHerb", x: 160, y: 126, w: 10, h: 10 },
@@ -935,14 +946,16 @@ outsideBoiler: {
     ],
     constrainToWalkablePolygon: true,
     doors: [
-      { id: "door1ToCourtyardGarden", x: 210, y: 174, w: 24, h: 8, targetRoom: "courtyardGarden", spawnX: 153, spawnY: 97 },
+      { id: "door1ToCourtyardGarden", x: 170, y: 174, w: 24, h: 8, targetRoom: "courtyardGarden", spawnX: 153, spawnY: 97 },
       { id: "elevator2ToFalls", x: 28, y: 55, w: 8, h: 24, targetRoom: "falls", spawnX: 150, spawnY: 70 }
     ],
     interactables: [
       { type: "elevator", x: 31, y: 53, w: 27, h: 27, solid: true },
-      { type: "waterArea", x: 128, y: 54, w: 73, h: 72, solid: true },
-      { type: "crankSocket", x: 76, y: 111, w: 23, h: 19, solid: true, crankType: "crankItem" }
-    ]
+      { type: "waterArea", x: 128, y: 54, w: 110, h: 72, solid: true },
+      { type: "waterBridge", x: 174, y: 54, w: 18, h: 72, active: false },
+      { type: "crankSocket", x: 76, y: 111, w: 23, h: 19, solid: true, crankType: "crankItem", crankInserted: false }
+    ],
+    bridgeActive: false
   },
   falls: {
     name: "Falls",
@@ -961,14 +974,15 @@ outsideBoiler: {
     constrainToWalkablePolygon: true,
     doors: [
       { id: "elevator1ToWaterGate", x: 244, y: 10, w: 34, h: 8, targetRoom: "waterGate", spawnX: 131, spawnY: 129 },
-      { id: "door2ToCourtyardGarden", x: 201, y: 143, w: 8, h: 28, targetRoom: "courtyardGarden", spawnX: 153, spawnY: 97, disabled: true, blockedMessage: "Esta puerta todavía no está habilitada." },
-      { id: "door3ToUndergroundEntry", x: 137, y: 39, w: 30, h: 24, targetRoom: "undergroundEntry", spawnX: 254, spawnY: 138 },
+      { id: "door2ToCourtyardGarden", x: 201, y: 143, w: 8, h: 28, targetRoom: "courtyardGarden", spawnX: 153, spawnY: 97, disabled: true, blockedMessage: "El ascensor del Courtyard Garden todavía no tiene energía." },
+      { id: "door3ToUndergroundEntry", x: 137, y: 39, w: 30, h: 24, targetRoom: "undergroundEntry", spawnX: 254, spawnY: 138, blockedMessage: "La catarata bloquea el acceso. Replegá el puente en Water Gate." },
       { id: "door4ToGuardhouseGate", x: 28, y: 48, w: 8, h: 28, targetRoom: "guardhouseGate", spawnX: 260, spawnY: 150 }
     ],
     interactables: [
       { type: "elevator", x: 247, y: 13, w: 32, h: 24, solid: true },
       { type: "waterPond", x: 96, y: 18, w: 112, h: 58 },
       { type: "stairsVertical", x: 136, y: 34, w: 32, h: 34 },
+      { type: "waterfallBarrier", x: 134, y: 34, w: 36, h: 34, revealed: false, solid: false },
       { type: "zombieDog", x: 68, y: 45, w: 12, h: 12 },
       { type: "zombieDog", x: 153, y: 130, w: 12, h: 12 }
     ]
@@ -1181,7 +1195,7 @@ outsideBoiler: {
     corridorPoly: [{ x: 20, y: 10, w: 280, h: 180 }],
     doors: [
       { id: "elevatorToBoulderPassage2", x: 20, y: 144, w: 8, h: 28, targetRoom: "boulderPassage2", spawnX: 245, spawnY: 160 },
-      { id: "stairsToLaboratoryEntry", x: 141, y: 96, w: 38, h: 32, targetRoom: "laboratoryEntry", spawnX: 150, spawnY: 64 }
+      { id: "stairsToLaboratoryEntry", x: 141, y: 96, w: 38, h: 32, targetRoom: "laboratoryEntry", spawnX: 150, spawnY: 64, disabled: true, revealed: false, blockedMessage: "La fuente bloquea la escalera. Colocá la Eagle Medal y la Wolf Medal en los pilares." }
     ],
     interactables: [
       { type: "elevator", x: 29, y: 144, w: 26, h: 28, solid: false },
@@ -1191,11 +1205,12 @@ outsideBoiler: {
       { type: "greenHerb", x: 272, y: 31, w: 10, h: 10 },
       { type: "blueHerb", x: 252, y: 153, w: 10, h: 10 },
       { type: "blueHerb", x: 272, y: 153, w: 10, h: 10 },
-      { type: "pillar", id: "eagleMedalPillar", medalSocket: "eagleMedal", x: 89, y: 82, w: 22, h: 36, solid: true },
-      { type: "pillar", id: "wolfMedalPillar", medalSocket: "wolfMedal", x: 209, y: 82, w: 22, h: 36, solid: true },
+      { type: "pillar", id: "eagleMedalPillar", medalSocket: "eagleMedal", medalInserted: false, x: 89, y: 82, w: 22, h: 36, solid: true },
+      { type: "pillar", id: "wolfMedalPillar", medalSocket: "wolfMedal", medalInserted: false, x: 209, y: 82, w: 22, h: 36, solid: true },
       { type: "waterPond", x: 115, y: 64, w: 90, h: 70, solid: true },
-      { type: "stairsVertical", x: 144, y: 91, w: 32, h: 34 }
-    ]
+      { type: "stairsVertical", x: 144, y: 91, w: 32, h: 34, revealed: false }
+    ],
+    fountainOpened: false
   },
   laboratoryEntry: {
     name: "Laboratory Entry",
@@ -2427,7 +2442,8 @@ outsideBoiler: {
       { type: "windowVertical", x: 85, y: 48, w: 6, h: 36 },
       { type: "desk", x: 120, y: 58, w: 85, h: 46, solid: true },
       { type: "handgunAmmo", x: 142, y: 98, w: 10, h: 6 },
-      { type: "inkRibbon", x: 174, y: 97, w: 10, h: 8 }
+      { type: "inkRibbon", x: 174, y: 97, w: 10, h: 8 },
+      { type: "carBattery", x: 211, y: 119, w: 16, h: 12 }
     ]
   },
   heliport: {
@@ -2702,7 +2718,21 @@ outsideBoiler: {
       { type: "piano", x: 60, y: 38, w: 36, h: 74, solid: true, interactive: false },
       { type: "yawnChimney", x: 143, y: 14, w: 44, h: 24, linkedRoom: "attic" },
       { type: "yawn", x: 143, y: 12, w: 44, h: 32, encounter: "lessonSecond", phase: "dormant", revealed: false },
-      { type: "floorHole", x: 102, y: 118, w: 26, h: 18, revealed: false }
+      { type: "floorHole", x: 102, y: 118, w: 26, h: 18, revealed: false, targetRoom: "isolatedPassage" }
+    ]
+  },
+  isolatedPassage: {
+    name: "Isolated Passage",
+    floorType: "concrete",
+    bounds: { minX: 30, maxX: 290, minY: 50, maxY: 150 },
+    corridorPoly: [{ x: 30, y: 50, w: 260, h: 100 }],
+    doors: [
+      { id: "stairsToUndergroundPassage1", x: 258, y: 142, w: 28, h: 8, targetRoom: "undergroundPassage1", spawnX: 258, spawnY: 153, disabled: true, revealed: false, blockedMessage: "La escalera está oculta. Examiná la tumba." }
+    ],
+    interactables: [
+      { type: "passageTomb", x: 54, y: 82, w: 24, h: 30, stairsDoorId: "stairsToUndergroundPassage1" },
+      { type: "isolatedStairs", x: 258, y: 116, w: 28, h: 27, revealed: false },
+      { type: "ropeReturn", x: 262, y: 76, w: 18, h: 40, targetRoom: "lessonRoom" }
     ]
   }
 };

@@ -958,8 +958,15 @@ function updateBoulderEncounter(room) {
 function collectNearbyItem() {
   const room = ROOMS[currentRoom];
   const playerReach = { x: player.x - 8, y: player.y - 8, w: PLAYER_WIDTH + 16, h: PLAYER_HEIGHT + 16 };
+  const itemNeedsLadder = room.interactables.find((obj) =>
+    obj.requiresLadder && STATUS.getItemName(obj.type) && obj.revealed !== false && !isStepLadderInPlace(room, obj.requiresLadder) && checkCollision(playerReach, obj)
+  );
+  if (itemNeedsLadder) {
+    STATUS.setPickupHint("La Square Crank está en alto. Acercá la escalerita al estante.");
+    return;
+  }
   const itemIndex = room.interactables.findIndex((obj) =>
-    STATUS.getItemName(obj.type) && obj.revealed !== false && (!obj.requiresDark || !trophyLightsOn) && checkCollision(playerReach, obj)
+    STATUS.getItemName(obj.type) && obj.revealed !== false && (!obj.requiresDark || !trophyLightsOn) && (!obj.requiresLadder || isStepLadderInPlace(room, obj.requiresLadder)) && checkCollision(playerReach, obj)
   );
   if (itemIndex === -1) {
     STATUS.setPickupHint("No hay objetos al alcance.");
@@ -993,6 +1000,7 @@ function nearbyDoor() {
   const room = ROOMS[currentRoom];
   const reach = { x: player.x - 18, y: player.y - 18, w: PLAYER_WIDTH + 36, h: PLAYER_HEIGHT + 36 };
   return room.doors
+    .filter((door) => door.revealed !== false)
     .filter((door) => checkCollision(reach, door))
     .sort((a, b) => Math.hypot(a.x + a.w / 2 - player.x, a.y + a.h / 2 - player.y) - Math.hypot(b.x + b.w / 2 - player.x, b.y + b.h / 2 - player.y))[0];
 }
@@ -1110,6 +1118,14 @@ function updateInteractionPrompt() {
     interactionPrompt.hidden = false;
     return;
   }
+  const shedLadder = currentRoom === "storeroom" && room.interactables.find((obj) => obj.type === "stepLadder");
+  const shedCrank = room.interactables.find((obj) => obj.type === "crankItem" && obj.requiresLadder);
+  if (shedLadder && shedCrank && !isStepLadderInPlace(room, shedCrank.requiresLadder) && checkCollision(ladderReach, shedLadder)) {
+    const distance = Math.hypot(shedLadder.x - shedCrank.requiresLadder.x, shedLadder.y - shedCrank.requiresLadder.y);
+    interactionPrompt.textContent = distance <= 26 ? "E · Encajar junto al estante" : "Empujá la escalerita hacia el estante";
+    interactionPrompt.hidden = false;
+    return;
+  }
   const tigerStatue = nearbyTigerStatue(room);
   const tigerJewel = tigerStatue && tigerStatueJewelType(tigerStatue);
   if (tigerJewel) {
@@ -1120,6 +1136,12 @@ function updateInteractionPrompt() {
   const chemicalPump = room.interactables.find((obj) => obj.type === "waterPump" && !obj.chemicalUsed && checkCollision(ladderReach, obj));
   if (chemicalPump && STATUS.hasItem("chemical")) {
     interactionPrompt.textContent = "E · Usar Chemical en el motor";
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const batterySocket = room.interactables.find((obj) => obj.type === "batterySocket" && obj.elevatorDoorId && !obj.batteryInstalled && checkCollision(ladderReach, obj));
+  if (batterySocket) {
+    interactionPrompt.textContent = STATUS.hasItem("carBattery") ? "E · Instalar Batería de auto" : "El ascensor necesita una batería";
     interactionPrompt.hidden = false;
     return;
   }
@@ -1156,6 +1178,50 @@ function updateInteractionPrompt() {
     return;
   }
   const reach = { x: player.x - 14, y: player.y - 14, w: PLAYER_WIDTH + 28, h: PLAYER_HEIGHT + 28 };
+  const medalPillar = room.interactables.find((obj) => obj.type === "pillar" && obj.medalSocket && checkCollision(reach, obj));
+  if (medalPillar) {
+    interactionPrompt.textContent = medalPillar.medalInserted
+      ? `${STATUS.getItemName(medalPillar.medalSocket)} colocada`
+      : STATUS.hasItem(medalPillar.medalSocket)
+        ? `E · Colocar ${STATUS.getItemName(medalPillar.medalSocket)}`
+        : `Falta ${STATUS.getItemName(medalPillar.medalSocket)}`;
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const crankSocket = room.interactables.find((obj) => obj.type === "crankSocket" && obj.crankType === "crankItem" && checkCollision(reach, obj));
+  if (crankSocket) {
+    interactionPrompt.textContent = crankSocket.crankInserted
+      ? `E · ${room.bridgeActive ? "Replegar" : "Extender"} el puente`
+      : STATUS.hasItem("crankItem") ? "E · Colocar Square Crank" : "Falta la Square Crank";
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const shotgunMount = room.interactables.find((obj) => obj.type === "shotgunMount" && checkCollision(reach, obj));
+  if (shotgunMount) {
+    interactionPrompt.textContent = shotgunMount.hasShotgun
+      ? "E · Tomar la Escopeta"
+      : STATUS.hasItem("brokenShotgun") ? "E · Colocar la Escopeta rota" : "El soporte está vacío";
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const floorHole = room.interactables.find((obj) => obj.type === "floorHole" && obj.revealed && checkCollision(reach, obj));
+  if (floorHole) {
+    interactionPrompt.textContent = STATUS.hasItem("rope") ? "E · Bajar usando la Rope" : "Necesitás la Rope para bajar";
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const ropeReturn = room.interactables.find((obj) => obj.type === "ropeReturn" && checkCollision(reach, obj));
+  if (ropeReturn) {
+    interactionPrompt.textContent = "E · Subir a Lesson Room";
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const passageTomb = room.interactables.find((obj) => obj.type === "passageTomb" && checkCollision(reach, obj));
+  if (passageTomb) {
+    interactionPrompt.textContent = passageTomb.opened ? "La tumba está abierta" : "E · Examinar la tumba";
+    interactionPrompt.hidden = false;
+    return;
+  }
   const chest = room.interactables.find((obj) => obj.type === "itemChest" && checkCollision(reach, obj));
   if (chest) {
     interactionPrompt.textContent = "E · Abrir baúl de objetos";
@@ -1221,8 +1287,24 @@ function updateInteractionPrompt() {
     interactionPrompt.hidden = false;
     return;
   }
+  const paintingSwitch = room.interactables.find((obj) => obj.type === "paintingSwitch" && checkCollision(switchReach, obj));
+  if (paintingSwitch && !room.galleryPuzzleSolved) {
+    const painting = room.interactables.find((obj) => obj.type === "painting" && obj.id === paintingSwitch.paintingId);
+    const title = painting?.title || "cuadro";
+    interactionPrompt.textContent = paintingSwitch.activated ? `Switch activado: ${title}` : `E · Cuadro: ${title}`;
+    interactionPrompt.hidden = false;
+    return;
+  }
   const itemReach = { x: player.x - 8, y: player.y - 8, w: PLAYER_WIDTH + 16, h: PLAYER_HEIGHT + 16 };
-  const item = room.interactables.find((obj) => STATUS.getItemName(obj.type) && obj.revealed !== false && (!obj.requiresDark || !trophyLightsOn) && checkCollision(itemReach, obj));
+  const itemNeedsLadder = room.interactables.find((obj) =>
+    obj.requiresLadder && STATUS.getItemName(obj.type) && obj.revealed !== false && !isStepLadderInPlace(room, obj.requiresLadder) && checkCollision(itemReach, obj)
+  );
+  if (itemNeedsLadder) {
+    interactionPrompt.textContent = "Acercá la escalerita al estante";
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const item = room.interactables.find((obj) => STATUS.getItemName(obj.type) && obj.revealed !== false && (!obj.requiresDark || !trophyLightsOn) && (!obj.requiresLadder || isStepLadderInPlace(room, obj.requiresLadder)) && checkCollision(itemReach, obj));
   interactionPrompt.textContent = item
     ? item.type === "goldEmblem" && !STATUS.hasItem("mansionEmblem")
       ? "Primero necesitás el Emblem del Dining Room"
@@ -1232,6 +1314,17 @@ function updateInteractionPrompt() {
 }
 
 function transitionThroughDoor(door) {
+  if (currentRoom === "livingRoom" && door.targetRoom === "trapRoom") {
+    const livingRoom = ROOMS.livingRoom;
+    const trapRoom = ROOMS.trapRoom;
+    if (livingRoom.shotgunTaken && !livingRoom.brokenShotgunPlaced && !trapRoom.trapTriggered) {
+      trapRoom.trapTriggered = true;
+      const ceiling = trapRoom.interactables.find((obj) => obj.type === "ceilingTrap");
+      if (ceiling) ceiling.revealed = true;
+      STATUS.setHealth(0);
+      STATUS.setPickupHint("El mecanismo se activó. El techo cayó y te aplastó.");
+    }
+  }
   currentRoom = door.targetRoom;
   player.x = door.spawnX;
   player.y = door.spawnY;
@@ -1310,6 +1403,20 @@ function interactNearby() {
     updateInteractionPrompt();
     return;
   }
+  const shedLadder = currentRoom === "storeroom" && room.interactables.find((obj) => obj.type === "stepLadder");
+  const shedCrank = room.interactables.find((obj) => obj.type === "crankItem" && obj.requiresLadder);
+  if (shedLadder && shedCrank && !isStepLadderInPlace(room, shedCrank.requiresLadder) && checkCollision(ladderReach, shedLadder)) {
+    const distance = Math.hypot(shedLadder.x - shedCrank.requiresLadder.x, shedLadder.y - shedCrank.requiresLadder.y);
+    if (distance <= 26) {
+      shedLadder.x = shedCrank.requiresLadder.x;
+      shedLadder.y = shedCrank.requiresLadder.y;
+      STATUS.setPickupHint("Acomodaste la escalerita frente al estante. Ya podés alcanzar la Square Crank.");
+    } else {
+      STATUS.setPickupHint("Empujá la escalerita hasta dejarla junto al estante.");
+    }
+    updateInteractionPrompt();
+    return;
+  }
   const tigerStatue = nearbyTigerStatue(room);
   if (tigerStatue && useTigerStatue(room, tigerStatue)) {
     updateInteractionPrompt();
@@ -1326,6 +1433,23 @@ function interactNearby() {
     const armorKey = room.interactables.find((obj) => obj.type === "armorKey");
     if (armorKey) armorKey.revealed = true;
     STATUS.setPickupHint("Vertiste el Chemical en el motor. La planta se marchitó y dejó la Armor Key al descubierto.");
+    updateInteractionPrompt();
+    return;
+  }
+  const batterySocket = room.interactables.find((obj) => obj.type === "batterySocket" && obj.elevatorDoorId && !obj.batteryInstalled && checkCollision(ladderReach, obj));
+  if (batterySocket) {
+    if (!STATUS.consumeItem("carBattery")) {
+      STATUS.setPickupHint("Necesitás una Batería de auto para poner en marcha el ascensor.");
+    } else {
+      batterySocket.batteryInstalled = true;
+      const elevatorDoor = room.doors.find((obj) => obj.id === batterySocket.elevatorDoorId);
+      if (elevatorDoor) elevatorDoor.disabled = false;
+      const pairedDoor = ROOMS[batterySocket.pairedRoomId]?.doors.find((obj) => obj.id === batterySocket.pairedDoorId);
+      if (pairedDoor) pairedDoor.disabled = false;
+      const elevator = room.interactables.find((obj) => obj.type === "elevator");
+      if (elevator) elevator.powered = true;
+      STATUS.setPickupHint("Instalaste la batería. El ascensor del Courtyard Garden quedó activo y la puerta de Falls se desbloqueó.");
+    }
     updateInteractionPrompt();
     return;
   }
@@ -1393,6 +1517,123 @@ function interactNearby() {
     return;
   }
   const reach = { x: player.x - 14, y: player.y - 14, w: PLAYER_WIDTH + 28, h: PLAYER_HEIGHT + 28 };
+  const medalPillar = room.interactables.find((obj) => obj.type === "pillar" && obj.medalSocket && checkCollision(reach, obj));
+  if (medalPillar) {
+    if (medalPillar.medalInserted) {
+      STATUS.setPickupHint(`La ${STATUS.getItemName(medalPillar.medalSocket)} ya está colocada.`);
+      return;
+    }
+    if (!STATUS.consumeItem(medalPillar.medalSocket)) {
+      STATUS.setPickupHint(`Necesitás la ${STATUS.getItemName(medalPillar.medalSocket)} para este pilar.`);
+      return;
+    }
+    medalPillar.medalInserted = true;
+    const medalPillars = room.interactables.filter((obj) => obj.type === "pillar" && obj.medalSocket);
+    if (medalPillars.length && medalPillars.every((obj) => obj.medalInserted)) {
+      room.fountainOpened = true;
+      const stairsDoor = room.doors.find((obj) => obj.id === "stairsToLaboratoryEntry");
+      if (stairsDoor) {
+        stairsDoor.disabled = false;
+        stairsDoor.revealed = true;
+      }
+      const basin = room.interactables.find((obj) => obj.type === "waterPond");
+      if (basin) {
+        basin.drained = true;
+        basin.solid = false;
+      }
+      const stairs = room.interactables.find((obj) => obj.type === "stairsVertical");
+      if (stairs) stairs.revealed = true;
+      STATUS.setPickupHint("Las dos medallas activaron el mecanismo. La fuente se abrió y la escalera al Underground Laboratory quedó accesible.");
+    } else {
+      STATUS.setPickupHint(`Colocaste la ${STATUS.getItemName(medalPillar.medalSocket)} en el pilar.`);
+    }
+    updateInteractionPrompt();
+    return;
+  }
+  const crankSocket = room.interactables.find((obj) => obj.type === "crankSocket" && obj.crankType === "crankItem" && checkCollision(reach, obj));
+  if (crankSocket) {
+    if (!crankSocket.crankInserted) {
+      if (!STATUS.consumeItem("crankItem")) {
+        STATUS.setPickupHint("Necesitás la Square Crank para accionar Water Gate.");
+        return;
+      }
+      crankSocket.crankInserted = true;
+    }
+    room.bridgeActive = !room.bridgeActive;
+    const bridge = room.interactables.find((obj) => obj.type === "waterBridge");
+    if (bridge) bridge.active = room.bridgeActive;
+    const undergroundDoor = ROOMS.falls.doors.find((obj) => obj.id === "door3ToUndergroundEntry");
+    if (undergroundDoor) undergroundDoor.disabled = room.bridgeActive;
+    const waterfall = ROOMS.falls.interactables.find((obj) => obj.type === "waterfallBarrier");
+    if (waterfall) {
+      waterfall.revealed = room.bridgeActive;
+      waterfall.solid = room.bridgeActive;
+    }
+    STATUS.setPickupHint(room.bridgeActive
+      ? "La Square Crank extendió el puente. La cascada bloqueó la bajada de Falls a Underground Entry."
+      : "La Square Crank replegó el puente. La cascada se detuvo y la bajada de Falls volvió a abrirse.");
+    updateInteractionPrompt();
+    return;
+  }
+  const shotgunMount = room.interactables.find((obj) => obj.type === "shotgunMount" && checkCollision(reach, obj));
+  if (shotgunMount) {
+    if (shotgunMount.hasShotgun) {
+      if (STATUS.addItem("shotgunWall")) {
+        shotgunMount.hasShotgun = false;
+        room.shotgunTaken = true;
+        STATUS.setPickupHint("Tomaste la Escopeta de la pared. El mecanismo de Trap Room quedó armado.");
+      }
+    } else if (STATUS.hasItem("brokenShotgun") && STATUS.consumeItem("brokenShotgun")) {
+      shotgunMount.hasBrokenShotgun = true;
+      room.brokenShotgunPlaced = true;
+      STATUS.setPickupHint("Reemplazaste la Escopeta con la Escopeta rota. El mecanismo quedó bloqueado.");
+    } else {
+      STATUS.setPickupHint("El soporte está vacío. Solo una escopeta puede mantenerlo en su lugar.");
+    }
+    updateInteractionPrompt();
+    return;
+  }
+  const floorHole = room.interactables.find((obj) => obj.type === "floorHole" && obj.revealed && checkCollision(reach, obj));
+  if (floorHole) {
+    if (!STATUS.hasItem("rope")) {
+      STATUS.setPickupHint("El agujero es demasiado profundo. Necesitás la Rope de Barry para bajar.");
+      return;
+    }
+    const target = ROOMS[floorHole.targetRoom];
+    if (target) {
+      currentRoom = floorHole.targetRoom;
+      player.x = 250;
+      player.y = 85;
+      document.getElementById("room-title").innerText = target.name;
+      MANSION_MAP.setCurrentRoom(currentRoom);
+      STATUS.setPickupHint("Bajaste por el agujero usando la Rope. La cuerda quedó preparada para volver.");
+      updateInteractionPrompt();
+    }
+    return;
+  }
+  const ropeReturn = room.interactables.find((obj) => obj.type === "ropeReturn" && checkCollision(reach, obj));
+  if (ropeReturn) {
+    currentRoom = ropeReturn.targetRoom;
+    player.x = 112;
+    player.y = 126;
+    document.getElementById("room-title").innerText = ROOMS[currentRoom].name;
+    MANSION_MAP.setCurrentRoom(currentRoom);
+    STATUS.setPickupHint("Subiste de vuelta a Lesson Room por la Rope.");
+    updateInteractionPrompt();
+    return;
+  }
+  const passageTomb = room.interactables.find((obj) => obj.type === "passageTomb" && checkCollision(reach, obj));
+  if (passageTomb) {
+    const stairsDoor = room.doors.find((obj) => obj.id === passageTomb.stairsDoorId);
+    if (stairsDoor) stairsDoor.disabled = false;
+    if (stairsDoor) stairsDoor.revealed = true;
+    const stairs = room.interactables.find((obj) => obj.type === "isolatedStairs");
+    if (stairs) stairs.revealed = true;
+    passageTomb.opened = true;
+    STATUS.setPickupHint("La tumba se abrió y dejó al descubierto una escalera que baja al Underground Passage 1. No parece haber camino para volver por ahí.");
+    updateInteractionPrompt();
+    return;
+  }
   if (room.interactables.some((obj) => obj.type === "itemChest" && checkCollision(reach, obj))) {
     STATUS.openChest();
     return;
@@ -1505,6 +1746,33 @@ function interactNearby() {
     updateInteractionPrompt();
     return;
   }
+  const paintingSwitch = !room.galleryPuzzleSolved && room.interactables.find((obj) => obj.type === "paintingSwitch" && checkCollision(ladderReach, obj));
+  if (paintingSwitch) {
+    if (paintingSwitch.activated) {
+      STATUS.setPickupHint("Ese switch ya está activado.");
+    } else if (paintingSwitch.order === (room.galleryPuzzleProgress || 0)) {
+      paintingSwitch.activated = true;
+      room.galleryPuzzleProgress = (room.galleryPuzzleProgress || 0) + 1;
+      const painting = room.interactables.find((obj) => obj.type === "painting" && obj.id === paintingSwitch.paintingId);
+      const title = painting?.title || "El cuadro";
+      if (room.galleryPuzzleProgress === 7) {
+        room.galleryPuzzleSolved = true;
+        const starCrest = room.interactables.find((obj) => obj.type === "starCrest");
+        if (starCrest) starCrest.revealed = true;
+        STATUS.setPickupHint("Los cuadros quedaron ordenados de joven a viejo. Detrás de The End of Life apareció el Star Crest.");
+      } else {
+        STATUS.setPickupHint(`${title}: correcto (${room.galleryPuzzleProgress}/7). Seguí de joven a viejo.`);
+      }
+    } else {
+      room.galleryPuzzleProgress = 0;
+      room.interactables
+        .filter((obj) => obj.type === "paintingSwitch")
+        .forEach((obj) => { obj.activated = false; });
+      STATUS.setPickupHint("La secuencia no es correcta. Los cuadros vuelven a su estado inicial: empezá por el más joven.");
+    }
+    updateInteractionPrompt();
+    return;
+  }
   collectNearbyItem();
 }
 
@@ -1554,10 +1822,16 @@ function update() {
   }
 
   // Colisión con objetos
+  const waterBridge = room.bridgeActive && room.interactables.find((obj) => obj.type === "waterBridge" && obj.active);
+  const crossingWaterOnBridge = (rect) => waterBridge &&
+    rect.x + rect.w / 2 >= waterBridge.x && rect.x + rect.w / 2 <= waterBridge.x + waterBridge.w &&
+    rect.y < waterBridge.y + waterBridge.h && rect.y + rect.h > waterBridge.y;
   room.interactables.forEach((obj) => {
     if (obj.solid) {
-      if (checkCollision(playerRectX, obj) && !(obj.type === "stepLadder" && player.dx && pushStepLadder(room, obj, player.dx, 0)) && !(obj.type === "pushableStatue" && obj.puzzleId === "armorRoom" && player.dx && pushPuzzleStatue(room, obj, player.dx, 0))) canMoveX = false;
-      if (checkCollision(playerRectY, obj) && !(obj.type === "stepLadder" && player.dy && pushStepLadder(room, obj, 0, player.dy)) && !(obj.type === "pushableStatue" && obj.puzzleId === "armorRoom" && player.dy && pushPuzzleStatue(room, obj, 0, player.dy))) canMoveY = false;
+      const crossesWaterOnBridgeX = obj.type === "waterArea" && crossingWaterOnBridge(playerRectX);
+      const crossesWaterOnBridgeY = obj.type === "waterArea" && crossingWaterOnBridge(playerRectY);
+      if (checkCollision(playerRectX, obj) && !crossesWaterOnBridgeX && !(obj.type === "stepLadder" && player.dx && pushStepLadder(room, obj, player.dx, 0)) && !(obj.type === "pushableStatue" && obj.puzzleId === "armorRoom" && player.dx && pushPuzzleStatue(room, obj, player.dx, 0))) canMoveX = false;
+      if (checkCollision(playerRectY, obj) && !crossesWaterOnBridgeY && !(obj.type === "stepLadder" && player.dy && pushStepLadder(room, obj, 0, player.dy)) && !(obj.type === "pushableStatue" && obj.puzzleId === "armorRoom" && player.dy && pushPuzzleStatue(room, obj, 0, player.dy))) canMoveY = false;
     }
   });
 
@@ -1664,6 +1938,7 @@ function drawRoom() {
 
   // 2. Dibujar Puertas
   room.doors.forEach((d) => {
+    if (d.revealed === false) return;
     if (d.switchRequired === "armsStorageUnlocked" && armsStorageUnlocked) {
       ctx.fillStyle = "#111916";
       ctx.fillRect(d.x, d.y, d.w, d.h);
@@ -1820,6 +2095,14 @@ function drawRoom() {
         ctx.beginPath();
         ctx.arc(obj.x + obj.w / 2, obj.y + 15, 5, 0, Math.PI * 2);
         ctx.fill();
+        if (obj.medalInserted) {
+          ctx.fillStyle = obj.medalSocket === "eagleMedal" ? "#c5a644" : "#b7b8b2";
+          ctx.beginPath();
+          ctx.arc(obj.x + obj.w / 2, obj.y + 15, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#4d4736";
+          ctx.fillRect(obj.x + obj.w / 2 - 1, obj.y + 13, 2, 4);
+        }
         ctx.strokeStyle = PALETTE.trim;
         ctx.stroke();
       }
@@ -1961,6 +2244,21 @@ function drawRoom() {
       ctx.lineTo(obj.x + obj.w - 27, obj.y + obj.h - 31);
       ctx.stroke();
 
+    } else if (obj.type === "waterPond" && obj.drained) {
+      ctx.fillStyle = "#595b52";
+      ctx.beginPath();
+      ctx.ellipse(obj.x + obj.w / 2, obj.y + obj.h / 2, obj.w / 2, obj.h / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#10130f";
+      ctx.beginPath();
+      ctx.ellipse(obj.x + obj.w / 2, obj.y + obj.h / 2, obj.w / 2 - 6, obj.h / 2 - 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#77786a";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(obj.x + obj.w / 2, obj.y + obj.h / 2, obj.w / 2 - 3, obj.h / 2 - 3, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
     } else if (obj.type === "waterPond") {
       ctx.fillStyle = "#252f30";
       ctx.beginPath();
@@ -2050,6 +2348,47 @@ function drawRoom() {
       ctx.fillRect(obj.x + 39, obj.y + 25, 22, 2);
       ctx.fillRect(obj.x + 20, obj.y + 51, 16, 2);
 
+    } else if (obj.type === "waterfallBarrier") {
+      ctx.fillStyle = "rgba(38, 132, 169, 0.94)";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "rgba(167, 229, 239, 0.9)";
+      for (let streamX = obj.x + 3; streamX < obj.x + obj.w - 2; streamX += 7) {
+        const offset = Math.floor((gameFrame / 5 + streamX) % 8);
+        ctx.fillRect(streamX, obj.y + 2 + offset, 2, obj.h - 4 - offset);
+      }
+      ctx.fillStyle = "#d4f2ed";
+      ctx.fillRect(obj.x + 1, obj.y + obj.h - 4, obj.w - 2, 3);
+
+    } else if (obj.type === "waterBridge") {
+      if (obj.active) {
+        ctx.fillStyle = "#38271b";
+        ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+        ctx.fillStyle = "#75502f";
+        for (let plankY = obj.y + 2; plankY < obj.y + obj.h; plankY += 7) {
+          ctx.fillRect(obj.x + 1, plankY, obj.w - 2, 5);
+        }
+        ctx.fillStyle = "#9a7548";
+        ctx.fillRect(obj.x, obj.y + 2, obj.w, 2);
+        ctx.fillRect(obj.x, obj.y + obj.h - 4, obj.w, 2);
+        ctx.strokeStyle = "#30261c";
+        ctx.lineWidth = 1;
+        for (let plankX = obj.x + 10; plankX < obj.x + obj.w; plankX += 12) {
+          ctx.beginPath();
+          ctx.moveTo(plankX, obj.y + 2);
+          ctx.lineTo(plankX, obj.y + obj.h - 2);
+          ctx.stroke();
+        }
+      } else {
+        ctx.fillStyle = "#51402b";
+        ctx.fillRect(obj.x + 2, obj.y + 2, 9, obj.h - 4);
+        ctx.fillRect(obj.x + obj.w - 11, obj.y + 2, 9, obj.h - 4);
+        ctx.fillStyle = "#95734a";
+        for (let plankY = obj.y + 5; plankY < obj.y + obj.h; plankY += 9) {
+          ctx.fillRect(obj.x + 3, plankY, 7, 2);
+          ctx.fillRect(obj.x + obj.w - 10, plankY, 7, 2);
+        }
+      }
+
     } else if (obj.type === "crankSocket") {
       ctx.fillStyle = "#23180f";
       ctx.fillRect(obj.x, obj.y + 3, obj.w, obj.h - 3);
@@ -2072,6 +2411,15 @@ function drawRoom() {
       ctx.fillRect(obj.x + 5, obj.y + 2, 5, 3);
       ctx.fillStyle = "#d0cbb7";
       ctx.fillRect(obj.x + obj.w - 10, obj.y + 2, 5, 3);
+      if (obj.batteryInstalled) {
+        ctx.fillStyle = "#26342b";
+        ctx.fillRect(obj.x + 4, obj.y + 6, obj.w - 8, obj.h - 9);
+        ctx.fillStyle = "#66886b";
+        ctx.fillRect(obj.x + 7, obj.y + 8, obj.w - 14, obj.h - 13);
+        ctx.fillStyle = "#aabbaa";
+        ctx.fillRect(obj.x + 8, obj.y + 5, 4, 2);
+        ctx.fillRect(obj.x + obj.w - 12, obj.y + 5, 4, 2);
+      }
 
     } else if (obj.type === "projectionBeam") {
       const beam = ctx.createLinearGradient(obj.x, obj.y, obj.x + obj.w, obj.y + obj.h / 2);
@@ -2385,6 +2733,10 @@ function drawRoom() {
       ctx.fillRect(obj.x + 7, obj.y + 5, obj.w - 14, obj.h - 10);
       ctx.fillStyle = "#d89a42";
       ctx.fillRect(obj.x + obj.w - 7, obj.y + obj.h / 2 - 2, 3, 4);
+      if (obj.powered) {
+        ctx.fillStyle = "#65d877";
+        ctx.fillRect(obj.x + 4, obj.y + 4, 3, 3);
+      }
 
     } else if (obj.type === "stairs" || obj.type === "stairsVertical") {
       // Escalera con peldaños VERTICALES (para Elevator Stairway)
@@ -2450,6 +2802,50 @@ function drawRoom() {
       ctx.fillRect(obj.x + obj.w - 3, obj.y + 3, 3, obj.h - 6);
       ctx.fillStyle = "#a3723e";
       ctx.fillRect(obj.x + 4, obj.y + 3, obj.w - 8, 1);
+
+    } else if (obj.type === "passageTomb") {
+      ctx.fillStyle = "#20211e";
+      ctx.fillRect(obj.x - 2, obj.y + obj.h - 4, obj.w + 4, 6);
+      ctx.fillStyle = "#74776f";
+      ctx.fillRect(obj.x + 2, obj.y + 7, obj.w - 4, obj.h - 10);
+      ctx.fillStyle = "#999b8e";
+      ctx.fillRect(obj.x + 4, obj.y + 3, obj.w - 8, 7);
+      ctx.fillStyle = "#555951";
+      ctx.fillRect(obj.x + 6, obj.y + 12, obj.w - 12, 3);
+      ctx.fillRect(obj.x + 6, obj.y + 19, obj.w - 12, 2);
+      if (obj.opened) {
+        ctx.fillStyle = "#080907";
+        ctx.fillRect(obj.x + 7, obj.y + 12, obj.w - 14, obj.h - 13);
+        ctx.fillStyle = "#6d6044";
+        ctx.fillRect(obj.x + 5, obj.y + 10, obj.w - 10, 2);
+      }
+
+    } else if (obj.type === "ropeReturn") {
+      ctx.fillStyle = "#382719";
+      ctx.fillRect(obj.x + 2, obj.y, 3, obj.h);
+      ctx.fillRect(obj.x + obj.w - 5, obj.y, 3, obj.h);
+      ctx.strokeStyle = "#9a7548";
+      ctx.lineWidth = 2;
+      for (let rungY = obj.y + 5; rungY < obj.y + obj.h; rungY += 7) {
+        ctx.beginPath();
+        ctx.moveTo(obj.x + 4, rungY);
+        ctx.lineTo(obj.x + obj.w - 4, rungY);
+        ctx.stroke();
+      }
+
+    } else if (obj.type === "isolatedStairs") {
+      ctx.fillStyle = "#11120f";
+      ctx.fillRect(obj.x - 2, obj.y - 2, obj.w + 4, obj.h + 4);
+      ctx.fillStyle = "#252923";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.strokeStyle = "#929488";
+      ctx.lineWidth = 1;
+      for (let stairY = obj.y + 5; stairY < obj.y + obj.h; stairY += 5) {
+        ctx.beginPath();
+        ctx.moveTo(obj.x + 2, stairY);
+        ctx.lineTo(obj.x + obj.w - 2, stairY);
+        ctx.stroke();
+      }
 
     } else if (obj.type === "pushableStatue") {
       ctx.fillStyle = "#171815";
@@ -3037,14 +3433,37 @@ function drawRoom() {
     ctx.fillStyle = "#6e3b19"; // Tapizado
     ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
 
-  } else if (obj.type === "shotgunWall") {
+    } else if (obj.type === "shotgunWall" || obj.type === "shotgunMount") {
     // Escopeta colgada en la pared: Soporte de madera + Cañón plateado/metálico
     ctx.fillStyle = "#8b4513"; // Soporte en pared
     ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-    ctx.fillStyle = "#c0c0c0"; // Cañón metálico brillante
-    ctx.fillRect(obj.x + 2, obj.y + 2, 2, obj.h - 4);
-    ctx.fillStyle = "#000000"; // Culata/Cuerpo de la escopeta
-    ctx.fillRect(obj.x + 2, obj.y + 12, 2, 6);
+      if (obj.type === "shotgunWall" || obj.hasShotgun) {
+        ctx.fillStyle = "#c0c0c0"; // Cañón metálico brillante
+        ctx.fillRect(obj.x + 2, obj.y + 2, 2, obj.h - 4);
+        ctx.fillStyle = "#000000"; // Culata/Cuerpo de la escopeta
+        ctx.fillRect(obj.x + 2, obj.y + 12, 2, 6);
+      } else if (obj.hasBrokenShotgun) {
+        ctx.fillStyle = "#5c341d";
+        ctx.fillRect(obj.x + 1, obj.y + 12, 4, 5);
+        ctx.fillStyle = "#707070";
+        ctx.fillRect(obj.x + 2, obj.y + 3, 2, 11);
+        ctx.fillStyle = "#221108";
+        ctx.fillRect(obj.x + 2, obj.y + 8, 2, 3);
+      }
+
+  } else if (obj.type === "ceilingTrap") {
+    ctx.fillStyle = "#777a72";
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#4a4d48";
+    ctx.fillRect(obj.x + 3, obj.y + 3, obj.w - 6, 4);
+    ctx.fillStyle = "#222522";
+    for (let spikeX = obj.x + 6; spikeX < obj.x + obj.w - 3; spikeX += 10) {
+      ctx.beginPath();
+      ctx.moveTo(spikeX, obj.y + obj.h);
+      ctx.lineTo(spikeX + 3, obj.y + obj.h - 7);
+      ctx.lineTo(spikeX + 6, obj.y + obj.h);
+      ctx.fill();
+    }
 
   } else if (obj.type === "colt") {
     ctx.fillStyle = "#171916";
@@ -3450,13 +3869,35 @@ function drawRoom() {
     ctx.fillRect(obj.x + 2, obj.y + 8, obj.w - 7, 1);
 
     } else if (obj.type === "painting") {
-    // Cuadro con marco dorado y lienzo interior de color
-    ctx.fillStyle = "#d4af37"; // Marco dorado
+    ctx.fillStyle = "#6f5124";
     ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-    ctx.fillStyle = "#3b2219"; // Lienzo interior
-    ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
-    ctx.fillStyle = "#8b0000"; // Pincelada / Arte ilustrado
-    ctx.fillRect(obj.x + 4, obj.y + 4, obj.w - 8, obj.h - 8);
+    ctx.fillStyle = "#d4af69";
+    ctx.fillRect(obj.x + 1, obj.y + 1, obj.w - 2, obj.h - 2);
+    ctx.fillStyle = "#273329";
+    ctx.fillRect(obj.x + 3, obj.y + 3, obj.w - 6, obj.h - 6);
+    const portraitIndex = Number(obj.id?.slice(1)) || 1;
+    const faces = ["#efc7a2", "#efc7a2", "#e8b98e", "#dca77f", "#c99a77", "#b8a28d", "#d0d0bd"];
+    const hair = ["#e8d7b6", "#d0ad75", "#5e402b", "#4b3025", "#41352d", "#ded8c4", "#dbd8c7"];
+    ctx.fillStyle = faces[portraitIndex - 1] || "#d0b394";
+    ctx.fillRect(obj.x + 5, obj.y + 6, 4, 5);
+    ctx.fillStyle = hair[portraitIndex - 1] || "#42352c";
+    ctx.fillRect(obj.x + 4, obj.y + 5, 6, 2);
+    if (portraitIndex >= 5) {
+      ctx.fillRect(obj.x + 4, obj.y + 10, 6, 2);
+      ctx.fillStyle = "#c5c2b4";
+      ctx.fillRect(obj.x + 5, obj.y + 12, 4, 2);
+    } else {
+      ctx.fillStyle = ["#e0bf81", "#89ad94", "#a54637", "#415c6c"][Math.min(portraitIndex - 1, 3)];
+      ctx.fillRect(obj.x + 4, obj.y + 11, 6, 3);
+    }
+
+  } else if (obj.type === "paintingSwitch") {
+    ctx.fillStyle = "#30251a";
+    ctx.fillRect(obj.x - 1, obj.y + 1, obj.w + 2, obj.h - 1);
+    ctx.fillStyle = obj.activated ? "#7f9b54" : "#914133";
+    ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 3);
+    ctx.fillStyle = obj.activated ? "#d6d28a" : "#c7b99c";
+    ctx.fillRect(obj.x + 3, obj.y + 1, obj.w - 6, 2);
 
   } else if (obj.type === "crow") {
     // Cuervo zombi silueta oscura con ojos rojos

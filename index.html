@@ -69,12 +69,14 @@
         <span id="map-current" class="map-current">Main Hall 1F</span>
         <button id="map-close" class="map-close" type="button" aria-label="Cerrar mapa" title="Cerrar mapa">×</button>
         <div class="map-legend" aria-label="Referencias del mapa">
-          <span><i class="legend-room" aria-hidden="true"></i>Sin visitar</span>
-          <span><i class="legend-room visited" aria-hidden="true"></i>Visitada</span>
-          <span><i class="legend-room current" aria-hidden="true"></i>Actual</span>
+          <span><i class="legend-location" aria-hidden="true"></i>Ubicación actual</span>
         </div>
       </div>
-      <div id="mansion-map" class="map-frame" role="group" aria-label="Habitaciones y conexiones conocidas"></div>
+      <div id="mansion-map" class="map-frame" role="group" aria-label="Mapa del primer piso">
+        <img id="mansion-map-image" class="map-image" src="Assets/mansion-1f-map.png" alt="Plano del primer piso de la mansión">
+        <span id="map-location" class="map-location" aria-hidden="true"></span>
+      </div>
+      <p id="map-unavailable" class="map-unavailable" hidden></p>
     </aside>
 
     <aside id="status-panel" class="map-panel status-panel" aria-labelledby="status-title" hidden>
