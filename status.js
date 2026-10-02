@@ -1,4 +1,5 @@
 const STATUS_ITEMS = {
+  handgun: "Berreta",
   handgunAmmo: "Munición de pistola",
   shotgunShells: "Cartuchos de escopeta",
   magnumRounds: "Munición Magnum",
@@ -9,36 +10,71 @@ const STATUS_ITEMS = {
   firstAidSpray: "Aerosol de primeros auxilios",
   armorKey: "Llave de la armadura",
   helmetKey: "Helmet Key",
+  lockpick: "Lockpick",
   controlRoomKey: "Control Room Key",
+  powerRoomKey: "Power Room Key",
+  masterKey: "Master Key",
+  combatKnife: "Cuchillo de supervivencia",
+  shotgunWall: "Escopeta",
+  colt: "Colt",
+  grenadeLauncher: "Lanzagranadas",
+  bazooka: "Bazooka",
+  securitySystem: "Security System",
+  slides: "Slides",
+  fax: "Fax",
   room002Key: "002 Key",
   room003Key: "003 Key",
   crankItem: "Manivela cuadrada",
+  hexCrank: "Hex Crank",
   doomBook1: "Libro de la perdición I",
+  doomBook2: "Doom Book 2",
   redJewel: "Joya roja",
   orders: "Orders",
   carBattery: "Batería de auto",
+  flare: "Flare",
+  rocketLauncher: "Rocket Launcher",
   acidRounds: "Acid Rounds",
   explosiveRounds: "Explosive Rounds",
+  fireRounds: "Fire Rounds",
   flameRounds: "Flame Rounds",
   scrapbook: "Scrapbook",
   moDisk: "MO Disk",
   radio: "Radio",
   moonCrest: "Moon Crest",
   sunCrest: "Sun Crest",
+  starCrest: "Star Crest",
+  windCrest: "Wind Crest",
   botanyBook: "Botany Book",
   blankBook: "Blank Book",
   lighter: "Encendedor",
   researcherWill: "Researcher's Will",
+  researcherLetter: "Researcher's Letter",
   plant42Report: "Plant 42 Report",
   vJoltReport: "V-Jolt Report"
 };
+const STATUS_FILES = new Set(["securitySystem", "fax", "scrapbook", "researcherWill", "researcherLetter", "plant42Report", "vJoltReport", "orders"]);
+const AMMO_PICKUP_QUANTITIES = {
+  handgunAmmo: 15,
+  shotgunShells: 7,
+  magnumRounds: 6,
+  fireRounds: 6,
+  flameRounds: 6,
+  acidRounds: 6,
+  explosiveRounds: 6
+};
 
 const STATUS = (() => {
-  const items = new Map();
+  const items = new Map([[STATUS_ITEMS.handgun, 1]]);
   const panel = document.getElementById("status-panel");
   const toggle = document.getElementById("status-toggle");
   const close = document.getElementById("status-close");
   const list = document.getElementById("inventory-list");
+  const filesList = document.getElementById("files-list");
+  const filesCount = document.getElementById("files-count");
+  const itemsTab = document.getElementById("items-tab");
+  const filesTab = document.getElementById("files-tab");
+  const itemsView = document.getElementById("items-view");
+  const filesView = document.getElementById("files-view");
   const hint = document.getElementById("pickup-hint");
   const fill = document.getElementById("health-fill");
   const label = document.getElementById("health-label");
@@ -50,10 +86,24 @@ const STATUS = (() => {
   const chestStoredItems = document.getElementById("chest-stored-items");
   const chestCapacity = document.getElementById("chest-capacity");
   let health = 100;
+  let poisoned = false;
+  let poisonFrames = 0;
+  let combineSelection = null;
+  let weaponHandlers = { equip() {}, selectAmmo() {} };
   let handgunReserve = 36;
+  let rocketReserve = 0;
   let storedHandgunReserve = 0;
   const storedItems = new Map();
+  const files = new Map();
   const INVENTORY_LIMIT = 8;
+
+  function setTab(tab) {
+    const showFiles = tab === "files";
+    itemsView.hidden = showFiles;
+    filesView.hidden = !showFiles;
+    itemsTab.setAttribute("aria-selected", String(!showFiles));
+    filesTab.setAttribute("aria-selected", String(showFiles));
+  }
 
   function setOpen(open) {
     panel.hidden = !open;
@@ -65,30 +115,137 @@ const STATUS = (() => {
   function renderInventory() {
     list.replaceChildren();
     document.getElementById("inventory-title").textContent = `OBJETOS (${inventorySlots()}/${INVENTORY_LIMIT})`;
-    if (items.size === 0 && handgunReserve === 0) {
-      const empty = document.createElement("li");
-      empty.className = "inventory-empty";
-      empty.textContent = "No llevás objetos.";
-      list.appendChild(empty);
-      return;
-    }
+    const entries = [];
     if (handgunReserve > 0) {
-      const ammo = document.createElement("li");
-      const ammoName = document.createElement("span");
-      ammoName.textContent = "Munición de pistola";
-      const ammoCount = document.createElement("strong");
-      ammoCount.textContent = `×${handgunReserve}`;
-      ammo.append(ammoName, ammoCount);
-      list.appendChild(ammo);
+      entries.push(["Munición de pistola", handgunReserve]);
     }
     items.forEach((count, name) => {
+      entries.push([name, count]);
+    });
+    for (let index = 0; index < INVENTORY_LIMIT; index++) {
+      const slot = document.createElement("li");
+      slot.className = entries[index] ? "inventory-slot filled" : "inventory-slot";
+      if (entries[index]) {
+        const [name, count] = entries[index];
+        slot.title = `${index + 1}. ${name} ×${count}`;
+        const label = document.createElement("span");
+        label.className = "inventory-slot-name";
+        label.textContent = `${name} ×${count}`;
+        slot.appendChild(label);
+        const herb = ["Hierba verde", "Hierba roja", "Hierba azul", "Mezcla verde ×2"].includes(name);
+        const usable = ["Hierba verde", "Hierba azul", "Mezcla verde ×2", "Mezcla verde ×3", "Mezcla verde y roja", "Mezcla verde y azul"].includes(name);
+        const weaponItem = ["Berreta", "Cuchillo de supervivencia", "Escopeta", "Colt", "Lanzagranadas", "Bazooka", "Rocket Launcher"].includes(name);
+        const launcherAmmo = ["Flame Rounds", "Acid Rounds", "Explosive Rounds"].includes(name);
+        if (usable || herb || weaponItem || launcherAmmo) {
+          const actions = document.createElement("span");
+          actions.className = "inventory-slot-actions";
+          if (usable) actions.appendChild(createItemAction("Usar", () => useItem(name)));
+          if (herb) actions.appendChild(createItemAction(combineSelection === name ? "Elegida" : "Combinar", () => combineItem(name)));
+          if (weaponItem) actions.appendChild(createItemAction("Equipar", () => weaponHandlers.equip(name)));
+          if (launcherAmmo) actions.appendChild(createItemAction("Seleccionar", () => weaponHandlers.selectAmmo(name)));
+          slot.appendChild(actions);
+        }
+      } else {
+        slot.textContent = String(index + 1).padStart(2, "0");
+        slot.setAttribute("aria-label", `Espacio ${index + 1} vacío`);
+      }
+      list.appendChild(slot);
+    }
+  }
+
+  function createItemAction(text, callback) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "inventory-action";
+    button.textContent = text;
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      callback();
+    });
+    return button;
+  }
+
+  function consumeItem(name, amount = 1) {
+    const count = items.get(name) || 0;
+    if (count < amount) return false;
+    if (count === amount) items.delete(name);
+    else items.set(name, count - amount);
+    return true;
+  }
+
+  function useItem(name) {
+    const effects = {
+      "Hierba verde": { heal: 33 },
+      "Hierba azul": { curePoison: true },
+      "Mezcla verde ×2": { heal: 66 },
+      "Mezcla verde ×3": { heal: 100 },
+      "Mezcla verde y roja": { heal: 100 },
+      "Mezcla verde y azul": { heal: 33, curePoison: true }
+    };
+    const effect = effects[name];
+    if (name === "Hierba azul" && !poisoned) {
+      hint.textContent = "No tenés veneno para curar.";
+      return;
+    }
+    if (effect?.heal && health >= 100 && !(effect.curePoison && poisoned)) {
+      hint.textContent = "La energía ya está completa.";
+      return;
+    }
+    if (!effect || !consumeItem(name)) return;
+    if (effect.heal) setHealth(health + effect.heal);
+    if (effect.curePoison) setPoison(false);
+    hint.textContent = effect.curePoison && effect.heal
+      ? `${name}: energía recuperada y veneno curado.`
+      : effect.curePoison ? "Veneno curado." : `${name}: energía recuperada.`;
+    renderInventory();
+    if (!chestPanel.hidden) renderChest();
+  }
+
+  function combineItem(name) {
+    if (!combineSelection) {
+      combineSelection = name;
+      hint.textContent = `Elegiste ${name}. Elegí otra hierba para combinar.`;
+      renderInventory();
+      return;
+    }
+    const first = combineSelection;
+    combineSelection = null;
+    let result = null;
+    if (first === "Hierba verde" && name === "Hierba verde" && (items.get(name) || 0) >= 2) result = "Mezcla verde ×2";
+    else if ((first === "Hierba verde" && name === "Hierba roja") || (first === "Hierba roja" && name === "Hierba verde")) result = "Mezcla verde y roja";
+    else if ((first === "Hierba verde" && name === "Hierba azul") || (first === "Hierba azul" && name === "Hierba verde")) result = "Mezcla verde y azul";
+    else if ((first === "Mezcla verde ×2" && name === "Hierba verde") || (name === "Mezcla verde ×2" && first === "Hierba verde")) result = "Mezcla verde ×3";
+
+    if (!result) {
+      hint.textContent = "Esas hierbas no se pueden combinar.";
+      renderInventory();
+      return;
+    }
+    if (first === name) consumeItem(first, 2);
+    else {
+      consumeItem(first);
+      consumeItem(name);
+    }
+    items.set(result, (items.get(result) || 0) + 1);
+    hint.textContent = `Creaste ${result}.`;
+    renderInventory();
+    if (!chestPanel.hidden) renderChest();
+  }
+
+  function renderFiles() {
+    filesList.replaceChildren();
+    filesCount.textContent = String(files.size);
+    if (files.size === 0) {
+      const empty = document.createElement("li");
+      empty.className = "inventory-empty";
+      empty.textContent = "Todavía no encontraste archivos.";
+      filesList.appendChild(empty);
+      return;
+    }
+    files.forEach((count, name) => {
       const entry = document.createElement("li");
-      const itemName = document.createElement("span");
-      itemName.textContent = name;
-      const quantity = document.createElement("strong");
-      quantity.textContent = `×${count}`;
-      entry.append(itemName, quantity);
-      list.appendChild(entry);
+      entry.textContent = count > 1 ? `${name} ×${count}` : name;
+      filesList.appendChild(entry);
     });
   }
 
@@ -168,11 +325,22 @@ const STATUS = (() => {
     condition.dataset.level = health > 50 ? "fine" : health > 25 ? "caution" : "danger";
   }
 
+  function setPoison(value) {
+    const next = Boolean(value);
+    if (poisoned === next) return;
+    poisoned = next;
+    poisonFrames = 0;
+    document.getElementById("poison-status").hidden = !poisoned;
+  }
+
   toggle.addEventListener("click", () => setOpen(panel.hidden));
   close.addEventListener("click", () => setOpen(false));
+  itemsTab.addEventListener("click", () => setTab("items"));
+  filesTab.addEventListener("click", () => setTab("files"));
   chestClose.addEventListener("click", () => { chestPanel.hidden = true; });
 
   renderInventory();
+  renderFiles();
   setHealth(health);
   return {
     toggle() { setOpen(panel.hidden); },
@@ -184,24 +352,69 @@ const STATUS = (() => {
       chestClose.focus();
     },
     setHealth,
+    setWeaponHandlers(handlers) { weaponHandlers = { ...weaponHandlers, ...handlers }; },
     getHealth() { return health; },
+    setPoison,
+    isPoisoned() { return poisoned; },
+    tick() {
+      if (!poisoned) return;
+      poisonFrames++;
+      if (poisonFrames >= 600) {
+        poisonFrames = 0;
+        setHealth(health - 1);
+      }
+    },
     getItemName(type) { return STATUS_ITEMS[type] || null; },
     hasItem(type) { return (items.get(STATUS_ITEMS[type]) || 0) > 0; },
     addItem(type) {
       const name = STATUS_ITEMS[type];
       if (!name) return false;
+      if (STATUS_FILES.has(type)) {
+        files.set(name, (files.get(name) || 0) + 1);
+        renderFiles();
+        hint.textContent = `${name} agregado a Files.`;
+        return true;
+      }
       if (type === "handgunAmmo" ? handgunReserve === 0 && inventorySlots() >= INVENTORY_LIMIT : !items.has(name) && inventorySlots() >= INVENTORY_LIMIT) {
         hint.textContent = "Inventario lleno. Guardá algo en un baúl primero.";
         return false;
       }
-      if (type === "handgunAmmo") handgunReserve += 12;
-      else items.set(name, (items.get(name) || 0) + 1);
+      const amount = AMMO_PICKUP_QUANTITIES[type] || 1;
+      if (type === "handgunAmmo") handgunReserve += amount;
+      else {
+        items.set(name, (items.get(name) || 0) + amount);
+        if (type === "rocketLauncher") rocketReserve++;
+      }
       renderInventory();
       if (!chestPanel.hidden) renderChest();
-      hint.textContent = type === "handgunAmmo" ? "12 balas agregadas a la reserva." : `${name} agregado al inventario.`;
+      hint.textContent = AMMO_PICKUP_QUANTITIES[type]
+        ? `${amount} ${name.toLowerCase()} agregadas.`
+        : `${name} agregado al inventario.`;
       return true;
     },
     getHandgunReserve() { return handgunReserve; },
+    getRocketReserve() { return rocketReserve; },
+    consumeRocket() {
+      if (rocketReserve <= 0) return false;
+      rocketReserve--;
+      renderInventory();
+      return true;
+    },
+    getItemCount(type) { return items.get(STATUS_ITEMS[type]) || 0; },
+    consumeItem(type, count = 1) {
+      const name = STATUS_ITEMS[type];
+      if (!name || !consumeItem(name, count)) return false;
+      renderInventory();
+      if (!chestPanel.hidden) renderChest();
+      return true;
+    },
+    setWeaponDisplay(name, loaded, reserve, ammoLabel) {
+      document.getElementById("weapon-selected").textContent = name;
+      document.getElementById("status-ammo-loaded").textContent = loaded;
+      document.getElementById("status-ammo-reserve").textContent = reserve;
+      document.getElementById("status-ammo-separator").hidden = reserve === "";
+      document.getElementById("status-ammo-type").textContent = ammoLabel;
+    },
     takeHandgunAmmo(amount) {
       const taken = Math.min(handgunReserve, amount);
       handgunReserve -= taken;

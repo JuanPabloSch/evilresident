@@ -68,6 +68,19 @@ concreteCtx.fillStyle = "#555555";
 concreteCtx.fillRect(7, 7, 2, 2);
 const concreteFloorPattern = ctx.createPattern(concreteTileCanvas, "repeat");
 
+const whiteTileCanvas = document.createElement("canvas");
+whiteTileCanvas.width = 16;
+whiteTileCanvas.height = 16;
+const whiteTileCtx = whiteTileCanvas.getContext("2d");
+whiteTileCtx.fillStyle = "#d8d9d5";
+whiteTileCtx.fillRect(0, 0, 16, 16);
+whiteTileCtx.strokeStyle = "#999d9b";
+whiteTileCtx.lineWidth = 1;
+whiteTileCtx.strokeRect(0, 0, 16, 16);
+whiteTileCtx.fillStyle = "rgba(255, 255, 255, 0.22)";
+whiteTileCtx.fillRect(2, 2, 5, 5);
+const whiteTileFloorPattern = ctx.createPattern(whiteTileCanvas, "repeat");
+
 const waterTileCanvas = document.createElement("canvas");
 waterTileCanvas.width = 16;
 waterTileCanvas.height = 16;
@@ -96,6 +109,42 @@ caveCtx.fillRect(2, 11, 4, 3);
 caveCtx.fillStyle = "#252c24";
 caveCtx.fillRect(7, 6, 2, 2);
 const caveFloorPattern = ctx.createPattern(caveTileCanvas, "repeat");
+
+const webbedCaveCanvas = document.createElement("canvas");
+webbedCaveCanvas.width = 64;
+webbedCaveCanvas.height = 64;
+const webCtx = webbedCaveCanvas.getContext("2d");
+webCtx.fillStyle = "#484332";
+webCtx.fillRect(0, 0, 64, 64);
+webCtx.fillStyle = "#343b2b";
+webCtx.fillRect(3, 6, 25, 17);
+webCtx.fillRect(36, 41, 23, 18);
+webCtx.fillStyle = "#66503a";
+webCtx.fillRect(37, 4, 21, 17);
+webCtx.fillRect(6, 43, 18, 15);
+webCtx.strokeStyle = "rgba(204, 202, 181, 0.58)";
+webCtx.lineWidth = 1;
+webCtx.beginPath();
+webCtx.moveTo(0, 0);
+webCtx.lineTo(32, 32);
+webCtx.lineTo(64, 0);
+webCtx.moveTo(0, 64);
+webCtx.lineTo(32, 32);
+webCtx.lineTo(64, 64);
+webCtx.moveTo(32, 0);
+webCtx.lineTo(32, 64);
+webCtx.moveTo(0, 32);
+webCtx.lineTo(64, 32);
+webCtx.stroke();
+for (const radius of [9, 18, 27]) {
+  webCtx.beginPath();
+  webCtx.moveTo(32 - radius, 32 - radius * 0.72);
+  webCtx.quadraticCurveTo(32, 32 - radius * 0.3, 32 + radius, 32 - radius * 0.72);
+  webCtx.moveTo(32 - radius, 32 + radius * 0.72);
+  webCtx.quadraticCurveTo(32, 32 + radius * 0.3, 32 + radius, 32 + radius * 0.72);
+  webCtx.stroke();
+}
+const webbedCavePattern = ctx.createPattern(webbedCaveCanvas, "repeat");
 
 const chessTileCanvas = document.createElement("canvas");
 chessTileCanvas.width = 32;
@@ -158,6 +207,34 @@ let player = {
 };
 
 const weapon = { loaded: 12, capacity: 12, shotFlash: 0, hitPoints: new WeakMap() };
+let equippedWeapon = "handgun";
+let selectedLauncherAmmo = "flameRounds";
+let weaponCooldown = 0;
+const WEAPON_ITEMS = {
+  handgun: "handgun",
+  knife: "combatKnife",
+  shotgun: "shotgunWall",
+  colt: "colt",
+  grenadeLauncher: "grenadeLauncher",
+  bazooka: "bazooka",
+  rocketLauncher: "rocketLauncher"
+};
+const WEAPON_NAMES = {
+  handgun: "Berreta",
+  knife: "Cuchillo de supervivencia",
+  shotgun: "Escopeta",
+  colt: "Colt",
+  grenadeLauncher: "Lanzagranadas",
+  bazooka: "Bazooka",
+  rocketLauncher: "Rocket Launcher"
+};
+const AMMO_INFO = {
+  shotgun: { type: "shotgunShells", label: "CARTUCHOS" },
+  colt: { type: "magnumRounds", label: "MAGNUM" },
+  flameRounds: { type: "flameRounds", label: "FLAME" },
+  acidRounds: { type: "acidRounds", label: "ACID" },
+  explosiveRounds: { type: "explosiveRounds", label: "EXPLOSIVE" }
+};
 let aimPoint = { x: 0, y: 0 };
 let gameFrame = 0;
 let playerDamageCooldown = 0;
@@ -235,13 +312,70 @@ const ENEMY_TYPES = {
   neptune: { sight: 170, speed: 0.62, attackRange: 24, damage: 14, attackDelay: 48 },
   wasp: { sight: 150, speed: 0.92, attackRange: 16, damage: 5, attackDelay: 32 },
   crow: { sight: 135, speed: 0.68, attackRange: 18, damage: 6, attackDelay: 46 },
-  hunter: { sight: 175, speed: 0.72, attackRange: 22, damage: 18, attackDelay: 38 }
+  adder: { sight: 95, speed: 0.58, attackRange: 14, damage: 6, attackDelay: 52 },
+  hunter: { sight: 175, speed: 0.72, attackRange: 22, damage: 18, attackDelay: 38 },
+  blackTiger: { sight: 200, speed: 0.42, attackRange: 35, damage: 24, attackDelay: 32 },
+  yawn: { sight: 180, speed: 0.32, attackRange: 35, damage: 12, attackDelay: 78 },
+  chimera: { sight: 140, speed: 0.52, attackRange: 20, damage: 12, attackDelay: 44 }
 };
 
 function updateAmmoDisplay() {
-  document.getElementById("ammo-loaded").textContent = weapon.loaded;
-  document.getElementById("ammo-reserve").textContent = STATUS.getHandgunReserve();
+  let loaded;
+  let reserve;
+  let ammoLabel;
+  if (equippedWeapon === "handgun") {
+    loaded = weapon.loaded;
+    reserve = STATUS.getHandgunReserve();
+    ammoLabel = "9MM";
+  } else if (equippedWeapon === "knife") {
+    loaded = "∞";
+    reserve = "";
+    ammoLabel = "MELEE";
+  } else if (equippedWeapon === "rocketLauncher") {
+    loaded = STATUS.getRocketReserve();
+    reserve = "";
+    ammoLabel = "ROCKET";
+  } else {
+    const ammo = equippedWeapon === "shotgun" ? AMMO_INFO.shotgun
+      : equippedWeapon === "colt" ? AMMO_INFO.colt
+        : AMMO_INFO[selectedLauncherAmmo];
+    loaded = STATUS.getItemCount(ammo.type);
+    reserve = "";
+    ammoLabel = ammo.label;
+  }
+  document.getElementById("ammo-loaded").textContent = loaded;
+  document.getElementById("ammo-reserve").textContent = reserve;
+  document.querySelector(".ammo-display i").hidden = reserve === "";
+  document.getElementById("ammo-type").textContent = ammoLabel;
+  STATUS.setWeaponDisplay(WEAPON_NAMES[equippedWeapon], loaded, reserve, ammoLabel);
 }
+
+function equipWeapon(name) {
+  const match = Object.entries(WEAPON_NAMES).find(([, label]) => label === name);
+  if (!match) return;
+  const [weaponId] = match;
+  if (!STATUS.hasItem(WEAPON_ITEMS[weaponId])) return;
+  equippedWeapon = weaponId;
+  updateAmmoDisplay();
+  STATUS.setPickupHint(`${name} equipada.`);
+}
+
+function chooseLauncherAmmo(name) {
+  const match = ["flameRounds", "acidRounds", "explosiveRounds"]
+    .map((id) => [id, AMMO_INFO[id]])
+    .find(([, ammo]) => STATUS.getItemName(ammo.type) === name);
+  if (!match) return;
+  const [ammoId, ammo] = match;
+  if (STATUS.getItemCount(ammo.type) <= 0) {
+    STATUS.setPickupHint(`No tenés ${name}.`);
+    return;
+  }
+  selectedLauncherAmmo = ammoId;
+  updateAmmoDisplay();
+  STATUS.setPickupHint(`${name} seleccionadas para ${equippedWeapon === "bazooka" ? "la bazooka" : "el lanzagranadas"}.`);
+}
+
+STATUS.setWeaponHandlers({ equip: equipWeapon, selectAmmo: chooseLauncherAmmo });
 
 function canvasPoint(event) {
   const rect = canvas.getBoundingClientRect();
@@ -252,6 +386,7 @@ function canvasPoint(event) {
 }
 
 function reloadWeapon() {
+  if (equippedWeapon !== "handgun") return;
   const needed = weapon.capacity - weapon.loaded;
   if (needed <= 0 || STATUS.getHandgunReserve() <= 0) return;
   weapon.loaded += STATUS.takeHandgunAmmo(needed);
@@ -259,18 +394,49 @@ function reloadWeapon() {
 }
 
 function fireWeapon() {
-  if (STATUS.isOpen() || doorCodeDialog.open || weapon.loaded <= 0) return;
-  weapon.loaded--;
+  if (STATUS.isOpen() || doorCodeDialog.open || weaponCooldown > 0) return;
+  if (WEAPON_ITEMS[equippedWeapon] && !STATUS.hasItem(WEAPON_ITEMS[equippedWeapon])) {
+    equippedWeapon = "handgun";
+    updateAmmoDisplay();
+  }
+  const ammo = equippedWeapon === "shotgun" ? AMMO_INFO.shotgun
+    : equippedWeapon === "colt" ? AMMO_INFO.colt
+      : AMMO_INFO[selectedLauncherAmmo];
+  if (equippedWeapon === "handgun" && weapon.loaded <= 0) {
+    STATUS.setPickupHint("La Berreta está descargada. Recargá con clic derecho.");
+    return;
+  }
+  if (equippedWeapon === "shotgun" && STATUS.getItemCount(ammo.type) <= 0) {
+    STATUS.setPickupHint("No te quedan cartuchos de escopeta.");
+    return;
+  }
+  if (equippedWeapon === "colt" && STATUS.getItemCount(ammo.type) <= 0) {
+    STATUS.setPickupHint("No te quedan balas Magnum.");
+    return;
+  }
+  if (["grenadeLauncher", "bazooka"].includes(equippedWeapon) && STATUS.getItemCount(ammo.type) <= 0) {
+    STATUS.setPickupHint(`No te quedan ${STATUS.getItemName(ammo.type)} para ${equippedWeapon === "bazooka" ? "la bazooka" : "el lanzagranadas"}.`);
+    return;
+  }
+  if (equippedWeapon === "rocketLauncher" && STATUS.getRocketReserve() <= 0) {
+    STATUS.setPickupHint("El Rocket Launcher está descargado.");
+    return;
+  }
+
+  if (equippedWeapon === "handgun") weapon.loaded--;
+  else if (["shotgun", "colt", "grenadeLauncher", "bazooka"].includes(equippedWeapon)) STATUS.consumeItem(ammo.type);
+  else if (equippedWeapon === "rocketLauncher") STATUS.consumeRocket();
+  weaponCooldown = equippedWeapon === "knife" ? 14 : 8;
   weapon.shotFlash = 4;
   const originX = player.x + PLAYER_WIDTH / 2;
   const originY = player.y + PLAYER_HEIGHT / 2;
-  const range = 150;
+  const range = equippedWeapon === "knife" ? 28 : ["rocketLauncher", "bazooka"].includes(equippedWeapon) ? 220 : 150;
   let target = null;
   let targetDistance = range;
   const room = ROOMS[currentRoom];
 
   room.interactables.forEach((obj) => {
-    if (!["zombie", "zombieDog", "spider", "neptune", "wasp", "crow", "hunter"].includes(obj.type)) return;
+    if (!["zombie", "zombieDog", "spider", "neptune", "wasp", "crow", "adder", "hunter", "blackTiger", "yawn", "chimera"].includes(obj.type)) return;
     const dx = obj.x + obj.w / 2 - originX;
     const dy = obj.y + obj.h / 2 - originY;
     const along = dx * Math.cos(player.aimAngle) + dy * Math.sin(player.aimAngle);
@@ -282,7 +448,16 @@ function fireWeapon() {
   });
 
   if (target) {
-    const remaining = (weapon.hitPoints.get(target) ?? (target.type === "crow" ? 1 : 3)) - 1;
+    const smallEnemy = ["crow", "adder", "wasp"].includes(target.type);
+    const boss = ["blackTiger", "yawn", "tyrant"].includes(target.type);
+    const defaultHitPoints = smallEnemy ? 10 : target.type === "zombieDog" ? 10 : boss ? 300 : 100;
+    const hunterSized = ["hunter", "chimera"].includes(target.type);
+    const damage = equippedWeapon === "knife" ? 10
+      : equippedWeapon === "handgun" ? 20
+        : equippedWeapon === "shotgun" ? hunterSized ? 34 : 50
+          : equippedWeapon === "colt" ? hunterSized ? 50 : 100
+            : equippedWeapon === "rocketLauncher" ? 250 : 50;
+    const remaining = (weapon.hitPoints.get(target) ?? defaultHitPoints) - damage;
     if (remaining <= 0) room.interactables.splice(room.interactables.indexOf(target), 1);
     else weapon.hitPoints.set(target, remaining);
   }
@@ -349,6 +524,18 @@ function rectangleInsidePolygon(rect, polygon) {
   ].every(([x, y]) => containsPoint(x, y));
 }
 
+function rectangleInsideCorridorPoly(rect, corridors) {
+  const corners = [
+    [rect.x, rect.y],
+    [rect.x + rect.w, rect.y],
+    [rect.x, rect.y + rect.h],
+    [rect.x + rect.w, rect.y + rect.h]
+  ];
+  return corridors.some((area) => corners.every(([x, y]) =>
+    x >= area.x && x <= area.x + area.w && y >= area.y && y <= area.y + area.h
+  ));
+}
+
 function hasLineOfSight(x1, y1, x2, y2, room, observer) {
   const distance = Math.hypot(x2 - x1, y2 - y1);
   const steps = Math.ceil(distance / 4);
@@ -392,6 +579,7 @@ function updateEnemies(room) {
   room.interactables.forEach((enemy) => {
     const behavior = ENEMY_TYPES[enemy.type];
     if (!behavior) return;
+    if (enemy.revealed === false) return;
     if (enemy.type === "neptune" && waterDrained) {
       enemy.alerted = false;
       enemy.attackAt = undefined;
@@ -402,11 +590,13 @@ function updateEnemies(room) {
     const distance = Math.hypot(playerX - enemyX, playerY - enemyY);
     if (!enemy.alerted && distance <= behavior.sight && hasLineOfSight(enemyX, enemyY, playerX, playerY, room, enemy)) enemy.alerted = true;
     if (!enemy.alerted) return;
+    if (enemy.type === "chimera") enemy.descended = true;
 
     if (distance <= behavior.attackRange) {
       enemy.attackAt ??= 0;
       if (gameFrame >= enemy.attackAt && playerDamageCooldown === 0) {
         STATUS.setHealth(STATUS.getHealth() - behavior.damage);
+        if (["adder", "spider", "blackTiger", "yawn"].includes(enemy.type)) STATUS.setPoison(true);
         playerDamageCooldown = 24;
         enemy.attackAt = gameFrame + behavior.attackDelay;
       }
@@ -420,6 +610,7 @@ function updateEnemies(room) {
       const box = { x, y, w: enemy.w, h: enemy.h };
       return x >= bounds.minX && y >= bounds.minY && x + enemy.w <= bounds.maxX && y + enemy.h <= bounds.maxY &&
         (!room.constrainToWalkablePolygon || rectangleInsidePolygon(box, room.walkablePolygon)) &&
+        (!room.constrainToCorridorPoly || rectangleInsideCorridorPoly(box, room.corridorPoly)) &&
         !room.walls?.some((wall) => checkCollision(box, wall)) &&
         !obstacles.some((obstacle) => checkCollision(box, obstacle));
     };
@@ -427,6 +618,40 @@ function updateEnemies(room) {
     if (canOccupy(enemy.x, enemy.y + stepY)) enemy.y += stepY;
     enemy.animFrame = Math.floor(gameFrame / 12) % 2;
   });
+}
+
+function updateBoulderEncounter(room) {
+  const boulder = room.interactables.find((obj) => obj.type === "rollingBoulder");
+  if (!boulder || boulder.passed) return;
+  const playerX = player.x + PLAYER_WIDTH / 2;
+  const playerY = player.y + PLAYER_HEIGHT / 2;
+  const distance = Math.hypot(playerX - (boulder.x + boulder.w / 2), playerY - (boulder.y + boulder.h / 2));
+
+  if (!boulder.rolling && distance < (boulder.triggerRadius ?? 105)) boulder.rolling = true;
+  if (!boulder.rolling) return;
+
+  const direction = boulder.direction ?? -1;
+  boulder.x += direction * boulder.rollSpeed;
+  if (checkCollision({ x: player.x, y: player.y, w: PLAYER_WIDTH, h: PLAYER_HEIGHT }, boulder)) {
+    player.x = boulder.refugeX ?? 38;
+    player.y = boulder.refugeY ?? 86;
+    STATUS.setHealth(0);
+    playerDamageCooldown = 45;
+  }
+
+  const stopX = boulder.stopX ?? 20;
+  const reachedEnd = direction > 0 ? boulder.x >= stopX : boulder.x <= stopX;
+  if (reachedEnd) {
+    boulder.x = stopX;
+    boulder.rolling = false;
+    boulder.passed = true;
+    boulder.solid = false;
+    const exit = room.doors.find((door) => door.id === (boulder.unlockDoorId ?? "door2ToBlackTigerRoom"));
+    if (exit) exit.disabled = false;
+    const hunter = room.interactables.find((obj) => obj.type === (boulder.revealEnemyType ?? "hunter") && obj.revealed === false);
+    if (hunter) hunter.revealed = true;
+    STATUS.setPickupHint("La piedra pasó. El pasaje quedó abierto.");
+  }
 }
 
 function collectNearbyItem() {
@@ -440,7 +665,11 @@ function collectNearbyItem() {
     return;
   }
   const item = room.interactables[itemIndex];
-  if (STATUS.addItem(item.type)) room.interactables.splice(itemIndex, 1);
+  if (STATUS.addItem(item.type)) {
+    room.interactables.splice(itemIndex, 1);
+    if (item.giftFrom) STATUS.setPickupHint(`${item.giftFrom} te dio el ${STATUS.getItemName(item.type)}.`);
+    updateAmmoDisplay();
+  }
 }
 
 function nearbyDoor() {
@@ -451,24 +680,60 @@ function nearbyDoor() {
     .sort((a, b) => Math.hypot(a.x + a.w / 2 - player.x, a.y + a.h / 2 - player.y) - Math.hypot(b.x + b.w / 2 - player.x, b.y + b.h / 2 - player.y))[0];
 }
 
+function isStepLadderInPlace(room, target) {
+  const ladder = room.interactables.find((obj) => obj.type === "stepLadder");
+  if (!ladder) return false;
+  const atTarget = Math.hypot(ladder.x - target.x, ladder.y - target.y) <= target.tolerance;
+  return atTarget || Boolean(target.wallZone && checkCollision(ladder, target.wallZone));
+}
+
+function pushStepLadder(room, ladder, dx, dy) {
+  const next = { ...ladder, x: ladder.x + dx * 2, y: ladder.y + dy * 2 };
+  if (next.x < room.bounds.minX || next.y < room.bounds.minY || next.x + next.w > room.bounds.maxX || next.y + next.h > room.bounds.maxY) return false;
+  if (room.walkablePolygon && !rectangleInsidePolygon(next, room.walkablePolygon)) return false;
+  if (room.walls?.some((wall) => checkCollision(next, wall))) return false;
+  if (room.interactables.some((obj) => obj !== ladder && obj.solid && !ENEMY_TYPES[obj.type] && checkCollision(next, obj))) return false;
+  ladder.x = next.x;
+  ladder.y = next.y;
+  return true;
+}
+
 function updateInteractionPrompt() {
+  const room = ROOMS[currentRoom];
+  const movableLadder = room.interactables.find((obj) => obj.type === "stepLadder" && obj.resettable);
+  const ladderReach = { x: player.x - 14, y: player.y - 14, w: PLAYER_WIDTH + 28, h: PLAYER_HEIGHT + 28 };
+  const ladderDoor = room.doors.find((door) => door.stepLadderTarget);
+  if (movableLadder && ladderDoor && !isStepLadderInPlace(room, ladderDoor.stepLadderTarget) && checkCollision(ladderReach, movableLadder)) {
+    interactionPrompt.textContent = "E · Reubicar escalerita";
+    interactionPrompt.hidden = false;
+    return;
+  }
   const door = nearbyDoor();
   if (door) {
     const locked = door.keyRequired && !unlockedLocks.has(door.lockId);
+    const missingCrests = door.crestsRequired?.filter((crest) => !STATUS.hasItem(crest)) || [];
+    const crestsLocked = missingCrests.length > 0 && !unlockedLocks.has(door.lockId);
+    const sideLocked = door.unlockFromSide && !unlockedLocks.has(door.lockId);
     const switchLocked = door.switchRequired === "armsStorageUnlocked" && !armsStorageUnlocked;
+    const ladderBlocked = door.stepLadderTarget && !isStepLadderInPlace(ROOMS[currentRoom], door.stepLadderTarget);
     interactionPrompt.textContent = door.disabled || !ROOMS[door.targetRoom]
       ? `E · ${door.blockedMessage || "Destino todavía no disponible."}`
       : door.codeRequired && !unlockedLocks.has(door.lockId)
         ? "E · Ingresar código"
       : locked
         ? `E · Cerrada: ${STATUS.getItemName(door.keyRequired)}`
+      : crestsLocked
+        ? `E · Faltan: ${missingCrests.map((crest) => STATUS.getItemName(crest)).join(", ")}`
+      : sideLocked
+        ? door.unlockFromSide === currentRoom ? "E · Destrabar desde acá" : "E · Cerrada del otro lado"
       : switchLocked
         ? "E · Cerrada: activá el switch en Control Room B1"
+      : ladderBlocked
+        ? "E · Mové la escalerita bajo el conducto"
         : `E · Abrir: ${ROOMS[door.targetRoom].name}`;
     interactionPrompt.hidden = false;
     return;
   }
-  const room = ROOMS[currentRoom];
   const reach = { x: player.x - 14, y: player.y - 14, w: PLAYER_WIDTH + 28, h: PLAYER_HEIGHT + 28 };
   const chest = room.interactables.find((obj) => obj.type === "itemChest" && checkCollision(reach, obj));
   if (chest) {
@@ -567,10 +832,25 @@ debugRoomGo.addEventListener("click", () => {
 });
 
 function interactNearby() {
+  const room = ROOMS[currentRoom];
+  const movableLadder = room.interactables.find((obj) => obj.type === "stepLadder" && obj.resettable);
+  const ladderReach = { x: player.x - 14, y: player.y - 14, w: PLAYER_WIDTH + 28, h: PLAYER_HEIGHT + 28 };
+  const ladderDoor = room.doors.find((door) => door.stepLadderTarget);
+  if (movableLadder && ladderDoor && !isStepLadderInPlace(room, ladderDoor.stepLadderTarget) && checkCollision(ladderReach, movableLadder)) {
+    movableLadder.x = movableLadder.startX;
+    movableLadder.y = movableLadder.startY;
+    STATUS.setPickupHint("La escalerita volvió a su posición inicial.");
+    updateInteractionPrompt();
+    return;
+  }
   const door = nearbyDoor();
   if (door) {
     if (door.disabled || !ROOMS[door.targetRoom]) {
       STATUS.setPickupHint(door.blockedMessage || "Destino todavía no disponible.");
+      return;
+    }
+    if (door.stepLadderTarget && !isStepLadderInPlace(ROOMS[currentRoom], door.stepLadderTarget)) {
+      STATUS.setPickupHint("Primero tenés que mover la escalerita bajo el conducto de ventilación.");
       return;
     }
     if (door.switchRequired === "armsStorageUnlocked" && !armsStorageUnlocked) {
@@ -585,6 +865,23 @@ function interactNearby() {
       doorCodeDialog.showModal();
       return;
     }
+    if (door.unlockFromSide && !unlockedLocks.has(door.lockId)) {
+      if (currentRoom !== door.unlockFromSide) {
+        STATUS.setPickupHint("La puerta se destraba desde el otro lado.");
+        return;
+      }
+      unlockedLocks.add(door.lockId);
+      STATUS.setPickupHint("Destrabaste la puerta desde este lado.");
+    }
+    const missingCrests = door.crestsRequired?.filter((crest) => !STATUS.hasItem(crest)) || [];
+    if (missingCrests.length && !unlockedLocks.has(door.lockId)) {
+      STATUS.setPickupHint(`La puerta requiere: ${missingCrests.map((crest) => STATUS.getItemName(crest)).join(", ")}.`);
+      return;
+    }
+    if (door.crestsRequired?.length && !unlockedLocks.has(door.lockId)) {
+      unlockedLocks.add(door.lockId);
+      STATUS.setPickupHint("Colocaste los cuatro crests. La puerta quedó abierta.");
+    }
     if (door.keyRequired && !unlockedLocks.has(door.lockId)) {
       if (!STATUS.hasItem(door.keyRequired)) {
         const keyName = STATUS.getItemName(door.keyRequired);
@@ -597,7 +894,6 @@ function interactNearby() {
     transitionThroughDoor(door);
     return;
   }
-  const room = ROOMS[currentRoom];
   const reach = { x: player.x - 14, y: player.y - 14, w: PLAYER_WIDTH + 28, h: PLAYER_HEIGHT + 28 };
   if (room.interactables.some((obj) => obj.type === "itemChest" && checkCollision(reach, obj))) {
     STATUS.openChest();
@@ -629,6 +925,7 @@ function update() {
   if (STATUS.isOpen() || doorCodeDialog.open) return;
   gameFrame++;
   if (playerDamageCooldown > 0) playerDamageCooldown--;
+  if (weaponCooldown > 0) weaponCooldown--;
   if (weapon.shotFlash > 0) weapon.shotFlash--;
   player.aimAngle = Math.atan2(aimPoint.y - (player.y + PLAYER_HEIGHT / 2), aimPoint.x - (player.x + PLAYER_WIDTH / 2));
   const room = ROOMS[currentRoom];
@@ -664,12 +961,16 @@ function update() {
     canMoveX = rectangleInsidePolygon(playerRectX, room.walkablePolygon);
     canMoveY = rectangleInsidePolygon(playerRectY, room.walkablePolygon);
   }
+  if (room.constrainToCorridorPoly) {
+    canMoveX = canMoveX && rectangleInsideCorridorPoly(playerRectX, room.corridorPoly);
+    canMoveY = canMoveY && rectangleInsideCorridorPoly(playerRectY, room.corridorPoly);
+  }
 
   // Colisión con objetos
   room.interactables.forEach((obj) => {
     if (obj.solid) {
-      if (checkCollision(playerRectX, obj)) canMoveX = false;
-      if (checkCollision(playerRectY, obj)) canMoveY = false;
+      if (checkCollision(playerRectX, obj) && !(obj.type === "stepLadder" && player.dx && pushStepLadder(room, obj, player.dx, 0))) canMoveX = false;
+      if (checkCollision(playerRectY, obj) && !(obj.type === "stepLadder" && player.dy && pushStepLadder(room, obj, 0, player.dy))) canMoveY = false;
     }
   });
 
@@ -685,6 +986,7 @@ function update() {
   if (canMoveY) player.y = nextY;
 
   updateEnemies(room);
+  if (room.interactables.some((obj) => obj.type === "rollingBoulder")) updateBoulderEncounter(room);
   updateInteractionPrompt();
 }
 
@@ -698,10 +1000,16 @@ function drawRoom() {
     currentFloorPattern = woodFloorPattern;
   } else if (room.floorType === "concrete") {
     currentFloorPattern = concreteFloorPattern;
+  } else if (room.floorType === "whiteTile") {
+    currentFloorPattern = whiteTileFloorPattern;
+  } else if (room.floorType === "checkerboard" || room.floorType === "chess") {
+    currentFloorPattern = chessFloorPattern;
   } else if (room.floorType === "water") {
     currentFloorPattern = waterDrained ? concreteFloorPattern : waterFloorPattern;
   } else if (room.floorType === "cave") {
     currentFloorPattern = caveFloorPattern;
+  } else if (room.floorType === "webbedCave") {
+    currentFloorPattern = webbedCavePattern;
   } else if (room.floorType === "secondFloor") {
     currentFloorPattern = upperFloorPattern;
   } else if (room.floorType === "chess") {
@@ -776,6 +1084,7 @@ function drawRoom() {
 
 // 3. Dibujar Muebles y Elementos Específicos
   room.interactables.forEach((obj) => {
+    if (obj.revealed === false) return;
     if (obj.type === "staticCharacter") {
       drawStaticCharacter(obj);
 
@@ -869,6 +1178,26 @@ function drawRoom() {
       ctx.strokeStyle = "#252820";
       ctx.lineWidth = 1;
       ctx.strokeRect(obj.x + 2, obj.y + 3, obj.w - 4, obj.h - 5);
+      if (obj.medalSocket) {
+        ctx.fillStyle = "#171916";
+        ctx.beginPath();
+        ctx.arc(obj.x + obj.w / 2, obj.y + 15, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = PALETTE.trim;
+        ctx.stroke();
+      }
+
+    } else if (obj.type === "statue") {
+      ctx.fillStyle = "#33362f";
+      ctx.fillRect(obj.x + 3, obj.y + obj.h - 8, obj.w - 6, 8);
+      ctx.fillStyle = "#77796d";
+      ctx.fillRect(obj.x + 7, obj.y + 18, obj.w - 14, obj.h - 27);
+      ctx.fillStyle = "#a2a394";
+      ctx.fillRect(obj.x + 10, obj.y + 3, obj.w - 20, 18);
+      ctx.fillRect(obj.x + 8, obj.y + 20, obj.w - 16, 4);
+      ctx.fillStyle = "#55594f";
+      ctx.fillRect(obj.x + 12, obj.y + 8, 2, 2);
+      ctx.fillRect(obj.x + obj.w - 14, obj.y + 8, 2, 2);
 
     } else if (obj.type === "richardBody") {
       ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
@@ -944,6 +1273,20 @@ function drawRoom() {
       ctx.fillRect(obj.x + obj.w - 5, obj.y, 4, obj.h);
       ctx.fillStyle = "#302b20";
       ctx.fillRect(obj.x + 5, obj.y + 4, 3, 3);
+
+    } else if (obj.type === "rollingBoulder") {
+      ctx.fillStyle = "#151610";
+      ctx.beginPath();
+      ctx.ellipse(obj.x + obj.w / 2, obj.y + obj.h / 2 + 2, obj.w / 2 + 2, obj.h / 2 - 1, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#5a5547";
+      ctx.beginPath();
+      ctx.ellipse(obj.x + obj.w / 2, obj.y + obj.h / 2, obj.w / 2 - 2, obj.h / 2 - 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#77705b";
+      ctx.fillRect(obj.x + 12, obj.y + 9, 17, 6);
+      ctx.fillStyle = "#39382f";
+      ctx.fillRect(obj.x + 8, obj.y + 38, 34, 8);
 
     } else if (obj.type === "caveRock") {
       ctx.fillStyle = "#252820";
@@ -1080,6 +1423,318 @@ function drawRoom() {
       ctx.fillStyle = "#b5a27c";
       ctx.fillRect(obj.x + 10, obj.y + 4, 3, 12);
       ctx.fillRect(obj.x + 6, obj.y + 8, 11, 3);
+
+    } else if (obj.type === "batterySocket") {
+      ctx.fillStyle = "#171916";
+      ctx.fillRect(obj.x, obj.y + 3, obj.w, obj.h - 3);
+      ctx.fillStyle = "#62665b";
+      ctx.fillRect(obj.x + 2, obj.y + 4, obj.w - 4, obj.h - 6);
+      ctx.fillStyle = "#252820";
+      ctx.fillRect(obj.x + 5, obj.y + 7, obj.w - 10, obj.h - 11);
+      ctx.fillStyle = "#bb3930";
+      ctx.fillRect(obj.x + 5, obj.y + 2, 5, 3);
+      ctx.fillStyle = "#d0cbb7";
+      ctx.fillRect(obj.x + obj.w - 10, obj.y + 2, 5, 3);
+
+    } else if (obj.type === "projectionBeam") {
+      const beam = ctx.createLinearGradient(obj.x, obj.y, obj.x + obj.w, obj.y + obj.h / 2);
+      beam.addColorStop(0, "rgba(190, 232, 255, 0.2)");
+      beam.addColorStop(1, "rgba(190, 232, 255, 0.04)");
+      ctx.fillStyle = beam;
+      ctx.beginPath();
+      ctx.moveTo(obj.x, obj.y);
+      ctx.lineTo(obj.x + obj.w, obj.y + obj.h / 2);
+      ctx.lineTo(obj.x, obj.y + obj.h);
+      ctx.closePath();
+      ctx.fill();
+
+    } else if (obj.type === "projectionScreen") {
+      ctx.fillStyle = "#353a3a";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#c6d4d6";
+      ctx.fillRect(obj.x + 3, obj.y + 3, obj.w - 6, obj.h - 6);
+      ctx.fillStyle = "rgba(100, 165, 190, 0.55)";
+      ctx.fillRect(obj.x + 5, obj.y + 12, obj.w - 10, obj.h - 24);
+      ctx.fillStyle = "rgba(237, 240, 219, 0.7)";
+      ctx.fillRect(obj.x + 6, obj.y + 23, 2, 13);
+      ctx.fillRect(obj.x + 9, obj.y + 42, 2, 9);
+
+    } else if (obj.type === "projector") {
+      ctx.fillStyle = "#202521";
+      ctx.fillRect(obj.x + 4, obj.y + 3, obj.w - 4, obj.h - 5);
+      ctx.fillStyle = "#59625b";
+      ctx.fillRect(obj.x + 7, obj.y + 1, obj.w - 8, obj.h - 9);
+      ctx.fillStyle = "#111513";
+      ctx.fillRect(obj.x, obj.y + 5, 7, 6);
+      ctx.fillStyle = "#8ed6e8";
+      ctx.fillRect(obj.x + 1, obj.y + 6, 3, 4);
+
+    } else if (obj.type === "morgueStructure") {
+      ctx.fillStyle = "#363b3a";
+      ctx.fillRect(obj.x + 5, obj.y + 5, obj.w - 10, obj.h - 10);
+      ctx.fillStyle = "#414746";
+      ctx.fillRect(obj.x + 9, obj.y + 14, obj.w - 18, 2);
+      ctx.fillRect(obj.x + 9, obj.y + 39, obj.w - 18, 2);
+      ctx.fillRect(obj.x + 9, obj.y + 60, obj.w - 18, 2);
+      ctx.fillStyle = "#262b2b";
+      ctx.fillRect(obj.x, obj.y, obj.w, 5);
+      ctx.fillRect(obj.x, obj.y, 5, obj.h);
+      ctx.fillRect(obj.x + obj.w - 5, obj.y, 5, obj.h);
+      ctx.fillRect(obj.x, obj.y + obj.h - 5, 97, 5);
+      ctx.fillRect(obj.x + 125, obj.y + obj.h - 5, obj.w - 125, 5);
+      ctx.fillStyle = "#707674";
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, 2);
+      ctx.fillRect(obj.x + 2, obj.y + 2, 2, obj.h - 4);
+      ctx.fillRect(obj.x + obj.w - 4, obj.y + 2, 2, obj.h - 4);
+
+    } else if (obj.type === "morgueStretcher") {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+      ctx.fillRect(obj.x + 3, obj.y + obj.h - 2, obj.w - 6, 4);
+      ctx.fillStyle = "#454b4b";
+      ctx.fillRect(obj.x + 5, obj.y + obj.h - 5, 3, 5);
+      ctx.fillRect(obj.x + obj.w - 8, obj.y + obj.h - 5, 3, 5);
+      ctx.fillStyle = "#aeb4b0";
+      ctx.fillRect(obj.x + 1, obj.y + 4, obj.w - 2, obj.h - 8);
+      ctx.fillStyle = "#d2d3cc";
+      ctx.fillRect(obj.x + 5, obj.y + 6, obj.w - 10, obj.h - 12);
+      ctx.fillStyle = "#7e8582";
+      ctx.fillRect(obj.x + 5, obj.y + 3, obj.w - 10, 2);
+      ctx.fillRect(obj.x + 5, obj.y + obj.h - 5, obj.w - 10, 2);
+      ctx.fillStyle = "#c5c8c2";
+      ctx.fillRect(obj.x + 8, obj.y + 7, 11, 5);
+
+    } else if (obj.type === "operatingTable") {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.32)";
+      ctx.fillRect(obj.x + 4, obj.y + obj.h - 3, obj.w - 8, 5);
+      ctx.fillStyle = "#3f4948";
+      ctx.fillRect(obj.x + 7, obj.y + obj.h - 6, 4, 6);
+      ctx.fillRect(obj.x + obj.w - 11, obj.y + obj.h - 6, 4, 6);
+      ctx.fillStyle = "#727e7c";
+      ctx.fillRect(obj.x, obj.y + 4, obj.w, obj.h - 9);
+      ctx.fillStyle = "#c2c8c3";
+      ctx.fillRect(obj.x + 3, obj.y + 6, obj.w - 6, obj.h - 13);
+      ctx.fillStyle = "#edf0e8";
+      ctx.fillRect(obj.x + 7, obj.y + 10, obj.w - 14, obj.h - 21);
+      ctx.fillStyle = "#8d9894";
+      ctx.fillRect(obj.x + 12, obj.y + 8, 2, obj.h - 16);
+      ctx.fillRect(obj.x + obj.w - 14, obj.y + 8, 2, obj.h - 16);
+
+    } else if (obj.type === "surgicalLamp") {
+      ctx.fillStyle = "#3b4240";
+      ctx.fillRect(obj.x + obj.w / 2 - 2, obj.y, 4, 8);
+      ctx.fillRect(obj.x + 6, obj.y + 7, obj.w - 12, 3);
+      ctx.fillStyle = "#aab2ad";
+      ctx.fillRect(obj.x + 4, obj.y + 8, obj.w - 8, 10);
+      ctx.fillStyle = "#e8e4c9";
+      for (let lightX = obj.x + 9; lightX < obj.x + obj.w - 5; lightX += 8) {
+        ctx.fillRect(lightX, obj.y + 11, 4, 4);
+      }
+
+    } else if (obj.type === "airDuct") {
+      ctx.fillStyle = "#272e2d";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#68716e";
+      ctx.fillRect(obj.x + 3, obj.y + 3, obj.w - 6, obj.h - 6);
+      ctx.fillStyle = "#202625";
+      ctx.fillRect(obj.x + 6, obj.y + 5, obj.w - 12, obj.h - 10);
+      ctx.strokeStyle = "#818a85";
+      ctx.lineWidth = 1;
+      for (let ventX = obj.x + 11; ventX < obj.x + obj.w - 5; ventX += 7) {
+        ctx.beginPath();
+        ctx.moveTo(ventX, obj.y + 5);
+        ctx.lineTo(ventX, obj.y + obj.h - 5);
+        ctx.stroke();
+      }
+
+    } else if (obj.type === "moDiskTerminal") {
+      ctx.fillStyle = "#202624";
+      ctx.fillRect(obj.x, obj.y + 5, obj.w, obj.h - 5);
+      ctx.fillStyle = "#111714";
+      ctx.fillRect(obj.x + 3, obj.y, obj.w - 6, 9);
+      ctx.fillStyle = "#769887";
+      ctx.fillRect(obj.x + 5, obj.y + 2, obj.w - 10, 5);
+      ctx.fillStyle = "#b8c6ad";
+      ctx.fillRect(obj.x + 7, obj.y + 3, 7, 1);
+      ctx.fillStyle = "#0d1210";
+      ctx.fillRect(obj.x + 7, obj.y + obj.h - 4, obj.w - 14, 2);
+
+    } else if (obj.type === "xrayViewer") {
+      ctx.fillStyle = "#252d30";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#8a9690";
+      ctx.fillRect(obj.x + 3, obj.y + 3, obj.w - 6, obj.h - 6);
+      ctx.fillStyle = "#d8e2d5";
+      ctx.fillRect(obj.x + 6, obj.y + 7, obj.w - 12, obj.h - 14);
+      ctx.fillStyle = "#849a91";
+      ctx.fillRect(obj.x + 13, obj.y + 13, 3, 29);
+      ctx.fillRect(obj.x + 9, obj.y + 22, 11, 3);
+      ctx.fillRect(obj.x + 11, obj.y + 43, 8, 3);
+
+    } else if (obj.type === "xrayMachine") {
+      ctx.fillStyle = "#343d3d";
+      ctx.fillRect(obj.x + 3, obj.y + 8, obj.w - 6, obj.h - 8);
+      ctx.fillStyle = "#a5aaa2";
+      ctx.fillRect(obj.x + 5, obj.y + 10, obj.w - 10, 14);
+      ctx.fillStyle = "#344a4b";
+      ctx.fillRect(obj.x + 8, obj.y + 12, obj.w - 16, 9);
+      ctx.fillStyle = "#82b5a0";
+      ctx.fillRect(obj.x + 11, obj.y + 15, 7, 2);
+      ctx.fillStyle = "#747a73";
+      ctx.fillRect(obj.x + 11, obj.y + 27, 4, 4);
+      ctx.fillRect(obj.x + 19, obj.y + 27, 4, 4);
+      ctx.fillStyle = "#202625";
+      ctx.fillRect(obj.x, obj.y, obj.w, 9);
+      ctx.fillRect(obj.x + 7, obj.y + obj.h - 4, 5, 4);
+      ctx.fillRect(obj.x + obj.w - 12, obj.y + obj.h - 4, 5, 4);
+
+    } else if (obj.type === "woodenCrate") {
+      ctx.fillStyle = "#382515";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#79502e";
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+      ctx.strokeStyle = "#4b321f";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(obj.x + 4, obj.y + 4, obj.w - 8, obj.h - 8);
+      ctx.beginPath();
+      ctx.moveTo(obj.x + 5, obj.y + 5);
+      ctx.lineTo(obj.x + obj.w - 5, obj.y + obj.h - 5);
+      ctx.moveTo(obj.x + obj.w - 5, obj.y + 5);
+      ctx.lineTo(obj.x + 5, obj.y + obj.h - 5);
+      ctx.stroke();
+
+    } else if (obj.type === "labBench") {
+      ctx.fillStyle = "#353a39";
+      ctx.fillRect(obj.x, obj.y + 4, obj.w, obj.h - 4);
+      ctx.fillStyle = "#a6a9a2";
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, 5);
+      ctx.fillStyle = "#454b4a";
+      ctx.fillRect(obj.x + 6, obj.y + 9, obj.w - 12, 2);
+      ctx.fillStyle = "#5e8d77";
+      ctx.fillRect(obj.x + 12, obj.y + 14, 9, 10);
+      ctx.fillStyle = "#c4d8c2";
+      ctx.fillRect(obj.x + 14, obj.y + 16, 5, 5);
+      ctx.fillStyle = "#b8a66c";
+      ctx.fillRect(obj.x + 37, obj.y + 13, 8, 7);
+
+    } else if (obj.type === "labComputer") {
+      ctx.fillStyle = "#252a29";
+      ctx.fillRect(obj.x + 4, obj.y + 2, obj.w - 8, 21);
+      ctx.fillStyle = "#606b68";
+      ctx.fillRect(obj.x + 6, obj.y + 4, obj.w - 12, 15);
+      ctx.fillStyle = "#76a99a";
+      ctx.fillRect(obj.x + 8, obj.y + 6, obj.w - 16, 11);
+      ctx.fillStyle = "#c1d8c8";
+      ctx.fillRect(obj.x + 11, obj.y + 9, 13, 1);
+      ctx.fillRect(obj.x + 11, obj.y + 12, 18, 1);
+      ctx.fillStyle = "#414644";
+      ctx.fillRect(obj.x + 16, obj.y + 23, 10, 5);
+      ctx.fillStyle = "#252a29";
+      ctx.fillRect(obj.x + 5, obj.y + 29, obj.w - 10, 4);
+
+    } else if (obj.type === "slides") {
+      ctx.fillStyle = "#262a27";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#d1c78f";
+      ctx.fillRect(obj.x + 2, obj.y + 1, obj.w - 4, obj.h - 2);
+      ctx.fillStyle = "#687b72";
+      ctx.fillRect(obj.x + 4, obj.y + 2, 4, obj.h - 4);
+      ctx.fillRect(obj.x + 9, obj.y + 2, 2, obj.h - 4);
+
+    } else if (obj.type === "helicopterShadow") {
+      ctx.save();
+      ctx.globalAlpha = 0.38;
+      ctx.fillStyle = "#111411";
+      ctx.beginPath();
+      ctx.ellipse(obj.x + obj.w * 0.48, obj.y + obj.h * 0.56, obj.w * 0.27, obj.h * 0.24, -0.12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(obj.x + obj.w * 0.62, obj.y + obj.h * 0.46, obj.w * 0.27, obj.h * 0.12);
+      ctx.beginPath();
+      ctx.ellipse(obj.x + obj.w * 0.84, obj.y + obj.h * 0.52, obj.w * 0.12, obj.h * 0.1, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(obj.x + obj.w * 0.47, obj.y + obj.h * 0.08, obj.w * 0.035, obj.h * 0.35);
+      ctx.fillRect(obj.x + obj.w * 0.25, obj.y + obj.h * 0.24, obj.w * 0.48, obj.h * 0.035);
+      ctx.restore();
+
+    } else if (obj.type === "tyrantTube" || obj.type === "specimenTube") {
+      ctx.fillStyle = "#202b2d";
+      ctx.fillRect(obj.x - 2, obj.y - 2, obj.w + 4, obj.h + 4);
+      ctx.fillStyle = obj.type === "tyrantTube" ? "rgba(145, 199, 190, 0.22)" : "rgba(123, 192, 183, 0.28)";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#9aa9a0";
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, 3);
+      ctx.fillRect(obj.x + 2, obj.y + obj.h - 5, obj.w - 4, 3);
+      ctx.fillStyle = "#637573";
+      ctx.fillRect(obj.x + 4, obj.y + 6, 2, obj.h - 12);
+      ctx.fillRect(obj.x + obj.w - 6, obj.y + 6, 2, obj.h - 12);
+      if (obj.type === "tyrantTube") {
+        ctx.fillStyle = "#454a43";
+        ctx.fillRect(obj.x + 13, obj.y + 10, 12, 34);
+        ctx.fillStyle = "#777a70";
+        ctx.fillRect(obj.x + 14, obj.y + 7, 10, 11);
+        ctx.fillStyle = "#6f2826";
+        ctx.fillRect(obj.x + 13, obj.y + 22, 13, 10);
+      } else {
+        ctx.fillStyle = "rgba(205, 220, 191, 0.72)";
+        ctx.fillRect(obj.x + obj.w / 2 - 4, obj.y + 12, 8, obj.h - 22);
+        ctx.fillRect(obj.x + obj.w / 2 - 7, obj.y + 8, 14, 7);
+      }
+      ctx.strokeStyle = "rgba(218, 245, 241, 0.7)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(obj.x + 9, obj.y + 5);
+      ctx.lineTo(obj.x + 9, obj.y + obj.h - 6);
+      ctx.stroke();
+
+    } else if (obj.type === "tyrant") {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.38)";
+      ctx.beginPath();
+      ctx.ellipse(obj.x + obj.w / 2, obj.y + obj.h - 3, obj.w * 0.48, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#252724";
+      ctx.fillRect(obj.x + 7, obj.y + 36, 8, 15);
+      ctx.fillRect(obj.x + 19, obj.y + 35, 8, 16);
+      ctx.fillStyle = "#111310";
+      ctx.fillRect(obj.x + 5, obj.y + 49, 11, 4);
+      ctx.fillRect(obj.x + 18, obj.y + 49, 12, 4);
+      ctx.fillStyle = "#565951";
+      ctx.fillRect(obj.x + 5, obj.y + 17, 25, 23);
+      ctx.fillRect(obj.x + 2, obj.y + 19, 8, 11);
+      ctx.fillRect(obj.x + 24, obj.y + 21, 7, 15);
+      ctx.fillStyle = "#777a70";
+      ctx.fillRect(obj.x + 12, obj.y + 7, 14, 13);
+      ctx.fillRect(obj.x + 15, obj.y + 3, 9, 7);
+      ctx.fillStyle = "#252724";
+      ctx.fillRect(obj.x + 13, obj.y + 12, 3, 2);
+      ctx.fillRect(obj.x + 23, obj.y + 12, 3, 2);
+      ctx.fillStyle = "#762f2a";
+      ctx.fillRect(obj.x + 15, obj.y + 23, 7, 10);
+      ctx.fillStyle = "#9b9b8c";
+      ctx.fillRect(obj.x + 28, obj.y + 33, 4, 4);
+      ctx.fillRect(obj.x + 29, obj.y + 37, 2, 5);
+
+    } else if (obj.type === "flare") {
+      ctx.fillStyle = "#1b1712";
+      ctx.fillRect(obj.x + 2, obj.y + 4, obj.w - 4, obj.h - 5);
+      ctx.fillStyle = "#a92d21";
+      ctx.fillRect(obj.x + 1, obj.y + 3, obj.w - 2, obj.h - 6);
+      ctx.fillStyle = "#e05b2f";
+      ctx.fillRect(obj.x + 2, obj.y + 1, obj.w - 4, 4);
+      ctx.fillStyle = "#e5bd62";
+      ctx.fillRect(obj.x + 3, obj.y, obj.w - 6, 2);
+
+    } else if (obj.type === "rocketLauncher") {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+      ctx.fillRect(obj.x + 2, obj.y + obj.h - 2, obj.w - 4, 3);
+      ctx.fillStyle = "#454a3c";
+      ctx.fillRect(obj.x + 4, obj.y + 3, obj.w - 9, 5);
+      ctx.fillStyle = "#242820";
+      ctx.fillRect(obj.x + 1, obj.y + 2, 6, 7);
+      ctx.fillRect(obj.x + obj.w - 8, obj.y + 4, 7, 3);
+      ctx.fillStyle = "#77796a";
+      ctx.fillRect(obj.x + 11, obj.y + 1, 7, 2);
+      ctx.fillStyle = "#252820";
+      ctx.fillRect(obj.x + 14, obj.y + 8, 3, 4);
+      ctx.fillRect(obj.x + 10, obj.y + 8, 8, 2);
 
     } else if (obj.type === "elevator") {
       ctx.fillStyle = "#11130f";
@@ -1264,12 +1919,23 @@ function drawRoom() {
       ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
       ctx.fillStyle = "#59625b";
       ctx.fillRect(obj.x + 1, obj.y + 1, obj.w - 2, obj.h - 2);
-      ctx.fillStyle = "#b5cf8d";
-      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, 3);
       ctx.fillStyle = "#262a26";
-      for (let row = 0; row < 3; row++) {
-        for (let col = 0; col < 2; col++) {
-          ctx.fillRect(obj.x + 2 + col * 3, obj.y + 7 + row * 3, 2, 2);
+      if (obj.w > obj.h) {
+        ctx.fillStyle = "#b5cf8d";
+        ctx.fillRect(obj.x + 3, obj.y + 2, obj.w - 6, 3);
+        for (let row = 0; row < 2; row++) {
+          for (let col = 0; col < 3; col++) {
+            ctx.fillRect(obj.x + 4 + col * 5, obj.y + 7 + row * 3, 3, 2);
+          }
+        }
+      } else {
+        ctx.fillStyle = "#b5cf8d";
+        ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, 3);
+        for (let row = 0; row < 3; row++) {
+          for (let col = 0; col < 2; col++) {
+            ctx.fillStyle = "#262a26";
+            ctx.fillRect(obj.x + 2 + col * 3, obj.y + 7 + row * 3, 2, 2);
+          }
         }
       }
 
@@ -1289,6 +1955,63 @@ function drawRoom() {
       ctx.fillStyle = "#95702f";
       ctx.fillRect(obj.x + 4, obj.y + 3, 7, 2);
       ctx.fillRect(obj.x + 9, obj.y + 5, 2, 2);
+
+    } else if (obj.type === "powerMachine") {
+      ctx.fillStyle = "#102b1a";
+      ctx.fillRect(obj.x - 2, obj.y - 2, obj.w + 4, obj.h + 4);
+      ctx.fillStyle = "#17452a";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#28663a";
+      ctx.fillRect(obj.x + 3, obj.y + 3, obj.w - 6, Math.min(5, obj.h - 6));
+      ctx.fillStyle = "#0b2417";
+      for (let ventY = obj.y + 12; ventY < obj.y + obj.h - 5; ventY += 8) {
+        ctx.fillRect(obj.x + 4, ventY, Math.max(2, obj.w - 8), 3);
+      }
+      ctx.fillStyle = "#7b9d56";
+      ctx.fillRect(obj.x + obj.w - 6, obj.y + 4, 3, 2);
+      ctx.fillStyle = "#43644a";
+      ctx.fillRect(obj.x + 2, obj.y + obj.h - 4, obj.w - 4, 2);
+
+    } else if (obj.type === "chimera") {
+      const sway = obj.animFrame ? 1 : 0;
+      ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+      ctx.fillRect(obj.x + 5, obj.y + obj.h - 3, obj.w - 10, 4);
+      if (!obj.descended) {
+        ctx.fillStyle = "#191c19";
+        ctx.fillRect(obj.x + 6, obj.y, 2, 7);
+        ctx.fillRect(obj.x + obj.w - 8, obj.y, 2, 7);
+        ctx.fillStyle = "#242b25";
+        ctx.fillRect(obj.x + 2, obj.y + 6, 6, 4);
+        ctx.fillRect(obj.x + obj.w - 8, obj.y + 6, 6, 4);
+        ctx.fillRect(obj.x + 6, obj.y + 7 + sway, obj.w - 12, 15);
+        ctx.fillStyle = "#62645a";
+        ctx.fillRect(obj.x + 8, obj.y + 11, obj.w - 16, 10);
+        ctx.fillStyle = "#8b2924";
+        ctx.fillRect(obj.x + 10, obj.y + 12, obj.w - 20, 7);
+        ctx.fillRect(obj.x + 11, obj.y + 20, 3, 6);
+        ctx.fillRect(obj.x + obj.w - 14, obj.y + 20, 3, 6);
+        ctx.fillStyle = "#a7a397";
+        ctx.fillRect(obj.x + 8, obj.y + 22, obj.w - 16, 7);
+        ctx.fillStyle = "#a82820";
+        ctx.fillRect(obj.x + 10, obj.y + 24, 2, 2);
+        ctx.fillRect(obj.x + obj.w - 12, obj.y + 24, 2, 2);
+        ctx.fillStyle = "#d1c6a3";
+        ctx.fillRect(obj.x + 11, obj.y + 28, 3, 2);
+      } else {
+        ctx.fillStyle = "#222722";
+        ctx.fillRect(obj.x + 3, obj.y + 12, obj.w - 6, 13);
+        ctx.fillRect(obj.x, obj.y + 13, 7, 9);
+        ctx.fillRect(obj.x + obj.w - 7, obj.y + 13, 7, 9);
+        ctx.fillStyle = "#6b6a5d";
+        ctx.fillRect(obj.x + 7, obj.y + 7, obj.w - 14, 10);
+        ctx.fillStyle = "#a7a397";
+        ctx.fillRect(obj.x + 9, obj.y + 8, obj.w - 18, 7);
+        ctx.fillStyle = "#8b2924";
+        ctx.fillRect(obj.x + 10, obj.y + 17, obj.w - 20, 8);
+        ctx.fillStyle = "#b42c23";
+        ctx.fillRect(obj.x + 11, obj.y + 18, 2, 3);
+        ctx.fillRect(obj.x + obj.w - 13, obj.y + 18, 2, 3);
+      }
 
     } else if (obj.type === "hunter") {
       const step = obj.animFrame ? 1 : 0;
@@ -1327,6 +2050,18 @@ function drawRoom() {
       ctx.fillRect(obj.x + 5, obj.y + 4, 2, 3);
       ctx.fillRect(obj.x + 11, obj.y + 6, 2, 4);
 
+    } else if (obj.type === "lockpick") {
+      ctx.strokeStyle = "#c8c4ad";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(obj.x + 4, obj.y + 4, 3, 0, Math.PI * 2);
+      ctx.moveTo(obj.x + 7, obj.y + 4);
+      ctx.lineTo(obj.x + obj.w - 1, obj.y + 4);
+      ctx.lineTo(obj.x + obj.w - 1, obj.y + 7);
+      ctx.moveTo(obj.x + obj.w - 4, obj.y + 4);
+      ctx.lineTo(obj.x + obj.w - 4, obj.y + 6);
+      ctx.stroke();
+
     } else if (obj.type === "armorKey") {
       // Llave de la Armadura
       ctx.fillStyle = "#ffd700"; // Dorado brillante
@@ -1350,6 +2085,23 @@ function drawRoom() {
       ctx.fillRect(obj.x + 8, obj.y + 4, 2, 3);
       ctx.fillStyle = "#858678";
       ctx.fillRect(obj.x + 2, obj.y + 2, 2, 2);
+
+    } else if (obj.type === "masterKey") {
+      ctx.fillStyle = "#d5d7d1";
+      ctx.fillRect(obj.x, obj.y + 1, 5, 5);
+      ctx.fillStyle = "#e4c75d";
+      ctx.fillRect(obj.x + 1, obj.y + 2, 3, 3);
+      ctx.fillStyle = "#b9b9aa";
+      ctx.fillRect(obj.x + 4, obj.y + 3, 8, 2);
+      ctx.fillRect(obj.x + 9, obj.y + 5, 2, 3);
+
+    } else if (obj.type === "powerRoomKey") {
+      ctx.fillStyle = "#d6d1bc";
+      ctx.fillRect(obj.x, obj.y + 1, 5, 5);
+      ctx.fillStyle = "#f0d878";
+      ctx.fillRect(obj.x + 1, obj.y + 2, 3, 3);
+      ctx.fillRect(obj.x + 4, obj.y + 3, 7, 2);
+      ctx.fillRect(obj.x + 9, obj.y + 5, 2, 2);
      
       } else if (obj.type === "column") {
       // Columna de la mansión (Base, cuerpo con sombras y capitel)
@@ -1495,6 +2247,38 @@ function drawRoom() {
     ctx.fillStyle = "#222222";
     ctx.fillRect(obj.x + 2, obj.y + 5, obj.w - 4, 3);
 
+  } else if (obj.type === "chrisInCell") {
+    ctx.fillStyle = "rgba(0, 0, 0, 0.32)";
+    ctx.fillRect(obj.x + 2, obj.y + obj.h - 2, obj.w - 2, 4);
+    ctx.fillStyle = "#d8ad87";
+    ctx.fillRect(obj.x + 2, obj.y + 2, 9, 9);
+    ctx.fillStyle = "#4b3020";
+    ctx.fillRect(obj.x + 1, obj.y + 1, 8, 3);
+    ctx.fillRect(obj.x + 2, obj.y + 1, 3, 7);
+    ctx.fillStyle = "#536a48";
+    ctx.fillRect(obj.x + 11, obj.y + 3, 14, 8);
+    ctx.fillStyle = "#374535";
+    ctx.fillRect(obj.x + 22, obj.y + 4, 7, 6);
+    ctx.fillStyle = "#b8a98e";
+    ctx.fillRect(obj.x + 24, obj.y + 4, 5, 2);
+
+  } else if (obj.type === "detentionCell") {
+    ctx.fillStyle = "rgba(35, 42, 41, 0.22)";
+    ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+    ctx.strokeStyle = "#1b2221";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(obj.x + 1, obj.y + 1, obj.w - 2, obj.h - 2);
+    ctx.strokeStyle = "#707c78";
+    ctx.lineWidth = 1;
+    for (let barX = obj.x + 8; barX < obj.x + obj.w - 4; barX += 8) {
+      ctx.beginPath();
+      ctx.moveTo(barX, obj.y + 2);
+      ctx.lineTo(barX, obj.y + obj.h - 2);
+      ctx.stroke();
+    }
+    ctx.fillStyle = "#333c39";
+    ctx.fillRect(obj.x + obj.w - 6, obj.y + obj.h / 2 - 7, 5, 14);
+
     } else if (obj.type === "stainlessCounter") {
       ctx.fillStyle = "#202423";
       ctx.fillRect(obj.x - 1, obj.y + 3, obj.w + 2, obj.h - 1);
@@ -1582,6 +2366,27 @@ function drawRoom() {
     ctx.fillStyle = "#000000"; // Culata/Cuerpo de la escopeta
     ctx.fillRect(obj.x + 2, obj.y + 12, 2, 6);
 
+  } else if (obj.type === "colt") {
+    ctx.fillStyle = "#171916";
+    ctx.fillRect(obj.x + 1, obj.y + 4, obj.w - 2, 4);
+    ctx.fillStyle = "#aeb6b1";
+    ctx.fillRect(obj.x + 5, obj.y + 3, obj.w - 6, 3);
+    ctx.fillRect(obj.x + 8, obj.y + 6, 4, 2);
+    ctx.fillStyle = "#483326";
+    ctx.fillRect(obj.x + 2, obj.y + 6, 5, 6);
+    ctx.fillRect(obj.x + 14, obj.y + 2, 4, 2);
+
+  } else if (obj.type === "grenadeLauncher") {
+    ctx.fillStyle = "#262a23";
+    ctx.fillRect(obj.x + 2, obj.y + 3, obj.w - 4, 5);
+    ctx.fillStyle = "#596248";
+    ctx.fillRect(obj.x + 5, obj.y + 2, obj.w - 7, 3);
+    ctx.fillStyle = "#765638";
+    ctx.fillRect(obj.x + 1, obj.y + 5, 6, 6);
+    ctx.fillRect(obj.x + 9, obj.y + 8, 4, 5);
+    ctx.fillStyle = "#aab0a2";
+    ctx.fillRect(obj.x + obj.w - 5, obj.y + 3, 3, 2);
+
     } else if (obj.type === "desk") {
       // Escritorio de madera
       ctx.fillStyle = "#221108";
@@ -1641,6 +2446,15 @@ function drawRoom() {
     ctx.fillRect(obj.x + 2, obj.y + 2, 2, obj.h - 4);
     ctx.fillRect(obj.x + 6, obj.y + 2, 2, obj.h - 4);
 
+  } else if (obj.type === "fireRounds") {
+    ctx.fillStyle = "#080808";
+    ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
+    ctx.fillStyle = "#e4a22d";
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#f4dc8a";
+    ctx.fillRect(obj.x + 2, obj.y + 2, 2, obj.h - 4);
+    ctx.fillRect(obj.x + 7, obj.y + 2, 2, obj.h - 4);
+
   } else if (obj.type === "flameRounds") {
     ctx.fillStyle = "#080808";
     ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
@@ -1649,6 +2463,20 @@ function drawRoom() {
     ctx.fillStyle = "#f2cf68";
     ctx.fillRect(obj.x + 2, obj.y + 2, 2, obj.h - 4);
     ctx.fillRect(obj.x + 6, obj.y + 2, 2, obj.h - 4);
+
+  } else if (obj.type === "combatKnife") {
+    ctx.fillStyle = "#252321";
+    ctx.fillRect(obj.x + 1, obj.y + 7, 5, 4);
+    ctx.fillStyle = "#bbbcae";
+    ctx.beginPath();
+    ctx.moveTo(obj.x + 5, obj.y + 7);
+    ctx.lineTo(obj.x + obj.w - 1, obj.y + 1);
+    ctx.lineTo(obj.x + obj.w - 4, obj.y + 9);
+    ctx.lineTo(obj.x + 5, obj.y + 10);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#e4e0ca";
+    ctx.fillRect(obj.x + 7, obj.y + 7, 3, 1);
 
   } else if (obj.type === "carBattery") {
     ctx.fillStyle = "#101411";
@@ -1697,6 +2525,26 @@ function drawRoom() {
     ctx.fillStyle = "#e7dfbd";
     ctx.fillRect(obj.x + 5, obj.y + 3, 3, 6);
     ctx.fillRect(obj.x + 3, obj.y + 5, 7, 3);
+
+  } else if (obj.type === "starCrest") {
+    ctx.fillStyle = "#17130c";
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#c6ae58";
+    ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+    ctx.fillStyle = "#f1e0a0";
+    ctx.fillRect(obj.x + 5, obj.y + 2, 2, 8);
+    ctx.fillRect(obj.x + 2, obj.y + 5, 8, 2);
+    ctx.fillRect(obj.x + 4, obj.y + 4, 4, 4);
+
+  } else if (obj.type === "windCrest") {
+    ctx.fillStyle = "#17130c";
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#aaa58b";
+    ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+    ctx.fillStyle = "#e0dcc6";
+    ctx.fillRect(obj.x + 3, obj.y + 3, 6, 2);
+    ctx.fillRect(obj.x + 5, obj.y + 5, 5, 2);
+    ctx.fillRect(obj.x + 3, obj.y + 7, 6, 2);
 
   } else if (obj.type === "moDisk") {
     ctx.fillStyle = "#131713";
@@ -1787,7 +2635,7 @@ function drawRoom() {
       ctx.fillStyle = isActive ? "#c1f3bd" : "#e2c2a0";
       ctx.fillRect(obj.x + obj.w / 2 - 1, obj.y + (isActive ? 8 : 11), 2, 4);
 
-    } else if (obj.type === "researcherWill") {
+    } else if (obj.type === "researcherWill" || obj.type === "researcherLetter" || obj.type === "fax") {
       ctx.fillStyle = "#302215";
       ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
       ctx.fillStyle = "#e5d9b7";
@@ -1873,6 +2721,26 @@ function drawRoom() {
     ctx.fillStyle = "#8b0000"; // Detalle central en rojo oscuro
     ctx.fillRect(obj.x + 4, obj.y + 4, obj.w - 8, obj.h - 8);
 
+  } else if (obj.type === "doomBook2") {
+    ctx.fillStyle = "#17150e";
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#81672f";
+    ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+    ctx.fillStyle = "#273c35";
+    ctx.fillRect(obj.x + 4, obj.y + 4, obj.w - 8, obj.h - 8);
+    ctx.fillStyle = "#c3a758";
+    ctx.fillRect(obj.x + 5, obj.y + 6, obj.w - 10, 2);
+
+  } else if (obj.type === "securitySystem") {
+    ctx.fillStyle = "#dedbd0";
+    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    ctx.fillStyle = "#b6b4a8";
+    ctx.fillRect(obj.x + 1, obj.y + 1, obj.w - 2, 1);
+    ctx.fillStyle = "#424c53";
+    ctx.fillRect(obj.x + 2, obj.y + 3, obj.w - 4, 1);
+    ctx.fillRect(obj.x + 2, obj.y + 6, obj.w - 5, 1);
+    ctx.fillRect(obj.x + 2, obj.y + 8, obj.w - 7, 1);
+
     } else if (obj.type === "painting") {
     // Cuadro con marco dorado y lienzo interior de color
     ctx.fillStyle = "#d4af37"; // Marco dorado
@@ -1919,13 +2787,29 @@ function drawRoom() {
     ctx.fillStyle = "#6e3b19";
     ctx.fillRect(obj.x + 1, obj.y + 1, obj.w - 2, obj.h - 2);
 
-  } else if (obj.type === "crankItem") {
+    } else if (obj.type === "crankItem") {
     // Square Crank: Manivela metálica dorada/bronce con empuñadura
     ctx.fillStyle = "#d4af37"; // Bronce / Dorado
     ctx.fillRect(obj.x, obj.y + 2, obj.w - 2, 3); // Barra
     ctx.fillRect(obj.x + obj.w - 4, obj.y, 3, 7); // Punta cuadrada / eje
     ctx.fillStyle = "#111111"; // Mango negro
     ctx.fillRect(obj.x, obj.y + 1, 3, 5);
+
+  } else if (obj.type === "hexCrank") {
+    ctx.fillStyle = "#49371f";
+    ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+    ctx.fillStyle = "#c3a45b";
+    ctx.beginPath();
+    ctx.moveTo(obj.x + 4, obj.y + 1);
+    ctx.lineTo(obj.x + obj.w - 4, obj.y + 1);
+    ctx.lineTo(obj.x + obj.w - 1, obj.y + obj.h / 2);
+    ctx.lineTo(obj.x + obj.w - 4, obj.y + obj.h - 1);
+    ctx.lineTo(obj.x + 4, obj.y + obj.h - 1);
+    ctx.lineTo(obj.x + 1, obj.y + obj.h / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#49371f";
+    ctx.fillRect(obj.x + 6, obj.y + 4, obj.w - 12, obj.h - 8);
 
   } else if (obj.type === "barrel") {
     // Barril de madera con aros metálicos
@@ -2355,6 +3239,68 @@ function drawRoom() {
       ctx.fillStyle = "#ffffff"; // Vidrio reflejante
       ctx.fillRect(obj.x + 1, obj.y + 2, obj.w - 2, obj.h - 4);
 
+    } else if (obj.type === "adder") {
+      const sway = obj.animFrame ? 2 : 0;
+      ctx.strokeStyle = "#711c18";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(obj.x + 1, obj.y + 7);
+      ctx.lineTo(obj.x + 4, obj.y + 4 + sway);
+      ctx.lineTo(obj.x + 7, obj.y + 7 - sway);
+      ctx.lineTo(obj.x + 10, obj.y + 4 + sway);
+      ctx.lineTo(obj.x + 13, obj.y + 5);
+      ctx.stroke();
+      ctx.fillStyle = "#bb382a";
+      ctx.fillRect(obj.x + 10, obj.y + 2, 4, 4);
+      ctx.fillStyle = "#e5bc76";
+      ctx.fillRect(obj.x + 13, obj.y + 3, 1, 1);
+
+    } else if (obj.type === "blackTiger") {
+      const stride = obj.animFrame ? 5 : 0;
+      ctx.fillStyle = "rgba(0, 0, 0, 0.48)";
+      ctx.beginPath();
+      ctx.ellipse(obj.x + obj.w / 2, obj.y + obj.h * 0.73, obj.w * 0.46, obj.h * 0.19, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = "#17120f";
+      ctx.lineWidth = 5;
+      for (const side of [-1, 1]) {
+        for (let leg = 0; leg < 4; leg++) {
+          const startX = obj.x + obj.w / 2 + side * 19;
+          const startY = obj.y + 30 + leg * 5;
+          const kneeX = obj.x + obj.w / 2 + side * (35 + leg * 3);
+          const kneeY = obj.y + 13 + leg * 15 + (leg % 2 ? stride : -stride);
+          const footX = obj.x + obj.w / 2 + side * (46 + leg * 4);
+          const footY = obj.y + 3 + leg * 22 + (leg % 2 ? -stride : stride);
+          ctx.beginPath();
+          ctx.moveTo(startX, startY);
+          ctx.lineTo(kneeX, kneeY);
+          ctx.lineTo(footX, footY);
+          ctx.stroke();
+        }
+      }
+
+      ctx.fillStyle = "#17120f";
+      ctx.beginPath();
+      ctx.ellipse(obj.x + obj.w / 2, obj.y + 43, 34, 27, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#55251f";
+      ctx.beginPath();
+      ctx.ellipse(obj.x + obj.w / 2, obj.y + 44, 26, 20, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#211714";
+      ctx.beginPath();
+      ctx.ellipse(obj.x + obj.w / 2, obj.y + 26, 21, 18, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#9a3829";
+      ctx.fillRect(obj.x + 18, obj.y + 17, 56, 5);
+      ctx.fillStyle = "#e24a31";
+      ctx.fillRect(obj.x + 27, obj.y + 23, 5, 4);
+      ctx.fillRect(obj.x + 60, obj.y + 23, 5, 4);
+      ctx.fillStyle = "#ead6a0";
+      ctx.fillRect(obj.x + 31, obj.y + 34, 4, 5);
+      ctx.fillRect(obj.x + 57, obj.y + 34, 4, 5);
+
     } else if (obj.type === "spider") {
       ctx.strokeStyle = "#17110d";
       ctx.lineWidth = 2;
@@ -2379,6 +3325,25 @@ function drawRoom() {
       ctx.fillStyle = "#e34b35";
       ctx.fillRect(obj.x + 9, obj.y + 8, 2, 2);
       ctx.fillRect(obj.x + 14, obj.y + 8, 2, 2);
+
+    } else if (obj.type === "enrico") {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+      ctx.fillRect(obj.x + 1, obj.y + obj.h - 3, obj.w + 2, 4);
+      ctx.fillStyle = "#303845";
+      ctx.fillRect(obj.x + 3, obj.y + 11, 14, 10);
+      ctx.fillRect(obj.x + 1, obj.y + 17, 8, 5);
+      ctx.fillRect(obj.x + 10, obj.y + 18, 8, 4);
+      ctx.fillStyle = "#d6b49a";
+      ctx.fillRect(obj.x + 6, obj.y + 2, 10, 10);
+      ctx.fillStyle = "#f0eee0";
+      ctx.fillRect(obj.x + 5, obj.y + 1, 12, 4);
+      ctx.fillRect(obj.x + 4, obj.y + 3, 3, 5);
+      ctx.fillStyle = "#51433d";
+      ctx.fillRect(obj.x + 4, obj.y + 7, 3, 5);
+      ctx.fillRect(obj.x + 15, obj.y + 7, 3, 5);
+      ctx.fillStyle = "#25221f";
+      ctx.fillRect(obj.x + 7, obj.y + 5, 2, 1);
+      ctx.fillRect(obj.x + 13, obj.y + 5, 2, 1);
 
     } else if (obj.type === "zombie") {
       // --- ZOMBIE PRIMER ENCUENTRO (De espaldas comiendo / arrodillado) ---
@@ -2688,6 +3653,7 @@ function drawTrophyDarkness() {
 }
 
 function loop() {
+  STATUS.tick();
   update();
   drawRoom();
   drawPlayer();

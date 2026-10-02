@@ -12,7 +12,7 @@
       <div class="game-layout">
         <div class="game-screen">
           <canvas id="game" width="320" height="192" aria-label="Pantalla del juego"></canvas>
-          <div class="ammo-display" aria-live="polite"><span id="ammo-loaded">12</span><i>/</i><span id="ammo-reserve">36</span><small>9MM</small></div>
+          <div class="ammo-display" aria-live="polite"><span id="ammo-loaded">12</span><i>/</i><span id="ammo-reserve">36</span><small id="ammo-type">9MM</small></div>
           <div id="interaction-prompt" class="interaction-prompt" aria-live="polite"></div>
           <dialog id="door-code-dialog" class="door-code-dialog" aria-labelledby="door-code-title">
             <form id="door-code-form">
@@ -46,7 +46,7 @@
             <li><kbd>E</kbd><span>Interactuar</span></li>
             <li><kbd>Mouse</kbd><span>Apuntar</span></li>
             <li><kbd>Click izq.</kbd><span>Disparar</span></li>
-            <li><kbd>Click der.</kbd><span>Recargar</span></li>
+            <li><kbd>Click der.</kbd><span>Recargar Berreta</span></li>
           </ul>
           <div class="side-actions">
             <button id="map-toggle" class="map-toggle" type="button" aria-expanded="false" aria-controls="mansion-map">Mapa (M)</button>
@@ -79,19 +79,30 @@
 
     <aside id="status-panel" class="map-panel status-panel" aria-labelledby="status-title" hidden>
       <div class="map-heading">
-        <h2 id="status-title">Estado del personaje</h2>
+        <h2 id="status-title">Inventario</h2>
         <button id="status-close" class="map-close" type="button" aria-label="Cerrar estado" title="Cerrar estado">×</button>
       </div>
       <div class="status-content">
         <div class="status-portrait" aria-hidden="true"><span></span></div>
         <div class="status-vitals">
-          <div class="status-row"><span>ENERGÍA</span><strong id="health-label">100%</strong></div>
+          <div class="status-row"><span>ENERGÍA</span><span class="poison-status" id="poison-status" hidden>POISON</span><strong id="health-label">100%</strong></div>
           <div class="health-track" role="meter" aria-label="Energía" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><span id="health-fill"></span></div>
           <p class="status-condition" id="health-condition">FINE</p>
+          <div class="equipped-weapon"><span>ARMA EQUIPADA</span><strong id="weapon-selected">Berreta</strong><small><span id="status-ammo-loaded">12</span><span id="status-ammo-separator"> / </span><span id="status-ammo-reserve">36</span> · <span id="status-ammo-type">9MM</span></small></div>
         </div>
       </div>
-      <h3 id="inventory-title" class="inventory-title">OBJETOS (0/8)</h3>
-      <ul id="inventory-list" class="inventory-list"><li class="inventory-empty">No llevás objetos.</li></ul>
+      <div class="status-tabs" role="tablist" aria-label="Inventario y archivos">
+        <button id="items-tab" type="button" role="tab" aria-selected="true" aria-controls="items-view">ITEMS</button>
+        <button id="files-tab" type="button" role="tab" aria-selected="false" aria-controls="files-view">FILES <span id="files-count">0</span></button>
+      </div>
+      <section id="items-view" class="status-view" role="tabpanel" aria-labelledby="items-tab">
+        <h3 id="inventory-title" class="inventory-title">OBJETOS (0/8)</h3>
+        <ul id="inventory-list" class="inventory-slots"></ul>
+      </section>
+      <section id="files-view" class="status-view" role="tabpanel" aria-labelledby="files-tab" hidden>
+        <h3 class="inventory-title">ARCHIVOS LEÍDOS Y RECOGIDOS</h3>
+        <ul id="files-list" class="file-list"><li class="inventory-empty">Todavía no encontraste archivos.</li></ul>
+      </section>
       <p id="pickup-hint" class="pickup-hint" aria-live="polite">Acercate a un objeto y pulsá E.</p>
     </aside>
 
