@@ -10,6 +10,7 @@ const STATUS_ITEMS = {
   firstAidSpray: "Aerosol de primeros auxilios",
   armorKey: "Llave de la armadura",
   helmetKey: "Helmet Key",
+  shieldKey: "Shield Key",
   lockpick: "Lockpick",
   controlRoomKey: "Control Room Key",
   powerRoomKey: "Power Room Key",
@@ -30,6 +31,7 @@ const STATUS_ITEMS = {
   doomBook2: "Doom Book 2",
   redJewel: "Joya roja",
   orders: "Orders",
+  passNumber: "Pass Number",
   carBattery: "Batería de auto",
   flare: "Flare",
   rocketLauncher: "Rocket Launcher",
@@ -52,7 +54,8 @@ const STATUS_ITEMS = {
   plant42Report: "Plant 42 Report",
   vJoltReport: "V-Jolt Report"
 };
-const STATUS_FILES = new Set(["securitySystem", "fax", "scrapbook", "researcherWill", "researcherLetter", "plant42Report", "vJoltReport", "orders"]);
+const STATUS_FILES = new Set(["securitySystem", "fax", "scrapbook", "researcherWill", "researcherLetter", "plant42Report", "vJoltReport", "orders", "passNumber"]);
+const STATUS_KEY_ITEMS = new Set(["lockpick"]);
 const AMMO_PICKUP_QUANTITIES = {
   handgunAmmo: 15,
   shotgunShells: 7,
@@ -69,6 +72,7 @@ const STATUS = (() => {
   const toggle = document.getElementById("status-toggle");
   const close = document.getElementById("status-close");
   const list = document.getElementById("inventory-list");
+  const keyItemsList = document.getElementById("key-items-list");
   const filesList = document.getElementById("files-list");
   const filesCount = document.getElementById("files-count");
   const itemsTab = document.getElementById("items-tab");
@@ -94,7 +98,9 @@ const STATUS = (() => {
   let rocketReserve = 0;
   let storedHandgunReserve = 0;
   const storedItems = new Map();
+  const keyItems = new Set();
   const files = new Map();
+  const fileIds = new Set();
   const INVENTORY_LIMIT = 8;
 
   function setTab(tab) {
@@ -151,6 +157,25 @@ const STATUS = (() => {
       }
       list.appendChild(slot);
     }
+  }
+
+  function renderKeyItems() {
+    keyItemsList.replaceChildren();
+    if (keyItems.size === 0) {
+      const empty = document.createElement("li");
+      empty.className = "inventory-empty";
+      empty.textContent = "No llevás objetos clave.";
+      keyItemsList.appendChild(empty);
+      return;
+    }
+    [...keyItems]
+      .map((type) => STATUS_ITEMS[type])
+      .filter(Boolean)
+      .forEach((name) => {
+        const item = document.createElement("li");
+        item.textContent = name;
+        keyItemsList.appendChild(item);
+      });
   }
 
   function createItemAction(text, callback) {
@@ -340,6 +365,7 @@ const STATUS = (() => {
   chestClose.addEventListener("click", () => { chestPanel.hidden = true; });
 
   renderInventory();
+  renderKeyItems();
   renderFiles();
   setHealth(health);
   return {
@@ -365,14 +391,23 @@ const STATUS = (() => {
       }
     },
     getItemName(type) { return STATUS_ITEMS[type] || null; },
-    hasItem(type) { return (items.get(STATUS_ITEMS[type]) || 0) > 0; },
+    hasItem(type) { return keyItems.has(type) || (items.get(STATUS_ITEMS[type]) || 0) > 0; },
+    hasFile(type) { return fileIds.has(type); },
     addItem(type) {
       const name = STATUS_ITEMS[type];
       if (!name) return false;
       if (STATUS_FILES.has(type)) {
+        fileIds.add(type);
         files.set(name, (files.get(name) || 0) + 1);
         renderFiles();
         hint.textContent = `${name} agregado a Files.`;
+        return true;
+      }
+      if (STATUS_KEY_ITEMS.has(type)) {
+        if (keyItems.has(type)) return false;
+        keyItems.add(type);
+        renderKeyItems();
+        hint.textContent = `${name} agregado a Objetos clave.`;
         return true;
       }
       if (type === "handgunAmmo" ? handgunReserve === 0 && inventorySlots() >= INVENTORY_LIMIT : !items.has(name) && inventorySlots() >= INVENTORY_LIMIT) {
@@ -400,7 +435,7 @@ const STATUS = (() => {
       renderInventory();
       return true;
     },
-    getItemCount(type) { return items.get(STATUS_ITEMS[type]) || 0; },
+    getItemCount(type) { return keyItems.has(type) ? 1 : items.get(STATUS_ITEMS[type]) || 0; },
     consumeItem(type, count = 1) {
       const name = STATUS_ITEMS[type];
       if (!name || !consumeItem(name, count)) return false;

@@ -658,7 +658,7 @@ function collectNearbyItem() {
   const room = ROOMS[currentRoom];
   const playerReach = { x: player.x - 8, y: player.y - 8, w: PLAYER_WIDTH + 16, h: PLAYER_HEIGHT + 16 };
   const itemIndex = room.interactables.findIndex((obj) =>
-    STATUS.getItemName(obj.type) && (!obj.requiresDark || !trophyLightsOn) && checkCollision(playerReach, obj)
+    STATUS.getItemName(obj.type) && obj.revealed !== false && (!obj.requiresDark || !trophyLightsOn) && checkCollision(playerReach, obj)
   );
   if (itemIndex === -1) {
     STATUS.setPickupHint("No hay objetos al alcance.");
@@ -711,6 +711,7 @@ function updateInteractionPrompt() {
   const door = nearbyDoor();
   if (door) {
     const locked = door.keyRequired && !unlockedLocks.has(door.lockId);
+    const fileLocked = door.fileRequired && !unlockedLocks.has(door.lockId);
     const missingCrests = door.crestsRequired?.filter((crest) => !STATUS.hasItem(crest)) || [];
     const crestsLocked = missingCrests.length > 0 && !unlockedLocks.has(door.lockId);
     const sideLocked = door.unlockFromSide && !unlockedLocks.has(door.lockId);
@@ -722,6 +723,8 @@ function updateInteractionPrompt() {
         ? "E · Ingresar código"
       : locked
         ? `E · Cerrada: ${STATUS.getItemName(door.keyRequired)}`
+      : fileLocked
+        ? `E · Falta archivo: ${STATUS.getItemName(door.fileRequired)}`
       : crestsLocked
         ? `E · Faltan: ${missingCrests.map((crest) => STATUS.getItemName(crest)).join(", ")}`
       : sideLocked
@@ -738,6 +741,14 @@ function updateInteractionPrompt() {
   const chest = room.interactables.find((obj) => obj.type === "itemChest" && checkCollision(reach, obj));
   if (chest) {
     interactionPrompt.textContent = "E · Abrir baúl de objetos";
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const clockPuzzle = room.interactables.find((obj) =>
+    obj.type === "clockPuzzle" && !obj.solved && checkCollision(reach, obj)
+  );
+  if (clockPuzzle) {
+    interactionPrompt.textContent = clockPuzzle.clueRead ? "E · Mover la aguja" : "E · Examinar el reloj";
     interactionPrompt.hidden = false;
     return;
   }
@@ -759,7 +770,7 @@ function updateInteractionPrompt() {
     return;
   }
   const itemReach = { x: player.x - 8, y: player.y - 8, w: PLAYER_WIDTH + 16, h: PLAYER_HEIGHT + 16 };
-  const item = room.interactables.find((obj) => STATUS.getItemName(obj.type) && (!obj.requiresDark || !trophyLightsOn) && checkCollision(itemReach, obj));
+  const item = room.interactables.find((obj) => STATUS.getItemName(obj.type) && obj.revealed !== false && (!obj.requiresDark || !trophyLightsOn) && checkCollision(itemReach, obj));
   interactionPrompt.textContent = item ? `E · Recoger: ${STATUS.getItemName(item.type)}` : "";
   interactionPrompt.hidden = !item;
 }
@@ -865,6 +876,14 @@ function interactNearby() {
       doorCodeDialog.showModal();
       return;
     }
+    if (door.fileRequired && !unlockedLocks.has(door.lockId)) {
+      if (!STATUS.hasFile(door.fileRequired)) {
+        STATUS.setPickupHint(`La puerta está cerrada. Necesitás el archivo: ${STATUS.getItemName(door.fileRequired)}.`);
+        return;
+      }
+      unlockedLocks.add(door.lockId);
+      STATUS.setPickupHint(`Usaste el archivo ${STATUS.getItemName(door.fileRequired)}. La puerta quedó abierta.`);
+    }
     if (door.unlockFromSide && !unlockedLocks.has(door.lockId)) {
       if (currentRoom !== door.unlockFromSide) {
         STATUS.setPickupHint("La puerta se destraba desde el otro lado.");
@@ -897,6 +916,27 @@ function interactNearby() {
   const reach = { x: player.x - 14, y: player.y - 14, w: PLAYER_WIDTH + 28, h: PLAYER_HEIGHT + 28 };
   if (room.interactables.some((obj) => obj.type === "itemChest" && checkCollision(reach, obj))) {
     STATUS.openChest();
+    return;
+  }
+  const clockPuzzle = room.interactables.find((obj) =>
+    obj.type === "clockPuzzle" && !obj.solved && checkCollision(reach, obj)
+  );
+  if (clockPuzzle) {
+    if (!clockPuzzle.clueRead) {
+      clockPuzzle.clueRead = true;
+      STATUS.setPickupHint("El grabado dice: «La cena se sirve a las seis».");
+    } else {
+      clockPuzzle.hour = clockPuzzle.hour % 12 + 1;
+      if (clockPuzzle.hour === 6) {
+        clockPuzzle.solved = true;
+        const shieldKey = room.interactables.find((obj) => obj.type === "shieldKey");
+        if (shieldKey) shieldKey.revealed = true;
+        STATUS.setPickupHint("El reloj se abre y revela una Shield Key detrás.");
+      } else {
+        STATUS.setPickupHint(`La aguja marca las ${clockPuzzle.hour}.`);
+      }
+    }
+    updateInteractionPrompt();
     return;
   }
   const trophySwitch = room.interactables.find((obj) => obj.type === "trophySwitch" && checkCollision(reach, obj));
@@ -2069,6 +2109,15 @@ function drawRoom() {
       ctx.fillRect(obj.x + 3, obj.y + 1, 5, 2); // Cuerpo
       ctx.fillRect(obj.x + 7, obj.y + 3, 2, 2); // Dientes
 
+    } else if (obj.type === "shieldKey") {
+      ctx.fillStyle = "#d4d9dc";
+      ctx.fillRect(obj.x, obj.y + 1, 5, 5);
+      ctx.fillStyle = "#8ba7b2";
+      ctx.fillRect(obj.x + 1, obj.y + 2, 3, 3);
+      ctx.fillStyle = "#c1d2d4";
+      ctx.fillRect(obj.x + 4, obj.y + 3, obj.w - 4, 2);
+      ctx.fillRect(obj.x + obj.w - 3, obj.y + 5, 2, 2);
+
     } else if (obj.type === "helmetKey") {
       ctx.fillStyle = "#d9aa35";
       ctx.fillRect(obj.x, obj.y + 1, 5, 5);
@@ -2674,6 +2723,16 @@ function drawRoom() {
       ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, 1);
       ctx.fillRect(obj.x + 2, obj.y + 5, obj.w - 5, 1);
 
+    } else if (obj.type === "passNumber") {
+      ctx.fillStyle = "#302215";
+      ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
+      ctx.fillStyle = "#eee3c2";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#8b2525";
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, 2);
+      ctx.fillStyle = "#75654a";
+      ctx.fillRect(obj.x + 2, obj.y + 6, obj.w - 5, 1);
+
     } else if (obj.type === "studyDesk") {
     // Escritorio ejecutivo de madera oscura
     ctx.fillStyle = "#2c170a";
@@ -2880,6 +2939,36 @@ function drawRoom() {
       ctx.fillRect(obj.x + 2, obj.y + 22, 3, 16);
       ctx.fillStyle = PALETTE.emblem;
       ctx.fillRect(obj.x + 1, obj.y + 8, 4, 6);
+    } else if (obj.type === "clockPuzzle") {
+      ctx.fillStyle = "#241309";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#5c341d";
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+      ctx.fillStyle = "#17100b";
+      ctx.fillRect(obj.x + 5, obj.y + 4, obj.w - 10, obj.h - 8);
+      ctx.fillStyle = "#d7c99a";
+      ctx.fillRect(obj.x + 7, obj.y + 5, obj.w - 14, 19);
+      ctx.fillStyle = "#493a25";
+      ctx.fillRect(obj.x + 9, obj.y + 7, obj.w - 18, 15);
+      const centerX = obj.x + obj.w / 2;
+      const centerY = obj.y + 14;
+      const hourAngle = ((obj.hour % 12) / 12) * Math.PI * 2 - Math.PI / 2;
+      ctx.strokeStyle = "#e5d9b4";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.lineTo(centerX + Math.cos(hourAngle) * 6, centerY + Math.sin(hourAngle) * 6);
+      ctx.stroke();
+      ctx.strokeStyle = "#242017";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.lineTo(centerX, centerY - 8);
+      ctx.stroke();
+      ctx.fillStyle = "#d7ad4d";
+      ctx.fillRect(obj.x + 13, obj.y + 29, 4, 8);
+      ctx.fillRect(obj.x + 7, obj.y + obj.h - 5, obj.w - 14, 3);
+
     } else if (obj.type === "clock") {
       // 1. Estructura base de madera caoba
       ctx.fillStyle = "#3a1e0b"; // Madera oscura

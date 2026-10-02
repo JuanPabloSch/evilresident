@@ -15,6 +15,8 @@ const ROOMS = {
       { type: "balconyLeft", x: 18, y: 24, w: 102, h: 30, solid: true },
     { type: "balconyRight", x: 200, y: 24, w: 102, h: 30, solid: true },
       { type: "typewriter", x: 80, y: 54, w: 26, h: 20, solid: true },
+      { type: "inkRibbon", x: 68, y: 58, w: 8, h: 8 },
+      { type: "inkRibbon", x: 110, y: 58, w: 8, h: 8 },
       { type: "staticCharacter", character: "redVest", x: 82, y: 142, w: 18, h: 22 },
       { type: "staticCharacter", character: "medic", x: 218, y: 116, w: 16, h: 22 },
       { type: "staticCharacter", character: "sunglasses", x: 258, y: 142, w: 16, h: 22 },
@@ -33,7 +35,8 @@ diningRoom: {
     interactables: [
       { type: "table", x: 85, y: 75, w: 150, h: 40, solid: true },
       { type: "fireplace", x: 12, y: 60, w: 6, h: 60 },
-      { type: "clock", x: 180, y: 18, w: 16, h: 8 }
+      { type: "clockPuzzle", x: 254, y: 28, w: 30, h: 44, hour: 3, clueRead: false, solved: false },
+      { type: "shieldKey", x: 262, y: 76, w: 10, h: 8, revealed: false }
     ]
   },
 
@@ -2137,9 +2140,9 @@ outsideBoiler: {
     ],
     doors: [
       { id: "door1ToMainHall2F", x: 46, y: 175, w: 28, h: 10, targetRoom: "mainHall2F", spawnX: 278, spawnY: 70 },
-      { id: "door2ToPillarPassage", x: 132, y: 175, w: 30, h: 10, targetRoom: "pillarPassage", spawnX: 45, spawnY: 34 },
-      { id: "door3ToArmorRoom", x: 255, y: 84, w: 10, h: 28, targetRoom: "armorRoom", spawnX: 225, spawnY: 90 },
-      { id: "door4ToEastStairway2F", x: 182, y: 10, w: 30, h: 10, targetRoom: "eastStairway2F", spawnX: 150, spawnY: 72 },
+      { id: "door2ToPillarPassage", x: 132, y: 175, w: 30, h: 10, targetRoom: "pillarPassage", spawnX: 45, spawnY: 34, keyRequired: "armorKey", lockId: "pillar-passage-armor" },
+      { id: "door3ToArmorRoom", x: 255, y: 84, w: 10, h: 28, targetRoom: "armorRoom", spawnX: 225, spawnY: 90, keyRequired: "armorKey", lockId: "armor-room-armor" },
+      { id: "door4ToEastStairway2F", x: 182, y: 10, w: 30, h: 10, targetRoom: "eastStairway2F", spawnX: 150, spawnY: 72, lockId: "east-stairs-c-passage", unlockFromSide: "eastStairway2F" },
       { id: "door5ToSmallLibrary", x: 62, y: 10, w: 30, h: 10, targetRoom: "smallLibrary", spawnX: 140, spawnY: 130 }
     ],
     interactables: [
@@ -2194,8 +2197,8 @@ outsideBoiler: {
     doors: [
       { id: "bottomToDiningRoom2F", x: 218, y: 174, w: 42, h: 10, targetRoom: "diningRoom2F", spawnX: 34, spawnY: 38 },
       { id: "stairsToWestStairway1F", x: 86, y: 96, w: 42, h: 16, targetRoom: "westStairway1F", spawnX: 160, spawnY: 140 },
-      { id: "sideDoorToTrophyRoom", x: 210, y: 36, w: 12, h: 28, targetRoom: "trophyRoom", spawnX: 264, spawnY: 132 },
-      { id: "topToRoughPassage", x: 248, y: 10, w: 36, h: 12, targetRoom: "roughPassage", spawnX: 92, spawnY: 34 }
+      { id: "sideDoorToTrophyRoom", x: 210, y: 36, w: 12, h: 28, targetRoom: "trophyRoom", spawnX: 264, spawnY: 132, keyRequired: "helmetKey", lockId: "trophy-room-helmet" },
+      { id: "topToRoughPassage", x: 248, y: 10, w: 36, h: 12, targetRoom: "roughPassage", spawnX: 92, spawnY: 34, fileRequired: "passNumber", lockId: "rough-passage-pass-number" }
     ],
     interactables: [
       { type: "stairwell", x: 86, y: 112, w: 210, h: 34, solid: true },
@@ -2208,7 +2211,7 @@ outsideBoiler: {
     floorType: "wood",
     bounds: { minX: 30, maxX: 290, minY: 30, maxY: 170 },
     corridorPoly: [{ x: 30, y: 30, w: 260, h: 140 }],
-    doors: [{ id: "doorToWestStairway2F", x: 280, y: 130, w: 10, h: 36, targetRoom: "westStairway2F", spawnX: 224, spawnY: 54 }],
+    doors: [{ id: "doorToWestStairway2F", x: 280, y: 130, w: 10, h: 36, targetRoom: "westStairway2F", spawnX: 224, spawnY: 54, keyRequired: "helmetKey", lockId: "trophy-room-helmet" }],
     interactables: [
       { type: "trophySwitch", x: 260, y: 91, w: 8, h: 12 },
       { type: "taxidermyDeer", x: 142, y: 38, w: 34, h: 28, solid: true },
@@ -2239,7 +2242,7 @@ outsideBoiler: {
       { x: 20, y: 152, w: 200, h: 28 }
     ],
     doors: [
-      { id: "doorToWestStairway2F", x: 68, y: 20, w: 30, h: 10, targetRoom: "westStairway2F", spawnX: 250, spawnY: 45 },
+      { id: "doorToWestStairway2F", x: 68, y: 20, w: 30, h: 10, targetRoom: "westStairway2F", spawnX: 250, spawnY: 45, fileRequired: "passNumber", lockId: "rough-passage-pass-number" },
       { id: "doorToElevatorStairway2F", x: 240, y: 172, w: 24, h: 8, targetRoom: "elevatorStairway2F", spawnX: 36, spawnY: 154 }
     ],
     interactables: [
@@ -2307,7 +2310,7 @@ outsideBoiler: {
     walls: [{ x: 70, y: 10, w: 220, h: 50 }],
     doors: [
       { id: "door1ToElevatorStairwayB1", x: 30, y: 24, w: 8, h: 28, targetRoom: "elevatorStairwayB1", spawnX: 55, spawnY: 82 },
-      { id: "door2ToUndergroundPassage2", x: 40, y: 182, w: 28, h: 8, targetRoom: "undergroundPassage2", spawnX: 100, spawnY: 160 },
+      { id: "door2ToUndergroundPassage2", x: 40, y: 182, w: 28, h: 8, targetRoom: "undergroundPassage2", spawnX: 100, spawnY: 160, lockId: "kitchen-underground-passage-2", unlockFromSide: "undergroundPassage2" },
       { id: "doorToElevatorStairway2F", x: 236, y: 138, w: 30, h: 8, targetRoom: "elevatorStairway2F", spawnX: 180, spawnY: 145 }
     ],
     interactables: [
@@ -2336,7 +2339,7 @@ outsideBoiler: {
       { x: 30, y: 180 }
     ],
     doors: [
-      { id: "door1ToKitchen", x: 38, y: 176, w: 30, h: 8, targetRoom: "kitchen", spawnX: 52, spawnY: 168 },
+      { id: "door1ToKitchen", x: 38, y: 176, w: 30, h: 8, targetRoom: "kitchen", spawnX: 52, spawnY: 168, lockId: "kitchen-underground-passage-2", unlockFromSide: "undergroundPassage2" },
       { id: "door2ToUndergroundPassage1", x: 254, y: 16, w: 30, h: 8, targetRoom: "undergroundPassage1", spawnX: 45, spawnY: 140 }
     ],
     interactables: [
@@ -2476,7 +2479,7 @@ outsideBoiler: {
       { x: 20, y: 127, w: 15, h: 63 }
     ],
     doors: [
-      { id: "door1ToCPassage", x: 42, y: 10, w: 26, h: 10, targetRoom: "cPassage", spawnX: 145, spawnY: 155 },
+      { id: "door1ToCPassage", x: 42, y: 10, w: 26, h: 10, targetRoom: "cPassage", spawnX: 145, spawnY: 155, keyRequired: "armorKey", lockId: "pillar-passage-armor" },
       { id: "door2ToAtticEntry", x: 290, y: 132, w: 10, h: 28, targetRoom: "atticEntry", spawnX: 65, spawnY: 145 }
     ],
     interactables: [
@@ -2510,7 +2513,7 @@ outsideBoiler: {
     doors: [
       { id: "door1ToPillarPassage", x: 55, y: 132, w: 8, h: 26, targetRoom: "pillarPassage", spawnX: 270, spawnY: 140 },
       { id: "door2ToSmallDiningRoom", x: 140, y: 15, w: 28, h: 8, targetRoom: "smallDiningRoom", spawnX: 215, spawnY: 45 },
-      { id: "door3ToAttic", x: 232, y: 132, w: 8, h: 26, targetRoom: "attic", spawnX: 108, spawnY: 155 }
+      { id: "door3ToAttic", x: 232, y: 132, w: 8, h: 26, targetRoom: "attic", spawnX: 108, spawnY: 155, keyRequired: "shieldKey", lockId: "attic-shield-key" }
     ],
     interactables: [
       { type: "stairsVertical", x: 193, y: 126, w: 34, h: 32 }
@@ -2543,7 +2546,7 @@ outsideBoiler: {
     floorType: "wood",
     bounds: { minX: 95, maxX: 225, minY: 10, maxY: 190 },
     corridorPoly: [{ x: 95, y: 10, w: 130, h: 180 }],
-    doors: [{ id: "doorToAtticEntry", x: 98, y: 182, w: 28, h: 8, targetRoom: "atticEntry", spawnX: 220, spawnY: 145 }],
+    doors: [{ id: "doorToAtticEntry", x: 98, y: 182, w: 28, h: 8, targetRoom: "atticEntry", spawnX: 220, spawnY: 145, keyRequired: "shieldKey", lockId: "attic-shield-key" }],
     interactables: [
       { type: "yawn", x: 105, y: 32, w: 105, h: 46 },
       { type: "pillar", x: 149, y: 86, w: 28, h: 32, solid: true },
@@ -2556,7 +2559,7 @@ outsideBoiler: {
     floorType: "wood",
     bounds: { minX: 50, maxX: 250, minY: 20, maxY: 180 },
     corridorPoly: [{ x: 50, y: 20, w: 200, h: 160 }],
-    doors: [{ id: "doorToCPassage", x: 242, y: 84, w: 8, h: 28, targetRoom: "cPassage", spawnX: 265, spawnY: 96 }],
+    doors: [{ id: "doorToCPassage", x: 242, y: 84, w: 8, h: 28, targetRoom: "cPassage", spawnX: 265, spawnY: 96, keyRequired: "armorKey", lockId: "armor-room-armor" }],
     interactables: [
       { type: "armorChest", x: 62, y: 74, w: 32, h: 44, solid: true },
       { type: "sunCrest", x: 98, y: 102, w: 12, h: 12 },
@@ -2600,8 +2603,8 @@ outsideBoiler: {
       { x: 72, y: 96, w: 166, h: 89 }
     ],
     doors: [
-      { id: "door1ToCPassage", x: 43, y: 177, w: 26, h: 8, targetRoom: "cPassage", spawnX: 195, spawnY: 34 },
-      { id: "door2ToSmallLibrary", x: 40, y: 67, w: 8, h: 28, targetRoom: "smallLibrary", spawnX: 220, spawnY: 88 },
+      { id: "door1ToCPassage", x: 43, y: 177, w: 26, h: 8, targetRoom: "cPassage", spawnX: 195, spawnY: 34, lockId: "east-stairs-c-passage", unlockFromSide: "eastStairway2F" },
+      { id: "door2ToSmallLibrary", x: 40, y: 67, w: 8, h: 28, targetRoom: "smallLibrary", spawnX: 220, spawnY: 88, lockId: "small-library-east-stairway", unlockFromSide: "smallLibrary" },
       { id: "door3ToEastStairway1F", x: 101, y: 10, w: 30, h: 8, targetRoom: "eastStairway1F", spawnX: 170, spawnY: 55 },
       { id: "door4ToDeerRoom", x: 178, y: 90, w: 30, h: 8, targetRoom: "deerRoom", spawnX: 150, spawnY: 58 },
       { id: "door5ToLessonRoomEntry", x: 244, y: 177, w: 28, h: 8, targetRoom: "lessonRoomEntry", spawnX: 190, spawnY: 48 }
@@ -2619,7 +2622,7 @@ outsideBoiler: {
     corridorPoly: [{ x: 60, y: 35, w: 180, h: 130 }],
     doors: [
       { id: "doorToCPassage", x: 110, y: 157, w: 30, h: 8, targetRoom: "cPassage", spawnX: 105, spawnY: 32 },
-      { id: "doorToEastStairway2F", x: 232, y: 76, w: 8, h: 28, targetRoom: "eastStairway2F", spawnX: 56, spawnY: 72 }
+      { id: "doorToEastStairway2F", x: 232, y: 76, w: 8, h: 28, targetRoom: "eastStairway2F", spawnX: 56, spawnY: 72, lockId: "small-library-east-stairway", unlockFromSide: "smallLibrary" }
     ],
     interactables: [
       { type: "livingTable", x: 130, y: 91, w: 50, h: 24, solid: true },
@@ -2676,7 +2679,7 @@ outsideBoiler: {
     corridorPoly: [{ x: 70, y: 35, w: 160, h: 130 }],
     doors: [
       { id: "door1ToEastStairway2F", x: 190, y: 35, w: 28, h: 8, targetRoom: "eastStairway2F", spawnX: 260, spawnY: 145 },
-      { id: "door2ToLessonRoom", x: 70, y: 58, w: 8, h: 28, targetRoom: "lessonRoom", spawnX: 242, spawnY: 58 }
+      { id: "door2ToLessonRoom", x: 70, y: 58, w: 8, h: 28, targetRoom: "lessonRoom", spawnX: 242, spawnY: 58, keyRequired: "helmetKey", lockId: "lesson-room-helmet" }
     ],
     interactables: [
       { type: "fireplace", x: 137, y: 123, w: 42, h: 40, solid: true },
@@ -2689,7 +2692,7 @@ outsideBoiler: {
     floorType: "chess",
     bounds: { minX: 50, maxX: 270, minY: 20, maxY: 180 },
     corridorPoly: [{ x: 50, y: 20, w: 220, h: 160 }],
-    doors: [{ id: "door1ToLessonRoomEntry", x: 262, y: 52, w: 8, h: 28, targetRoom: "lessonRoomEntry", spawnX: 82, spawnY: 64 }],
+    doors: [{ id: "door1ToLessonRoomEntry", x: 262, y: 52, w: 8, h: 28, targetRoom: "lessonRoomEntry", spawnX: 82, spawnY: 64, keyRequired: "helmetKey", lockId: "lesson-room-helmet" }],
     interactables: [
       { type: "piano", x: 60, y: 38, w: 36, h: 74, solid: true },
       { type: "yawn", x: 162, y: 112, w: 96, h: 50 }
