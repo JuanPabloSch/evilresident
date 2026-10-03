@@ -194,6 +194,8 @@ let currentRoom = "mainHall";
 let trophyLightsOn = true;
 let waterDrained = false;
 let armsStorageUnlocked = false;
+let labBlackoutRestored = false;
+let labElevatorCircuitConnected = false;
 
 let player = {
   x: 230,
@@ -254,8 +256,100 @@ const labPassword = document.getElementById("lab-password");
 const labSecondaryPassword = document.getElementById("lab-secondary-password");
 const labComputerSubmit = labComputerForm.querySelector('[type="submit"]');
 const labComputerClose = document.getElementById("lab-computer-close");
+const vJoltDialog = document.getElementById("v-jolt-dialog");
+const vJoltForm = document.getElementById("v-jolt-form");
+const vJoltMessage = document.getElementById("v-jolt-message");
+const vJoltReagentA = document.getElementById("v-jolt-reagent-a");
+const vJoltReagentB = document.getElementById("v-jolt-reagent-b");
+const vJoltClose = document.getElementById("v-jolt-close");
+let activeVJoltMixer = null;
 let pendingCodeDoor = null;
 let enteredDoorCode = "";
+
+const VJOLT_REAGENTS = {
+  water: "Agua",
+  red: "UMB No.2 · Rojo",
+  green: "UMB No.4 · Verde",
+  purple: "NP-003 · Púrpura",
+  yellow: "Yellow-6 · Amarillo",
+  white: "UMB No.7 · Blanco",
+  blue: "UMB No.13 · Azul",
+  vJolt: "V-JOLT"
+};
+const VJOLT_REACTIONS = {
+  "red+water": "purple",
+  "green+red": "yellow",
+  "green+purple": "white",
+  "white+yellow": "blue",
+  "blue+purple": "vJolt"
+};
+
+function refreshVJoltReagents(select, ingredients) {
+  const previousValue = select.value;
+  select.replaceChildren();
+  Object.entries(ingredients).forEach(([reagent, count]) => {
+    if (count <= 0) return;
+    const option = document.createElement("option");
+    option.value = reagent;
+    option.textContent = `${VJOLT_REAGENTS[reagent]}${count > 1 ? ` ×${count}` : ""}`;
+    select.appendChild(option);
+  });
+  if ([...select.options].some((option) => option.value === previousValue)) select.value = previousValue;
+}
+
+function openVJoltMixer(mixer) {
+  activeVJoltMixer = mixer;
+  vJoltMessage.textContent = mixer.completed
+    ? "V-JOLT ya preparado."
+    : `Reacción ${mixer.stage}/6. Combiná las sustancias según las notas del laboratorio.`;
+  vJoltForm.querySelector('[type="submit"]').hidden = mixer.completed;
+  refreshVJoltReagents(vJoltReagentA, mixer.ingredients);
+  refreshVJoltReagents(vJoltReagentB, mixer.ingredients);
+  vJoltDialog.showModal();
+  vJoltReagentA.focus();
+}
+
+vJoltForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const mixer = activeVJoltMixer;
+  if (!mixer || mixer.completed) return;
+  const reagentA = vJoltReagentA.value;
+  const reagentB = vJoltReagentB.value;
+  if (!reagentA || !reagentB) {
+    vJoltMessage.textContent = "No quedan sustancias suficientes para otra mezcla.";
+    return;
+  }
+  const pair = [reagentA, reagentB].sort().join("+");
+  const product = VJOLT_REACTIONS[pair];
+  const needed = reagentA === reagentB ? 2 : 1;
+  if (!product || (mixer.ingredients[reagentA] || 0) < needed || (reagentA !== reagentB && !mixer.ingredients[reagentB])) {
+    vJoltMessage.textContent = "La mezcla no reacciona. Los reactivos no se consumieron.";
+    return;
+  }
+  if (product === "vJolt" && !STATUS.addItem("vJolt")) return;
+
+  mixer.ingredients[reagentA] -= needed;
+  if (reagentA !== reagentB) mixer.ingredients[reagentB]--;
+  mixer.ingredients[product] = (mixer.ingredients[product] || 0) + 1;
+  mixer.stage++;
+  const reactionName = VJOLT_REAGENTS[product];
+  if (product === "vJolt") {
+    mixer.completed = true;
+    vJoltForm.querySelector('[type="submit"]').hidden = true;
+    vJoltMessage.textContent = "V-JOLT preparado y agregado al inventario.";
+    STATUS.setPickupHint("Preparaste V-JOLT. Aplicalo sobre las raíces expuestas de Plant 42 en Meeting Room.");
+  } else {
+    vJoltMessage.textContent = `Reacción ${mixer.stage}/6: obtuviste ${reactionName}.`;
+    refreshVJoltReagents(vJoltReagentA, mixer.ingredients);
+    refreshVJoltReagents(vJoltReagentB, mixer.ingredients);
+  }
+});
+
+vJoltClose.addEventListener("click", () => vJoltDialog.close());
+vJoltDialog.addEventListener("close", () => {
+  activeVJoltMixer = null;
+  updateInteractionPrompt();
+});
 
 function renderDoorCode() {
   doorCodeDisplay.textContent = enteredDoorCode.padEnd(3, "_");
@@ -379,7 +473,8 @@ const ENEMY_TYPES = {
   hunter: { sight: 175, speed: 0.72, attackRange: 22, damage: 18, attackDelay: 38 },
   blackTiger: { sight: 200, speed: 0.42, attackRange: 35, damage: 24, attackDelay: 32 },
   yawn: { sight: 180, speed: 0.32, attackRange: 35, damage: 12, attackDelay: 78 },
-  chimera: { sight: 140, speed: 0.52, attackRange: 20, damage: 12, attackDelay: 44 }
+  chimera: { sight: 140, speed: 0.52, attackRange: 20, damage: 12, attackDelay: 44 },
+  plant42: { sight: 210, speed: 0.16, attackRange: 38, damage: 12, attackDelay: 48 }
 };
 
 function updateAmmoDisplay() {
@@ -457,7 +552,9 @@ function reloadWeapon() {
 }
 
 function fireWeapon() {
-  if (STATUS.isOpen() || doorCodeDialog.open || labComputerDialog.open || weaponCooldown > 0) return;
+  if (STATUS.isOpen() || doorCodeDialog.open || labComputerDialog.open || vJoltDialog.open || weaponCooldown > 0) return;
+  const activePlant = ROOMS[currentRoom]?.interactables.find((obj) => obj.type === "plant42");
+  if (activePlant && activePlant.phase && activePlant.phase !== "fight") return;
   if (WEAPON_ITEMS[equippedWeapon] && !STATUS.hasItem(WEAPON_ITEMS[equippedWeapon])) {
     equippedWeapon = "handgun";
     updateAmmoDisplay();
@@ -525,7 +622,7 @@ function fireWeapon() {
   let targetDistance = range;
 
   room.interactables.forEach((obj) => {
-    if (!["zombie", "zombieDog", "spider", "neptune", "wasp", "crow", "adder", "hunter", "blackTiger", "yawn", "chimera"].includes(obj.type)) return;
+    if (!["zombie", "zombieDog", "spider", "neptune", "wasp", "crow", "adder", "hunter", "blackTiger", "yawn", "chimera", "plant42"].includes(obj.type)) return;
     const scriptedYawn = obj.type === "yawn" && ["atticFirst", "lessonSecond"].includes(obj.encounter);
     if (scriptedYawn && obj.phase !== "circling") return;
     const dx = obj.x + obj.w / 2 - originX;
@@ -542,11 +639,21 @@ function fireWeapon() {
 
   if (target) {
     const smallEnemy = ["crow", "adder", "wasp"].includes(target.type);
-    const boss = ["blackTiger", "yawn", "tyrant"].includes(target.type);
+    const boss = ["blackTiger", "yawn", "tyrant", "plant42"].includes(target.type);
     const scriptedYawn = target.type === "yawn" && ["atticFirst", "lessonSecond"].includes(target.encounter);
-    const defaultHitPoints = scriptedYawn ? 400 : smallEnemy ? 10 : target.type === "zombieDog" ? 60 : boss ? 300 : 100;
+    const defaultHitPoints = target.type === "plant42" ? 900 : scriptedYawn ? 400 : smallEnemy ? 10 : target.type === "zombieDog" ? 60 : boss ? 300 : 100;
     const hunterSized = ["hunter", "chimera"].includes(target.type);
-    const damage = scriptedYawn && equippedWeapon === "shotgun" ? 34
+    const plant42Damage = target.type === "plant42"
+      ? equippedWeapon === "handgun" ? 30
+        : equippedWeapon === "shotgun" ? 60
+          : equippedWeapon === "colt" ? 75
+            : ["bazooka", "grenadeLauncher"].includes(equippedWeapon)
+              ? ["fireRounds", "flameRounds"].includes(ammo.type) ? 90
+                : ["acidRounds", "explosiveRounds"].includes(ammo.type) ? 60 : 0
+              : equippedWeapon === "rocketLauncher" ? 900 : 0
+      : null;
+    const damage = target.type === "plant42" ? plant42Damage
+      : scriptedYawn && equippedWeapon === "shotgun" ? 34
       : target.type === "zombieDog" ? equippedWeapon === "handgun" ? 20 : 100
       : equippedWeapon === "knife" ? 10
       : equippedWeapon === "handgun" ? 20
@@ -562,8 +669,25 @@ function fireWeapon() {
         const hole = room.interactables.find((obj) => obj.type === "floorHole");
         if (hole) hole.revealed = true;
       }
-    } else if (remaining <= 0) room.interactables.splice(room.interactables.indexOf(target), 1);
-    else weapon.hitPoints.set(target, remaining);
+    } else if (remaining <= 0) {
+      if (target.type === "plant42" && target.route === "barry") {
+        target.phase = "shrinking";
+        target.phaseStartedAt = gameFrame;
+        target.alerted = false;
+        target.attackAt = undefined;
+        weapon.hitPoints.delete(target);
+        STATUS.setPickupHint("Plant 42 se marchitó... pero algo vuelve a moverse entre sus ramas.");
+      } else {
+        room.interactables.splice(room.interactables.indexOf(target), 1);
+      }
+      if (target.type === "plant42" && target.route !== "barry") {
+        const helmetKey = room.interactables.find((obj) => obj.type === "helmetKey");
+        if (helmetKey) helmetKey.revealed = true;
+        STATUS.setPickupHint("Plant 42 cayó. La Helmet Key quedó al descubierto.");
+      }
+    } else if (remaining > 0) {
+      weapon.hitPoints.set(target, remaining);
+    }
   }
   updateAmmoDisplay();
 }
@@ -582,6 +706,11 @@ updateAmmoDisplay();
 
 const keys = new Set();
 window.addEventListener("keydown", (e) => {
+  if (vJoltDialog.open) {
+    if (e.key === "Escape") vJoltDialog.close();
+    else if (!e.target.matches?.("select, button")) e.preventDefault();
+    return;
+  }
   if (labComputerDialog.open) {
     if (e.key === "Escape") labComputerDialog.close();
     else if (!e.target.matches?.("input, button")) e.preventDefault();
@@ -921,6 +1050,7 @@ function updateEnemies(room) {
   const obstacles = room.interactables.filter((obj) => obj.solid && !ENEMY_TYPES[obj.type]);
 
   room.interactables.forEach((enemy) => {
+    if (enemy.type === "plant42" && enemy.phase && enemy.phase !== "fight") return;
     if (enemy.type === "yawn" && enemy.encounter === "atticFirst") {
       updateAtticYawnEncounter(room, enemy);
       return;
@@ -987,6 +1117,68 @@ function updateEnemies(room) {
     if (canOccupy(enemy.x, enemy.y + stepY)) enemy.y += stepY;
     enemy.animFrame = Math.floor(gameFrame / 12) % 2;
   });
+}
+
+function updatePlant42Encounter(room) {
+  if (currentRoom !== "plant42Room") return;
+  const plant = room.interactables.find((obj) => obj.type === "hangingPlant42" || obj.type === "plant42");
+  if (!plant) return;
+  const roots = ROOMS.meetingRoom?.interactables.find((obj) => obj.type === "plant42Roots");
+  if (plant.type === "hangingPlant42") {
+    plant.type = "plant42";
+    plant.hitPoints = 900;
+    plant.alerted = false;
+    plant.route = roots?.vJoltUsed ? "vjolt" : "barry";
+    plant.phase = "fight";
+    STATUS.setPickupHint("Plant 42 está frente a vos. Apuntá y dispará.");
+  }
+  if (plant.route !== "barry" || plant.phase === "fight") return;
+
+  const elapsed = gameFrame - plant.phaseStartedAt;
+  if (plant.phase === "shrinking" && elapsed >= 48) {
+    plant.phase = "regrowing";
+    plant.phaseStartedAt = gameFrame;
+  } else if (plant.phase === "regrowing" && elapsed >= 54) {
+    plant.phase = "captured";
+    plant.phaseStartedAt = gameFrame;
+    player.x = 182;
+    player.y = 151;
+    room.interactables.push({ type: "plant42Capture", x: player.x - 5, y: player.y - 5, w: PLAYER_WIDTH + 10, h: PLAYER_HEIGHT + 10 });
+    STATUS.setPickupHint("Las lianas te atraparon. No te lastiman, pero no podés moverte.");
+  } else if (plant.phase === "captured" && elapsed >= 65) {
+    plant.phase = "barryEntering";
+    plant.phaseStartedAt = gameFrame;
+    plant.barry = { type: "staticCharacter", character: "redVest", x: 274, y: 144, w: 18, h: 22, plant42Barry: true };
+    room.interactables.push(plant.barry);
+    STATUS.setPickupHint("Barry irrumpió en la habitación con un lanzallamas.");
+  } else if (plant.phase === "barryEntering") {
+    plant.barry.x = Math.max(224, plant.barry.x - 1.35);
+    if (plant.barry.x <= 224 && elapsed >= 95) {
+      plant.phase = "burning";
+      plant.phaseStartedAt = gameFrame;
+      room.interactables.push({ type: "plant42Flame", x1: plant.barry.x + 12, y1: plant.barry.y + 12, x2: plant.x + plant.w / 2, y2: plant.y + 76 });
+      STATUS.setPickupHint("Barry lanzó una llamarada y está quemando a Plant 42.");
+    }
+  } else if (plant.phase === "burning" && elapsed >= 110) {
+    room.interactables.splice(room.interactables.indexOf(plant), 1);
+    const vines = room.interactables.find((obj) => obj.type === "plant42Capture");
+    if (vines) room.interactables.splice(room.interactables.indexOf(vines), 1);
+    const flame = room.interactables.find((obj) => obj.type === "plant42Flame");
+    if (flame) room.interactables.splice(room.interactables.indexOf(flame), 1);
+    const helmetKey = room.interactables.find((obj) => obj.type === "helmetKey");
+    if (helmetKey) helmetKey.revealed = true;
+    STATUS.setPickupHint("Barry quemó a Plant 42 por completo. La Helmet Key quedó al descubierto.");
+  }
+  if (plant.phase && plant.phase !== "fight") {
+    if (plant.phase === "shrinking") plant.renderScale = Math.max(0.12, 1 - (elapsed / 48) * 0.88);
+    else if (plant.phase === "regrowing") plant.renderScale = Math.min(1, 0.12 + (elapsed / 54) * 0.88);
+    else plant.renderScale = 1;
+    const vines = room.interactables.find((obj) => obj.type === "plant42Capture");
+    if (vines && plant.phase !== "burning") {
+      vines.x = player.x - 5;
+      vines.y = player.y - 5;
+    }
+  }
 }
 
 function updateBoulderEncounter(room) {
@@ -1064,6 +1256,17 @@ function collectNearbyItem() {
   }
 }
 
+function isBossEncounterActive(room) {
+  return room.interactables.some((obj) => {
+    if (obj.type === "blackTiger") return true;
+    if (obj.type === "plant42") return true;
+    if (obj.type === "yawn" && obj.revealed !== false) {
+      return ["emerging", "circling", "retreating", "dying"].includes(obj.phase);
+    }
+    return false;
+  });
+}
+
 function nearbyDoor() {
   const room = ROOMS[currentRoom];
   const reach = { x: player.x - 18, y: player.y - 18, w: PLAYER_WIDTH + 36, h: PLAYER_HEIGHT + 36 };
@@ -1088,6 +1291,15 @@ function pushStepLadder(room, ladder, dx, dy) {
   if (room.interactables.some((obj) => obj !== ladder && obj.solid && !ENEMY_TYPES[obj.type] && checkCollision(next, obj))) return false;
   ladder.x = next.x;
   ladder.y = next.y;
+  if (currentRoom === "operatingRoom") {
+    const targetDoor = room.doors.find((door) => door.id === "ventDropToMorgue");
+    const control = room.interactables.find((obj) => obj.type === "gasValveControl");
+    if (targetDoor?.stepLadderTarget && isStepLadderInPlace(room, targetDoor.stepLadderTarget) && !control?.activated && !room.gasActive) {
+      room.gasActive = true;
+      room.nextGasDamageAt = gameFrame + 60;
+      STATUS.setPickupHint("La escalerita activó el botón del piso. ¡Gas venenoso! Cerrá las válvulas en el control.");
+    }
+  }
   return true;
 }
 
@@ -1097,6 +1309,14 @@ function pushPuzzleStatue(room, statue, dx, dy) {
   if (room.interactables.some((obj) => obj !== statue && obj.solid && !ENEMY_TYPES[obj.type] && checkCollision(next, obj))) return false;
   statue.x = next.x;
   statue.y = next.y;
+  if (statue.puzzleId === "privateLibrary" && !room.libraryPuzzleSolved && Math.abs(statue.x - 74) <= 5 && Math.abs(statue.y - 132) <= 5) {
+    statue.x = 74;
+    statue.y = 132;
+    room.libraryPuzzleSolved = true;
+    const reward = room.interactables.find((obj) => obj.type === "moDisk");
+    if (reward) reward.revealed = true;
+    STATUS.setPickupHint("La estatua quedó bajo el foco. Se abrió un compartimiento y apareció un MO Disk.");
+  }
   return true;
 }
 
@@ -1128,6 +1348,18 @@ function updateArmorRoomPuzzle(room) {
     if (crest) crest.revealed = true;
     STATUS.setPickupHint("Las dos rejillas quedaron cubiertas. El cajón se abrió y apareció el Sun Crest.");
   }
+}
+
+function hasLockedDoorForKey(keyType) {
+  const remainingLocks = new Set();
+  Object.entries(ROOMS).forEach(([roomId, room]) => {
+    room.doors.forEach((door) => {
+      if (door.keyRequired !== keyType) return;
+      const lockId = door.lockId || `${roomId}:${door.id}`;
+      if (!unlockedLocks.has(lockId)) remainingLocks.add(lockId);
+    });
+  });
+  return remainingLocks.size > 0;
 }
 
 function resetArmorRoomPuzzle(room) {
@@ -1186,6 +1418,28 @@ function updateInteractionPrompt() {
     interactionPrompt.hidden = false;
     return;
   }
+  const labPowerConsole = room.interactables.find((obj) => ["powerMazeTerminal", "powerElevatorTerminal", "elevatorPowerSwitch"].includes(obj.type) && checkCollision(ladderReach, obj));
+  if (labPowerConsole) {
+    interactionPrompt.textContent = labPowerConsole.type === "powerMazeTerminal"
+      ? labBlackoutRestored ? "Corriente de emergencia restaurada" : "E · Restaurar corriente de emergencia"
+      : labPowerConsole.type === "powerElevatorTerminal"
+        ? labElevatorCircuitConnected ? "Circuito del ascensor conectado" : "E · Conectar circuito del ascensor"
+        : labElevatorCircuitConnected ? "E · Activar ascensor" : "El ascensor no tiene corriente";
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const gasValveControl = room.interactables.find((obj) => obj.type === "gasValveControl" && checkCollision(ladderReach, obj));
+  if (gasValveControl) {
+    interactionPrompt.textContent = gasValveControl.activated ? "Válvulas de ventilación cerradas" : "E · Cerrar las válvulas de ventilación";
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const movableWaterCrate = room.interactables.find((obj) => obj.type === "waterCrate" && obj.pushable && !obj.pushed && checkCollision(ladderReach, obj));
+  if (movableWaterCrate) {
+    interactionPrompt.textContent = "E · Empujar el cajón al agua";
+    interactionPrompt.hidden = false;
+    return;
+  }
   const shedLadder = currentRoom === "storeroom" && room.interactables.find((obj) => obj.type === "stepLadder");
   const shedCrank = room.interactables.find((obj) => obj.type === "crankItem" && obj.requiresLadder);
   if (shedLadder && shedCrank && !isStepLadderInPlace(room, shedCrank.requiresLadder) && checkCollision(ladderReach, shedLadder)) {
@@ -1213,6 +1467,20 @@ function updateInteractionPrompt() {
     interactionPrompt.hidden = false;
     return;
   }
+  const vJoltMixer = room.interactables.find((obj) => obj.type === "vJoltMixer" && checkCollision(ladderReach, obj));
+  if (vJoltMixer) {
+    interactionPrompt.textContent = vJoltMixer.completed ? "V-JOLT ya preparado" : `E · Mezclar químicos (${vJoltMixer.stage}/6)`;
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const plantRoots = room.interactables.find((obj) => obj.type === "plant42Roots" && checkCollision(ladderReach, obj));
+  if (plantRoots) {
+    interactionPrompt.textContent = plantRoots.vJoltUsed
+      ? "Las raíces de Plant 42 se marchitaron"
+      : STATUS.hasItem("vJolt") ? "E · Aplicar V-JOLT a las raíces" : "Las armas no dañan la raíz; necesitás V-JOLT";
+    interactionPrompt.hidden = false;
+    return;
+  }
   const labComputer = room.interactables.find((obj) => obj.type === "labComputer" && checkCollision(ladderReach, obj));
   if (labComputer) {
     interactionPrompt.textContent = "E · Usar ordenador de seguridad";
@@ -1221,6 +1489,11 @@ function updateInteractionPrompt() {
   }
   const door = nearbyDoor();
   if (door) {
+    if (isBossEncounterActive(room)) {
+      interactionPrompt.textContent = "No puedo irme ahora. Hay algo más urgente.";
+      interactionPrompt.hidden = false;
+      return;
+    }
     const locked = door.keyRequired && !unlockedLocks.has(door.lockId);
     const electronicLocked = door.electronicLock && !unlockedLocks.has(door.lockId);
     const fileLocked = door.fileRequired && !unlockedLocks.has(door.lockId);
@@ -1232,6 +1505,12 @@ function updateInteractionPrompt() {
     const sideLocked = door.unlockFromSide && !unlockedLocks.has(door.lockId);
     const switchLocked = door.switchRequired === "armsStorageUnlocked" && !armsStorageUnlocked;
     const ladderBlocked = door.stepLadderTarget && !isStepLadderInPlace(ROOMS[currentRoom], door.stepLadderTarget);
+    const gasPuzzleBlocked = currentRoom === "operatingRoom" && door.id === "ventDropToMorgue" && !room.interactables.some((obj) => obj.type === "gasValveControl" && obj.activated);
+    if (gasPuzzleBlocked) {
+      interactionPrompt.textContent = "Cerrá las válvulas de ventilación antes de entrar al conducto";
+      interactionPrompt.hidden = false;
+      return;
+    }
     interactionPrompt.textContent = door.disabled || !ROOMS[door.targetRoom]
       ? `E · ${door.blockedMessage || "Destino todavía no disponible."}`
       : door.codeRequired && !unlockedLocks.has(door.lockId)
@@ -1313,7 +1592,7 @@ function updateInteractionPrompt() {
   if (moDiskTerminal) {
     interactionPrompt.textContent = STATUS.hasFile(moDiskTerminal.outputFile)
       ? "Código ya registrado en Files"
-      : STATUS.hasItem("moDisk") ? "E · Usar MO Disk en el terminal" : "Necesitás un MO Disk";
+      : STATUS.hasItem("moDisk") ? "E · Insertar cualquier MO Disk" : "Necesitás un MO Disk";
     interactionPrompt.hidden = false;
     return;
   }
@@ -1403,6 +1682,10 @@ function updateInteractionPrompt() {
 }
 
 function transitionThroughDoor(door) {
+  if (isBossEncounterActive(ROOMS[currentRoom])) {
+    STATUS.setPickupHint("No puedo irme ahora. Hay algo más urgente.");
+    return;
+  }
   if (currentRoom === "livingRoom" && door.targetRoom === "trapRoom") {
     const livingRoom = ROOMS.livingRoom;
     const trapRoom = ROOMS.trapRoom;
@@ -1413,6 +1696,18 @@ function transitionThroughDoor(door) {
       STATUS.setHealth(0);
       STATUS.setPickupHint("El mecanismo se activó. El techo cayó y te aplastó.");
     }
+  }
+  if (currentRoom === "operatingRoom") {
+    const room = ROOMS.operatingRoom;
+    const ladder = room.interactables.find((obj) => obj.type === "stepLadder");
+    const control = room.interactables.find((obj) => obj.type === "gasValveControl");
+    if (ladder) {
+      ladder.x = ladder.startX;
+      ladder.y = ladder.startY;
+    }
+    if (control) control.activated = false;
+    room.gasActive = false;
+    room.nextGasDamageAt = undefined;
   }
   currentRoom = door.targetRoom;
   player.x = door.spawnX;
@@ -1481,6 +1776,8 @@ debugRoomGo.addEventListener("click", () => {
 });
 
 function interactNearby() {
+  const activePlant = ROOMS[currentRoom]?.interactables.find((obj) => obj.type === "plant42");
+  if (activePlant && activePlant.phase && activePlant.phase !== "fight") return;
   const room = ROOMS[currentRoom];
   const movableLadder = room.interactables.find((obj) => obj.type === "stepLadder" && obj.resettable);
   const ladderReach = { x: player.x - 14, y: player.y - 14, w: PLAYER_WIDTH + 28, h: PLAYER_HEIGHT + 28 };
@@ -1489,6 +1786,61 @@ function interactNearby() {
     movableLadder.x = movableLadder.startX;
     movableLadder.y = movableLadder.startY;
     STATUS.setPickupHint("La escalerita volvió a su posición inicial.");
+    updateInteractionPrompt();
+    return;
+  }
+  const labPowerConsole = room.interactables.find((obj) => ["powerMazeTerminal", "powerElevatorTerminal", "elevatorPowerSwitch"].includes(obj.type) && checkCollision(ladderReach, obj));
+  if (labPowerConsole) {
+    if (labPowerConsole.type === "powerMazeTerminal") {
+      if (labBlackoutRestored) {
+        STATUS.setPickupHint("La corriente de emergencia ya fue restaurada.");
+      } else {
+        labBlackoutRestored = true;
+        labPowerConsole.activated = true;
+        STATUS.setPickupHint("La corriente volvió a las zonas oscuras del laboratorio.");
+      }
+    } else if (labPowerConsole.type === "powerElevatorTerminal") {
+      if (!labBlackoutRestored) {
+        STATUS.setPickupHint("El sistema no responde. Primero restaurá la corriente en Power Maze 1.");
+      } else if (labElevatorCircuitConnected) {
+        STATUS.setPickupHint("El circuito del ascensor ya está conectado; falta activar el switch junto al ascensor.");
+      } else {
+        labElevatorCircuitConnected = true;
+        labPowerConsole.activated = true;
+        STATUS.setPickupHint("La conexión de potencia quedó establecida. Activá el switch junto al ascensor en Elevator Entry.");
+      }
+    } else if (!labElevatorCircuitConnected) {
+      STATUS.setPickupHint("No hay reacción. Primero conectá el circuito en Power Room.");
+    } else {
+      labPowerConsole.activated = true;
+      const elevator = room.interactables.find((obj) => obj.type === "elevator");
+      const elevatorDoor = room.doors.find((obj) => obj.id === "elevatorToMainLabEntryB4");
+      if (elevator) elevator.powered = true;
+      if (elevatorDoor) elevatorDoor.disabled = false;
+      STATUS.setPickupHint("La alimentación y el circuito quedaron conectados. El ascensor ya funciona.");
+    }
+    updateInteractionPrompt();
+    return;
+  }
+  const gasValveControl = room.interactables.find((obj) => obj.type === "gasValveControl" && checkCollision(ladderReach, obj));
+  if (gasValveControl) {
+    gasValveControl.activated = true;
+    room.gasActive = false;
+    room.nextGasDamageAt = undefined;
+    STATUS.setPickupHint("Cerraste las dos válvulas. La escalera ya puede colocarse sin liberar gas.");
+    updateInteractionPrompt();
+    return;
+  }
+  const movableWaterCrate = room.interactables.find((obj) => obj.type === "waterCrate" && obj.pushable && !obj.pushed && checkCollision(ladderReach, obj));
+  if (currentRoom === "waterTankEntry" && movableWaterCrate) {
+    movableWaterCrate.x = movableWaterCrate.targetX;
+    movableWaterCrate.y = movableWaterCrate.targetY;
+    movableWaterCrate.pushed = true;
+    movableWaterCrate.solid = false;
+    room.bridgeActive = true;
+    const bridge = room.interactables.find((obj) => obj.type === "waterBridge");
+    if (bridge) bridge.active = true;
+    STATUS.setPickupHint("El cajón completó el puente. Ya podés cruzar el canal y seguir hacia Water Tank.");
     updateInteractionPrompt();
     return;
   }
@@ -1547,8 +1899,38 @@ function interactNearby() {
     openLabComputer();
     return;
   }
+  const vJoltMixer = room.interactables.find((obj) => obj.type === "vJoltMixer" && checkCollision(ladderReach, obj));
+  if (vJoltMixer) {
+    openVJoltMixer(vJoltMixer);
+    return;
+  }
+  const plantRoots = room.interactables.find((obj) => obj.type === "plant42Roots" && checkCollision(ladderReach, obj));
+  if (plantRoots) {
+    if (plantRoots.vJoltUsed) {
+      STATUS.setPickupHint("Las raíces ya fueron debilitadas con V-JOLT.");
+    } else if (!STATUS.consumeItem("vJolt")) {
+      STATUS.setPickupHint("Las armas no pueden dañar la raíz expuesta. Prepará V-JOLT en Drug Storeroom.");
+    } else {
+      plantRoots.vJoltUsed = true;
+      const plant = ROOMS.plant42Room.interactables.find((obj) => obj.type === "hangingPlant42");
+      if (plant) {
+        plant.type = "plant42";
+        plant.hitPoints = 900;
+        plant.alerted = false;
+        plant.route = "vjolt";
+        plant.phase = "fight";
+      }
+      STATUS.setPickupHint("El V-JOLT marchitó las raíces y eliminó la primera fase. Plant 42 quedó expuesta para el combate final.");
+    }
+    updateInteractionPrompt();
+    return;
+  }
   const door = nearbyDoor();
   if (door) {
+    if (isBossEncounterActive(room)) {
+      STATUS.setPickupHint("No puedo irme ahora. Hay algo más urgente.");
+      return;
+    }
     if (door.disabled || !ROOMS[door.targetRoom]) {
       STATUS.setPickupHint(door.blockedMessage || "Destino todavía no disponible.");
       return;
@@ -1559,6 +1941,10 @@ function interactNearby() {
     }
     if (door.stepLadderTarget && !isStepLadderInPlace(ROOMS[currentRoom], door.stepLadderTarget)) {
       STATUS.setPickupHint("Primero tenés que mover la escalerita bajo el conducto de ventilación.");
+      return;
+    }
+    if (currentRoom === "operatingRoom" && door.id === "ventDropToMorgue" && !room.interactables.some((obj) => obj.type === "gasValveControl" && obj.activated)) {
+      STATUS.setPickupHint("El gas bloquea el conducto. Cerrá las válvulas en el control junto a la puerta.");
       return;
     }
     if (door.webRequired && !unlockedLocks.has(door.webRequired)) {
@@ -1618,7 +2004,13 @@ function interactNearby() {
         return;
       }
       unlockedLocks.add(door.lockId);
-      STATUS.setPickupHint(`Usaste la ${STATUS.getItemName(door.keyRequired)}. La puerta quedó abierta.`);
+      const keyName = STATUS.getItemName(door.keyRequired);
+      if (hasLockedDoorForKey(door.keyRequired)) {
+        STATUS.setPickupHint(`Usaste la ${keyName}. La puerta quedó abierta; todavía quedan otras puertas que la necesitan.`);
+      } else {
+        STATUS.consumeItem(door.keyRequired);
+        STATUS.setPickupHint(`Usaste la ${keyName} en todas las puertas que la necesitaban. La llave fue descartada.`);
+      }
     }
     transitionThroughDoor(door);
     return;
@@ -1754,7 +2146,7 @@ function interactNearby() {
     } else {
       moDiskTerminal.used = true;
       STATUS.addItem(moDiskTerminal.outputFile);
-      STATUS.setPickupHint(`${STATUS.getItemName(moDiskTerminal.outputFile)} agregado a Files. El código se conectará al panel de Cell Entry más adelante.`);
+      STATUS.setPickupHint(`${STATUS.getItemName(moDiskTerminal.outputFile)} agregado a Files. Podés usar cualquier MO Disk en cada terminal; con los tres Pass Codes se abre la celda.`);
     }
     updateInteractionPrompt();
     return;
@@ -1898,20 +2290,24 @@ function interactNearby() {
 }
 
 function update() {
-  if (STATUS.isOpen() || doorCodeDialog.open || labComputerDialog.open) return;
+  if (STATUS.isOpen() || doorCodeDialog.open || labComputerDialog.open || vJoltDialog.open) return;
   gameFrame++;
   if (playerDamageCooldown > 0) playerDamageCooldown--;
   if (weaponCooldown > 0) weaponCooldown--;
   if (weapon.shotFlash > 0) weapon.shotFlash--;
   player.aimAngle = Math.atan2(aimPoint.y - (player.y + PLAYER_HEIGHT / 2), aimPoint.x - (player.x + PLAYER_WIDTH / 2));
   const room = ROOMS[currentRoom];
+  updatePlant42Encounter(room);
+  const plant42Locked = currentRoom === "plant42Room" && room.interactables.some((obj) => obj.type === "plant42" && ["shrinking", "regrowing", "captured", "barryEntering", "burning"].includes(obj.phase));
   player.dx = 0;
   player.dy = 0;
 
-  if (keys.has("ArrowLeft") || keys.has("a")) player.dx -= WALK_SPEED;
-  if (keys.has("ArrowRight") || keys.has("d")) player.dx += WALK_SPEED;
-  if (keys.has("ArrowUp") || keys.has("w")) player.dy -= WALK_SPEED;
-  if (keys.has("ArrowDown") || keys.has("s")) player.dy += WALK_SPEED;
+  if (!plant42Locked) {
+    if (keys.has("ArrowLeft") || keys.has("a")) player.dx -= WALK_SPEED;
+    if (keys.has("ArrowRight") || keys.has("d")) player.dx += WALK_SPEED;
+    if (keys.has("ArrowUp") || keys.has("w")) player.dy -= WALK_SPEED;
+    if (keys.has("ArrowDown") || keys.has("s")) player.dy += WALK_SPEED;
+  }
 
   player.isMoving = player.dx !== 0 || player.dy !== 0;
 
@@ -1951,8 +2347,8 @@ function update() {
     if (obj.solid) {
       const crossesWaterOnBridgeX = obj.type === "waterArea" && crossingWaterOnBridge(playerRectX);
       const crossesWaterOnBridgeY = obj.type === "waterArea" && crossingWaterOnBridge(playerRectY);
-      if (checkCollision(playerRectX, obj) && !crossesWaterOnBridgeX && !(obj.type === "stepLadder" && player.dx && pushStepLadder(room, obj, player.dx, 0)) && !(obj.type === "pushableStatue" && obj.puzzleId === "armorRoom" && player.dx && pushPuzzleStatue(room, obj, player.dx, 0))) canMoveX = false;
-      if (checkCollision(playerRectY, obj) && !crossesWaterOnBridgeY && !(obj.type === "stepLadder" && player.dy && pushStepLadder(room, obj, 0, player.dy)) && !(obj.type === "pushableStatue" && obj.puzzleId === "armorRoom" && player.dy && pushPuzzleStatue(room, obj, 0, player.dy))) canMoveY = false;
+      if (checkCollision(playerRectX, obj) && !crossesWaterOnBridgeX && !(obj.type === "stepLadder" && player.dx && pushStepLadder(room, obj, player.dx, 0)) && !(obj.type === "pushableStatue" && ["armorRoom", "privateLibrary"].includes(obj.puzzleId) && player.dx && pushPuzzleStatue(room, obj, player.dx, 0))) canMoveX = false;
+      if (checkCollision(playerRectY, obj) && !crossesWaterOnBridgeY && !(obj.type === "stepLadder" && player.dy && pushStepLadder(room, obj, 0, player.dy)) && !(obj.type === "pushableStatue" && ["armorRoom", "privateLibrary"].includes(obj.puzzleId) && player.dy && pushPuzzleStatue(room, obj, 0, player.dy))) canMoveY = false;
     }
   });
 
@@ -2481,7 +2877,7 @@ function drawRoom() {
       ctx.fillRect(obj.x + 1, obj.y + obj.h - 4, obj.w - 2, 3);
 
     } else if (obj.type === "waterBridge") {
-      if (obj.active) {
+      if (obj.active && obj.visible !== false) {
         ctx.fillStyle = "#38271b";
         ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
         ctx.fillStyle = "#75502f";
@@ -2651,6 +3047,23 @@ function drawRoom() {
         ctx.lineTo(ventX, obj.y + obj.h - 5);
         ctx.stroke();
       }
+
+    } else if (obj.type === "vJoltMixer") {
+      ctx.fillStyle = "#191c18";
+      ctx.fillRect(obj.x + 3, obj.y + 6, obj.w - 6, obj.h - 9);
+      ctx.fillStyle = "#69736a";
+      ctx.fillRect(obj.x, obj.y + 4, obj.w, 5);
+      ctx.fillStyle = "#303933";
+      ctx.fillRect(obj.x + 5, obj.y + 10, obj.w - 10, obj.h - 15);
+      const liquidColors = obj.completed ? ["#70431f", "#70431f", "#70431f"] : ["#bc3f35", "#648c46", "#4c82a1"];
+      liquidColors.forEach((color, index) => {
+        const bottleX = obj.x + 9 + index * 15;
+        ctx.fillStyle = "#c3c8b6";
+        ctx.fillRect(bottleX + 2, obj.y + 10, 5, 3);
+        ctx.fillRect(bottleX, obj.y + 13, 9, 13);
+        ctx.fillStyle = color;
+        ctx.fillRect(bottleX + 2, obj.y + 18, 5, 6);
+      });
 
     } else if (obj.type === "moDiskTerminal") {
       ctx.fillStyle = "#202624";
@@ -2968,6 +3381,15 @@ function drawRoom() {
         ctx.stroke();
       }
 
+    } else if (obj.type === "librarySpotlight") {
+      ctx.fillStyle = "rgba(222, 207, 135, 0.12)";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.strokeStyle = "rgba(222, 207, 135, 0.48)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(obj.x + 1, obj.y + 1, obj.w - 2, obj.h - 2);
+      ctx.fillStyle = "#c2a958";
+      ctx.fillRect(obj.x + 15, obj.y + 15, 6, 6);
+
     } else if (obj.type === "pushableStatue") {
       ctx.fillStyle = "#171815";
       ctx.fillRect(obj.x + 2, obj.y + 21, obj.w - 4, 8);
@@ -3157,6 +3579,50 @@ function drawRoom() {
       ctx.fillStyle = "#43644a";
       ctx.fillRect(obj.x + 2, obj.y + obj.h - 4, obj.w - 4, 2);
 
+    } else if (obj.type === "powerMazeTerminal" || obj.type === "powerElevatorTerminal") {
+      ctx.fillStyle = "#111713";
+      ctx.fillRect(obj.x - 2, obj.y - 2, obj.w + 4, obj.h + 4);
+      ctx.fillStyle = "#39483d";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = obj.activated ? "#83e677" : "#b5cf8d";
+      ctx.fillRect(obj.x + 3, obj.y + 3, obj.w - 6, 4);
+      ctx.fillStyle = "#141a16";
+      ctx.fillRect(obj.x + 3, obj.y + 9, obj.w - 6, Math.max(2, obj.h - 12));
+      ctx.fillStyle = "#849184";
+      ctx.fillRect(obj.x + 4, obj.y + obj.h - 5, 2, 2);
+
+    } else if (obj.type === "elevatorPowerSwitch") {
+      ctx.fillStyle = "#121713";
+      ctx.fillRect(obj.x - 2, obj.y - 2, obj.w + 4, obj.h + 4);
+      ctx.fillStyle = "#687269";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = obj.activated ? "#6be17a" : "#b34635";
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, 3);
+      ctx.fillStyle = "#242a25";
+      ctx.fillRect(obj.x + 3, obj.y + 6, obj.w - 6, obj.h - 8);
+
+    } else if (obj.type === "gasValveControl") {
+      ctx.fillStyle = "#171b18";
+      ctx.fillRect(obj.x - 2, obj.y - 2, obj.w + 4, obj.h + 4);
+      ctx.fillStyle = "#626b5c";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = obj.activated ? "#75d76a" : "#b54b37";
+      ctx.fillRect(obj.x + 3, obj.y + 3, obj.w - 6, 4);
+      ctx.fillStyle = "#252a25";
+      ctx.fillRect(obj.x + 5, obj.y + 9, 8, 6);
+      ctx.fillStyle = "#c4c4aa";
+      ctx.fillRect(obj.x + 8, obj.y + 10, 2, 4);
+
+    } else if (obj.type === "poisonVent") {
+      ctx.fillStyle = "#252a27";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#89918a";
+      for (let bar = 0; bar < 5; bar++) ctx.fillRect(obj.x + 2 + bar * 4, obj.y + 1, 2, obj.h - 2);
+      if (ROOMS.operatingRoom.gasActive) {
+        ctx.fillStyle = `rgba(161, 207, 102, ${0.25 + (Math.sin(gameFrame / 8) + 1) * 0.15})`;
+        ctx.fillRect(obj.x - 1, obj.y - 4, obj.w + 2, 4);
+      }
+
     } else if (obj.type === "chimera") {
       const sway = obj.animFrame ? 1 : 0;
       ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
@@ -3310,13 +3776,13 @@ function drawRoom() {
 } else if (obj.type === "plant42Roots") {
       const centerX = obj.x + obj.w / 2;
       const centerY = obj.y + obj.h / 2;
-      ctx.fillStyle = "#153a25";
+      ctx.fillStyle = obj.vJoltUsed ? "#30291b" : "#153a25";
       ctx.beginPath();
       ctx.ellipse(centerX, centerY, obj.w * 0.43, obj.h * 0.4, 0, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.lineCap = "round";
-      ctx.strokeStyle = "#3d7138";
+      ctx.strokeStyle = obj.vJoltUsed ? "#71613a" : "#3d7138";
       ctx.lineWidth = 3;
       const tendrils = [
         [-18, -5, -24, -16, -25, -18],
@@ -3346,10 +3812,42 @@ function drawRoom() {
       ctx.fillStyle = "#78372b";
       ctx.fillRect(centerX - 5, centerY - 3, 10, 6);
 
-} else if (obj.type === "hangingPlant42") {
+} else if (obj.type === "plant42Capture") {
+      const pulse = 0.5 + Math.sin(performance.now() / 90) * 0.15;
+      ctx.strokeStyle = `rgba(73, 118, 46, ${pulse})`;
+      ctx.lineWidth = 4;
+      ctx.lineCap = "round";
+      for (let strand = 0; strand < 5; strand++) {
+        ctx.beginPath();
+        ctx.moveTo(obj.x + strand * 4, obj.y + 2);
+        ctx.quadraticCurveTo(obj.x - 4 + strand * 4, obj.y + obj.h / 2, obj.x + strand * 3, obj.y + obj.h - 2);
+        ctx.stroke();
+      }
+
+    } else if (obj.type === "plant42Flame") {
+      const flicker = Math.sin(performance.now() / 35) * 3;
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "#f05a1a";
+      ctx.lineWidth = 10 + flicker;
+      ctx.beginPath();
+      ctx.moveTo(obj.x1, obj.y1);
+      ctx.lineTo(obj.x2, obj.y2);
+      ctx.stroke();
+      ctx.strokeStyle = "#ffd65b";
+      ctx.lineWidth = 4 + flicker / 2;
+      ctx.beginPath();
+      ctx.moveTo(obj.x1, obj.y1);
+      ctx.lineTo(obj.x2, obj.y2);
+      ctx.stroke();
+
+} else if (obj.type === "hangingPlant42" || obj.type === "plant42") {
       const sway = Math.sin(performance.now() / 850);
       const centerX = obj.x + obj.w / 2;
       ctx.save();
+      const scale = obj.renderScale ?? 1;
+      ctx.translate(centerX, obj.y + obj.h / 2);
+      ctx.scale(scale, scale);
+      ctx.translate(-centerX, -(obj.y + obj.h / 2));
       ctx.lineCap = "round";
 
       ctx.strokeStyle = "#294b2a";
@@ -4934,6 +5432,14 @@ function drawStaticCharacter(obj) {
     ctx.fillRect(x + 12, y + 18, 5, 4);
     ctx.fillStyle = "#272b29";
     ctx.fillRect(x + 8, y + 12, 2, 4);
+    if (obj.plant42Barry) {
+      ctx.fillStyle = "#242923";
+      ctx.fillRect(x + 13, y + 12, 10, 4);
+      ctx.fillStyle = "#8a7852";
+      ctx.fillRect(x + 19, y + 11, 5, 2);
+      ctx.fillStyle = "#b64a20";
+      ctx.fillRect(x + 23, y + 12, 3, 2);
+    }
   } else if (obj.character === "medic") {
     ctx.fillStyle = "#4a2c1d";
     ctx.fillRect(x + 3, y + 1, 11, 7);
@@ -5024,6 +5530,21 @@ function drawPlayer() {
     ctx.moveTo(aimPoint.x, aimPoint.y - 4);
     ctx.lineTo(aimPoint.x, aimPoint.y + 4);
     ctx.stroke();
+  }
+
+  if (currentRoom === "plant42Room") {
+    const capture = ROOMS.plant42Room.interactables.find((obj) => obj.type === "plant42Capture");
+    if (capture) {
+      ctx.strokeStyle = "#47733a";
+      ctx.lineWidth = 4;
+      ctx.lineCap = "round";
+      for (let strand = 0; strand < 5; strand++) {
+        ctx.beginPath();
+        ctx.moveTo(capture.x + strand * 4, capture.y + 2);
+        ctx.quadraticCurveTo(capture.x - 4 + strand * 4, capture.y + capture.h / 2, capture.x + strand * 3, capture.y + capture.h - 2);
+        ctx.stroke();
+      }
+    }
   }
 }
 

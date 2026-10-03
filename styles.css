@@ -192,6 +192,19 @@ canvas {
 .door-code-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .door-code-actions button[type="submit"] { border-color: #77915d; background: #344529; }
 .lab-computer-dialog { width: 270px; }
+.v-jolt-dialog { width: 290px; }
+.v-jolt-selects { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.v-jolt-selects label { display: grid; gap: 4px; color: #c8c1a8; font-size: 10px; }
+.v-jolt-selects select {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 5px;
+  border: 1px solid #71694d;
+  background: #080a08;
+  color: #e7eadc;
+  font: inherit;
+  font-size: 11px;
+}
 .lab-login-fields { display: grid; gap: 8px; }
 .lab-login-fields[hidden] { display: none; }
 .lab-login-fields label { display: grid; gap: 4px; color: #c8c1a8; font-size: 10px; }
@@ -317,6 +330,8 @@ canvas {
 
 .map-frame {
   position: relative;
+  width: 60%;
+  margin-inline: auto;
   border: 1px solid #484b40;
   background: #050605;
   overflow: hidden;

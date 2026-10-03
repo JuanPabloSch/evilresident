@@ -1459,10 +1459,11 @@ outsideBoiler: {
       { id: "door2ToLabSaveRoom", x: 188, y: 92, w: 8, h: 28, targetRoom: "labSaveRoom", spawnX: 78, spawnY: 100 },
       { id: "door3ToPowerMaze1", x: 142, y: 177, w: 30, h: 8, targetRoom: "powerMaze1", spawnX: 150, spawnY: 24 },
       { id: "door4ToOperatingRoom", x: 76, y: 64, w: 28, h: 8, targetRoom: "operatingRoom", spawnX: 150, spawnY: 165 },
-      { id: "elevatorToMainLabEntryB4", x: 258, y: 10, w: 30, h: 8, targetRoom: "mainLabEntryB4", spawnX: 150, spawnY: 24 }
+      { id: "elevatorToMainLabEntryB4", x: 258, y: 10, w: 30, h: 8, targetRoom: "mainLabEntryB4", spawnX: 150, spawnY: 24, disabled: true, blockedMessage: "No hay reacción. El ascensor no tiene corriente." }
     ],
     interactables: [
       { type: "elevator", x: 258, y: 22, w: 30, h: 38, solid: false },
+      { type: "elevatorPowerSwitch", x: 288, y: 35, w: 8, h: 16 },
       { type: "zombie", x: 122, y: 88, w: 12, h: 14 },
       { type: "zombie", x: 145, y: 148, w: 12, h: 14 }
     ]
@@ -1554,7 +1555,7 @@ outsideBoiler: {
       { type: "powerMachine", x: 116, y: 58, w: 74, h: 92, solid: true },
       { type: "powerMachine", x: 230, y: 40, w: 36, h: 48, solid: true },
       { type: "powerMachine", x: 236, y: 116, w: 64, h: 80, solid: true },
-      { type: "powerMachine", x: 20, y: 164, w: 42, h: 32, solid: true },
+      { type: "powerMazeTerminal", x: 20, y: 164, w: 42, h: 32, solid: true },
       { type: "chimera", x: 113, y: 18, w: 25, h: 30 },
       { type: "chimera", x: 205, y: 70, w: 25, h: 30 }
     ]
@@ -1600,7 +1601,7 @@ outsideBoiler: {
     ],
     interactables: [
       { type: "powerMachine", x: 86, y: 79, w: 148, h: 42, solid: true },
-      { type: "keypadPanel", x: 147, y: 105, w: 28, h: 12, solid: false },
+      { type: "powerElevatorTerminal", x: 238, y: 88, w: 18, h: 24 },
       { type: "chimera", x: 42, y: 86, w: 25, h: 30 }
     ]
   },
@@ -1620,8 +1621,11 @@ outsideBoiler: {
       { type: "smallTable", x: 38, y: 39, w: 52, h: 28, solid: false },
       { type: "shotgunShells", x: 59, y: 48, w: 10, h: 8 },
       { type: "redHerb", x: 253, y: 145, w: 10, h: 10 },
+      { type: "gasValveControl", x: 206, y: 143, w: 18, h: 18 },
+      { type: "poisonVent", x: 222, y: 76, w: 22, h: 8 },
+      { type: "poisonVent", x: 258, y: 76, w: 22, h: 8 },
       { type: "airDuct", x: 238, y: 18, w: 42, h: 18 },
-      { type: "stepLadder", x: 48, y: 132, startX: 48, startY: 132, resettable: true, w: 20, h: 22, solid: true }
+      { type: "stepLadder", x: 206, y: 54, startX: 206, startY: 54, w: 20, h: 22, solid: true }
     ]
   },
   xRayRoom: {
@@ -1841,7 +1845,8 @@ outsideBoiler: {
       { type: "sinkTable", x: 50, y: 124, w: 58, h: 34, solid: true },
       { type: "vaseShelf", x: 154, y: 30, w: 118, h: 36, solid: true },
       { type: "vase", x: 188, y: 36, w: 12, h: 17 },
-      { type: "vase", x: 226, y: 36, w: 12, h: 17 }
+      { type: "vase", x: 226, y: 36, w: 12, h: 17 },
+      { type: "vJoltMixer", x: 148, y: 112, w: 54, h: 32, solid: true, ingredients: { water: 2, red: 3, green: 2 }, mixtures: {}, stage: 0, completed: false }
     ],
   },
   room003: {
@@ -1894,7 +1899,7 @@ outsideBoiler: {
       { id: "door2ToBeehivePassage", x: 20, y: 132, w: 8, h: 28, targetRoom: "beehivePassage", spawnX: 260, spawnY: 130 }
     ],
     interactables: [
-      { type: "helmetKey", x: 154, y: 28, w: 12, h: 8 },
+      { type: "helmetKey", x: 154, y: 28, w: 12, h: 8, revealed: false },
       { type: "hangingPlant42", x: 98, y: 10, w: 124, h: 130 }
     ]
   },
@@ -1963,9 +1968,10 @@ outsideBoiler: {
       { type: "greenHerb", x: 210, y: 25, w: 10, h: 10 },
       { type: "waterArea", x: 274, y: 65, w: 26, h: 95, solid: true },
       { type: "waterArea", x: 140, y: 160, w: 80, h: 30 },
-      { type: "waterCrate", x: 242, y: 66, w: 28, h: 30 },
-      { type: "waterCrate", x: 242, y: 96, w: 28, h: 30 },
-      { type: "waterCrate", x: 242, y: 126, w: 28, h: 30 }
+      { type: "waterBridge", x: 266, y: 65, w: 28, h: 95, active: false, visible: false },
+      { type: "waterCrate", x: 266, y: 96, w: 28, h: 30, solid: false, fixed: true },
+      { type: "waterCrate", x: 266, y: 126, w: 28, h: 30, solid: false, fixed: true },
+      { type: "waterCrate", x: 238, y: 66, w: 28, h: 30, solid: true, pushable: true, targetX: 266, targetY: 66 }
     ],
   },
   waterTank: {
@@ -2473,8 +2479,9 @@ outsideBoiler: {
     interactables: [
       { type: "shelf", x: 100, y: 48, w: 105, h: 16, solid: true },
       { type: "shelfVertical", x: 82, y: 72, w: 18, h: 58, solid: true },
-      { type: "pushableStatue", x: 146, y: 94, w: 26, h: 28, solid: true },
-      { type: "moDisk", x: 198, y: 136, w: 10, h: 8 }
+      { type: "librarySpotlight", x: 70, y: 128, w: 36, h: 36 },
+      { type: "pushableStatue", x: 146, y: 94, w: 26, h: 28, solid: true, puzzleId: "privateLibrary" },
+      { type: "moDisk", x: 104, y: 145, w: 10, h: 8, revealed: false }
     ]
   },
   pillarPassage: {

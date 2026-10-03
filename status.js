@@ -66,6 +66,7 @@ const STATUS_ITEMS = {
   runeTranslation: "Rune Translation",
   plant42Report: "Plant 42 Report",
   vJoltReport: "V-Jolt Report",
+  vJolt: "V-JOLT",
   chemical: "Chemical (Herbicide)"
 };
 const STATUS_FILES = new Set(["securitySystem", "musicNotes", "fax", "scrapbook", "researcherWill", "researcherLetter", "runeTranslation", "plant42Report", "vJoltReport", "orders", "passNumber", "passCode01", "passCode02", "passCode03", "botanyBook", "keepersDiary"]);
@@ -121,7 +122,9 @@ const FILE_CONTENTS = {
       "Yellow-6 — Yellow",
       "UMB No. 7 — White",
       "UMB No. 13 — Blue (stimulating smell)",
-      "V-JOLT (UMB No. 16) — Brown"
+      "V-JOLT (UMB No. 16) — Brown",
+      "On the wall beside the door: 1+2=3, 2+4=6, 3+4=7, 6+7=13, 13+3=16.",
+      "Beside the sink: Water=1, Red=2, Purple=3, Green=4. Combine the substances in the order shown by the equations. The final equation requires another Purple (NP-003), so repeat Water + Red to make it. The mixing station keeps all reagents in the room, so no bottles need to be carried."
     ]
   },
   securitySystem: {
