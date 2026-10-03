@@ -1171,7 +1171,8 @@ outsideBoiler: {
     interactables: [
       { type: "crankSocket", x: 147, y: 13, w: 23, h: 19, solid: true, crankType: "hexCrank" },
       { type: "elevator", x: 240, y: 148, w: 30, h: 28, solid: false },
-      { type: "rollingBoulder", x: 22, y: 12, w: 58, h: 56, solid: true, rollSpeed: 1.6, direction: 1, stopX: 242, triggerRadius: 60, refugeX: 105, refugeY: 120 }
+      { type: "rollingBoulder", x: 22, y: 12, w: 58, h: 56, solid: true, rollSpeed: 1.6, direction: 1, stopX: 242, triggerRadius: 60, refugeX: 105, refugeY: 120 },
+      { type: "moDisk", x: 130, y: 138, w: 10, h: 8 }
     ],
   },
   itemChamber: {
@@ -1294,7 +1295,7 @@ outsideBoiler: {
     constrainToWalkablePolygon: true,
     doors: [
       { id: "door1ToLadderRoom", x: 292, y: 143, w: 8, h: 28, targetRoom: "ladderRoom", spawnX: 185, spawnY: 128 },
-      { id: "door2ToVisualDataRoom", x: 20, y: 56, w: 8, h: 28, targetRoom: "visualDataRoom", spawnX: 150, spawnY: 24 },
+      { id: "door2ToVisualDataRoom", x: 20, y: 56, w: 8, h: 28, targetRoom: "visualDataRoom", spawnX: 150, spawnY: 24, electronicLock: true, lockId: "lab-visual-data-lock" },
       { id: "stairsToORoom", x: 258, y: 18, w: 30, h: 48, targetRoom: "oRoom", spawnX: 50, spawnY: 32 }
     ],
     interactables: [
@@ -1313,7 +1314,7 @@ outsideBoiler: {
     bounds: { minX: 20, maxX: 300, minY: 10, maxY: 190 },
     corridorPoly: [{ x: 20, y: 10, w: 280, h: 180 }],
     doors: [
-      { id: "door1ToStairwayB2", x: 145, y: 10, w: 30, h: 8, targetRoom: "stairway", spawnX: 40, spawnY: 35 }
+      { id: "door1ToStairwayB2", x: 145, y: 10, w: 30, h: 8, targetRoom: "stairway", spawnX: 40, spawnY: 35, electronicLock: true, lockId: "lab-visual-data-lock" }
     ],
     interactables: [
       { type: "projectionBeam", x: 43, y: 55, w: 82, h: 88 },
@@ -1392,7 +1393,7 @@ outsideBoiler: {
     doors: [
       { id: "door1ToORoom", x: 292, y: 86, w: 8, h: 28, targetRoom: "oRoom", spawnX: 50, spawnY: 100 },
       { id: "door2ToXRayRoom", x: 214, y: 128, w: 28, h: 8, targetRoom: "xRayRoom", spawnX: 225, spawnY: 158 },
-      { id: "door3ToPrivateRoom", x: 158, y: 64, w: 28, h: 8, targetRoom: "privateRoom", spawnX: 150, spawnY: 174 },
+      { id: "door3ToPrivateRoom", x: 158, y: 64, w: 28, h: 8, targetRoom: "privateRoom", spawnX: 150, spawnY: 174, electronicLock: true, lockId: "lab-private-room-lock" },
       { id: "door4ToCellEntry", x: 20, y: 78, w: 8, h: 28, targetRoom: "cellEntry", spawnX: 48, spawnY: 158 }
     ],
     interactables: []
@@ -1413,7 +1414,7 @@ outsideBoiler: {
     constrainToWalkablePolygon: true,
     doors: [
       { id: "door1ToPrivateCorridor", x: 58, y: 182, w: 30, h: 8, targetRoom: "privateCorridor", spawnX: 30, spawnY: 92 },
-      { id: "door2ToCellRoom", x: 212, y: 42, w: 8, h: 28, targetRoom: "cellRoom", spawnX: 78, spawnY: 94 }
+      { id: "door2ToCellRoom", x: 212, y: 42, w: 8, h: 28, targetRoom: "cellRoom", spawnX: 78, spawnY: 94, filesRequired: ["passCode01", "passCode02", "passCode03"], lockId: "laboratory-cell-lock" }
     ],
     interactables: [
       { type: "keypadPanel", x: 182, y: 14, w: 28, h: 12, solid: false }
@@ -1582,7 +1583,7 @@ outsideBoiler: {
       { type: "powerMachine", x: 194, y: 61, w: 42, h: 24, solid: true },
       { type: "powerMachine", x: 78, y: 87, w: 68, h: 57, solid: true },
       { type: "powerMachine", x: 194, y: 87, w: 42, h: 57, solid: true },
-      { type: "moDiskTerminal", x: 111, y: 45, w: 24, h: 17 },
+      { type: "moDiskTerminal", x: 111, y: 45, w: 24, h: 17, outputFile: "passCode03" },
       { type: "chimera", x: 32, y: 14, w: 25, h: 30 },
       { type: "chimera", x: 158, y: 92, w: 25, h: 30 },
       { type: "chimera", x: 252, y: 96, w: 25, h: 30 }
@@ -1640,6 +1641,7 @@ outsideBoiler: {
       { type: "woodenCrate", x: 238, y: 132, w: 28, h: 26, solid: true },
       { type: "smallTable", x: 181, y: 116, w: 44, h: 25, solid: false },
       { type: "researcherLetter", x: 196, y: 123, w: 15, h: 10 },
+      { type: "runeTranslation", x: 213, y: 123, w: 15, h: 10 },
       { type: "handgunAmmo", x: 101, y: 125, w: 10, h: 6 },
       { type: "handgunAmmo", x: 142, y: 125, w: 10, h: 6 },
       { type: "greenHerb", x: 87, y: 157, w: 10, h: 10 }
@@ -1652,12 +1654,12 @@ outsideBoiler: {
     bounds: { minX: 20, maxX: 300, minY: 10, maxY: 190 },
     corridorPoly: [{ x: 20, y: 10, w: 280, h: 180 }],
     doors: [
-      { id: "doorToPrivateCorridor", x: 158, y: 182, w: 28, h: 8, targetRoom: "privateCorridor", spawnX: 170, spawnY: 92 }
+      { id: "doorToPrivateCorridor", x: 158, y: 182, w: 28, h: 8, targetRoom: "privateCorridor", spawnX: 170, spawnY: 92, electronicLock: true, lockId: "lab-private-room-lock" }
     ],
     interactables: [
       { type: "bookshelfHorizontal", x: 38, y: 34, w: 68, h: 22, solid: true },
       { type: "desk", x: 184, y: 38, w: 78, h: 38, solid: false },
-      { type: "moDiskTerminal", x: 212, y: 44, w: 24, h: 17 },
+      { type: "moDiskTerminal", x: 212, y: 44, w: 24, h: 17, outputFile: "passCode01" },
       { type: "fax", x: 190, y: 59, w: 15, h: 10 },
       { type: "bench", x: 122, y: 47, w: 24, h: 18, solid: true },
       { type: "smallTable", x: 45, y: 130, w: 48, h: 28, solid: true },
@@ -1683,7 +1685,7 @@ outsideBoiler: {
       { type: "morgueStretcher", x: 145, y: 53, w: 48, h: 20, solid: true },
       { type: "morgueStretcher", x: 76, y: 98, w: 48, h: 20, solid: true },
       { type: "smallTable", x: 178, y: 112, w: 50, h: 26, solid: false },
-      { type: "moDiskTerminal", x: 186, y: 115, w: 22, h: 15 },
+      { type: "moDiskTerminal", x: 186, y: 115, w: 22, h: 15, outputFile: "passCode02" },
       { type: "magnumRounds", x: 216, y: 121, w: 9, h: 8 },
       { type: "colt", x: 232, y: 126, w: 18, h: 12 }
     ]

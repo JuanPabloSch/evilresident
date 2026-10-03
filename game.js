@@ -244,6 +244,16 @@ const doorCodeDialog = document.getElementById("door-code-dialog");
 const doorCodeForm = document.getElementById("door-code-form");
 const doorCodeDisplay = document.getElementById("door-code-display");
 const doorCodeMessage = document.getElementById("door-code-message");
+const labComputerDialog = document.getElementById("lab-computer-dialog");
+const labComputerForm = document.getElementById("lab-computer-form");
+const labComputerMessage = document.getElementById("lab-computer-message");
+const labLoginFields = document.getElementById("lab-login-fields");
+const labSecondaryFields = document.getElementById("lab-secondary-fields");
+const labUsername = document.getElementById("lab-username");
+const labPassword = document.getElementById("lab-password");
+const labSecondaryPassword = document.getElementById("lab-secondary-password");
+const labComputerSubmit = labComputerForm.querySelector('[type="submit"]');
+const labComputerClose = document.getElementById("lab-computer-close");
 let pendingCodeDoor = null;
 let enteredDoorCode = "";
 
@@ -304,6 +314,59 @@ doorCodeDialog.addEventListener("close", () => {
   renderDoorCode();
   updateInteractionPrompt();
 });
+
+function openLabComputer() {
+  const privateRoomUnlocked = unlockedLocks.has("lab-private-room-lock");
+  const visualDataUnlocked = unlockedLocks.has("lab-visual-data-lock");
+  labUsername.value = "";
+  labPassword.value = "";
+  labSecondaryPassword.value = "";
+  labLoginFields.hidden = privateRoomUnlocked;
+  labSecondaryFields.hidden = !privateRoomUnlocked || visualDataUnlocked;
+  labComputerSubmit.hidden = visualDataUnlocked;
+  labComputerMessage.textContent = visualDataUnlocked
+    ? "Acceso autorizado. Todas las cerraduras electrónicas están desactivadas."
+    : privateRoomUnlocked
+      ? "Acceso a Private Room autorizado. Ingresá la contraseña secundaria para Visual Data Room."
+      : "Ingresá las credenciales del investigador.";
+  labComputerDialog.showModal();
+  (privateRoomUnlocked && !visualDataUnlocked ? labSecondaryPassword : labUsername).focus();
+}
+
+labComputerForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  if (!unlockedLocks.has("lab-private-room-lock")) {
+    const username = labUsername.value.trim().toUpperCase();
+    const password = labPassword.value.trim().toUpperCase();
+    if (username !== "JOHN" || password !== "ADA") {
+      labComputerMessage.textContent = "Credenciales incorrectas. Acceso denegado.";
+      return;
+    }
+    unlockedLocks.add("lab-private-room-lock");
+    labLoginFields.hidden = true;
+    labSecondaryFields.hidden = false;
+    labComputerMessage.textContent = "Acceso a Private Room autorizado. Ingresá la contraseña secundaria para Visual Data Room.";
+    labSecondaryPassword.focus();
+    STATUS.setPickupHint("El ordenador desbloqueó la puerta a Private Room. Falta la contraseña secundaria para Visual Data Room.");
+    updateInteractionPrompt();
+    return;
+  }
+
+  if (labSecondaryPassword.value.trim().toUpperCase() !== "MOLE") {
+    labComputerMessage.textContent = "Contraseña secundaria incorrecta. Acceso denegado.";
+    labSecondaryPassword.focus();
+    return;
+  }
+  unlockedLocks.add("lab-visual-data-lock");
+  labComputerMessage.textContent = "Acceso autorizado. Visual Data Room desbloqueada.";
+  labSecondaryFields.hidden = true;
+  labComputerSubmit.hidden = true;
+  STATUS.setPickupHint("El ordenador desbloqueó la puerta a Visual Data Room.");
+  updateInteractionPrompt();
+});
+
+labComputerClose.addEventListener("click", () => labComputerDialog.close());
+labComputerDialog.addEventListener("close", updateInteractionPrompt);
 
 const ENEMY_TYPES = {
   zombie: { sight: 105, speed: 0.38, attackRange: 18, damage: 8, attackDelay: 52 },
@@ -394,7 +457,7 @@ function reloadWeapon() {
 }
 
 function fireWeapon() {
-  if (STATUS.isOpen() || doorCodeDialog.open || weaponCooldown > 0) return;
+  if (STATUS.isOpen() || doorCodeDialog.open || labComputerDialog.open || weaponCooldown > 0) return;
   if (WEAPON_ITEMS[equippedWeapon] && !STATUS.hasItem(WEAPON_ITEMS[equippedWeapon])) {
     equippedWeapon = "handgun";
     updateAmmoDisplay();
@@ -519,6 +582,11 @@ updateAmmoDisplay();
 
 const keys = new Set();
 window.addEventListener("keydown", (e) => {
+  if (labComputerDialog.open) {
+    if (e.key === "Escape") labComputerDialog.close();
+    else if (!e.target.matches?.("input, button")) e.preventDefault();
+    return;
+  }
   if (doorCodeDialog.open) {
     e.preventDefault();
     if (/^\d$/.test(e.key)) addDoorCodeDigit(e.key);
@@ -1145,10 +1213,19 @@ function updateInteractionPrompt() {
     interactionPrompt.hidden = false;
     return;
   }
+  const labComputer = room.interactables.find((obj) => obj.type === "labComputer" && checkCollision(ladderReach, obj));
+  if (labComputer) {
+    interactionPrompt.textContent = "E · Usar ordenador de seguridad";
+    interactionPrompt.hidden = false;
+    return;
+  }
   const door = nearbyDoor();
   if (door) {
     const locked = door.keyRequired && !unlockedLocks.has(door.lockId);
+    const electronicLocked = door.electronicLock && !unlockedLocks.has(door.lockId);
     const fileLocked = door.fileRequired && !unlockedLocks.has(door.lockId);
+    const missingFiles = door.filesRequired?.filter((file) => !STATUS.hasFile(file)) || [];
+    const filesLocked = missingFiles.length > 0 && !unlockedLocks.has(door.lockId);
     const webLocked = door.webRequired && !unlockedLocks.has(door.webRequired);
     const missingCrests = door.crestsRequired?.filter((crest) => !STATUS.hasItem(crest)) || [];
     const crestsLocked = missingCrests.length > 0 && !unlockedLocks.has(door.lockId);
@@ -1159,10 +1236,14 @@ function updateInteractionPrompt() {
       ? `E · ${door.blockedMessage || "Destino todavía no disponible."}`
       : door.codeRequired && !unlockedLocks.has(door.lockId)
         ? "E · Ingresar código"
+      : electronicLocked
+        ? "E · Cerradura electrónica: usar ordenador de Small Lab"
       : locked
         ? `E · Cerrada: ${STATUS.getItemName(door.keyRequired)}`
       : fileLocked
         ? `E · Falta archivo: ${STATUS.getItemName(door.fileRequired)}`
+      : filesLocked
+        ? `E · Faltan: ${missingFiles.map((file) => STATUS.getItemName(file)).join(", ")}`
       : webLocked
         ? "Telaraña gruesa: cortala con el Cuchillo desde Black Tiger Room"
       : crestsLocked
@@ -1225,6 +1306,14 @@ function updateInteractionPrompt() {
   const chest = room.interactables.find((obj) => obj.type === "itemChest" && checkCollision(reach, obj));
   if (chest) {
     interactionPrompt.textContent = "E · Abrir baúl de objetos";
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const moDiskTerminal = room.interactables.find((obj) => obj.type === "moDiskTerminal" && obj.outputFile && checkCollision(reach, obj));
+  if (moDiskTerminal) {
+    interactionPrompt.textContent = STATUS.hasFile(moDiskTerminal.outputFile)
+      ? "Código ya registrado en Files"
+      : STATUS.hasItem("moDisk") ? "E · Usar MO Disk en el terminal" : "Necesitás un MO Disk";
     interactionPrompt.hidden = false;
     return;
   }
@@ -1453,10 +1542,19 @@ function interactNearby() {
     updateInteractionPrompt();
     return;
   }
+  const labComputer = room.interactables.find((obj) => obj.type === "labComputer" && checkCollision(ladderReach, obj));
+  if (labComputer) {
+    openLabComputer();
+    return;
+  }
   const door = nearbyDoor();
   if (door) {
     if (door.disabled || !ROOMS[door.targetRoom]) {
       STATUS.setPickupHint(door.blockedMessage || "Destino todavía no disponible.");
+      return;
+    }
+    if (door.electronicLock && !unlockedLocks.has(door.lockId)) {
+      STATUS.setPickupHint("La cerradura electrónica requiere autorización desde el ordenador de Small Lab.");
       return;
     }
     if (door.stepLadderTarget && !isStepLadderInPlace(ROOMS[currentRoom], door.stepLadderTarget)) {
@@ -1486,6 +1584,15 @@ function interactNearby() {
       }
       unlockedLocks.add(door.lockId);
       STATUS.setPickupHint(`Usaste el archivo ${STATUS.getItemName(door.fileRequired)}. La puerta quedó abierta.`);
+    }
+    const missingFiles = door.filesRequired?.filter((file) => !STATUS.hasFile(file)) || [];
+    if (missingFiles.length && !unlockedLocks.has(door.lockId)) {
+      STATUS.setPickupHint(`La puerta de la celda requiere los tres Pass Codes. Te faltan: ${missingFiles.map((file) => STATUS.getItemName(file)).join(", ")}.`);
+      return;
+    }
+    if (door.filesRequired?.length && !unlockedLocks.has(door.lockId)) {
+      unlockedLocks.add(door.lockId);
+      STATUS.setPickupHint("Presentaste los tres Pass Codes. La puerta de la celda quedó abierta.");
     }
     if (door.unlockFromSide && !unlockedLocks.has(door.lockId)) {
       if (currentRoom !== door.unlockFromSide) {
@@ -1638,6 +1745,20 @@ function interactNearby() {
     STATUS.openChest();
     return;
   }
+  const moDiskTerminal = room.interactables.find((obj) => obj.type === "moDiskTerminal" && obj.outputFile && checkCollision(reach, obj));
+  if (moDiskTerminal) {
+    if (STATUS.hasFile(moDiskTerminal.outputFile)) {
+      STATUS.setPickupHint("Este terminal ya transmitió su Pass Code a Files.");
+    } else if (!STATUS.consumeItem("moDisk")) {
+      STATUS.setPickupHint("Necesitás un MO Disk para obtener el Pass Code de este terminal.");
+    } else {
+      moDiskTerminal.used = true;
+      STATUS.addItem(moDiskTerminal.outputFile);
+      STATUS.setPickupHint(`${STATUS.getItemName(moDiskTerminal.outputFile)} agregado a Files. El código se conectará al panel de Cell Entry más adelante.`);
+    }
+    updateInteractionPrompt();
+    return;
+  }
   const fallingStatueIndex = room.interactables.findIndex((obj) => obj.type === "pushableStatue" && obj.fallToRoom && checkCollision(reach, obj));
   if (fallingStatueIndex !== -1) {
     const statue = room.interactables[fallingStatueIndex];
@@ -1777,7 +1898,7 @@ function interactNearby() {
 }
 
 function update() {
-  if (STATUS.isOpen() || doorCodeDialog.open) return;
+  if (STATUS.isOpen() || doorCodeDialog.open || labComputerDialog.open) return;
   gameFrame++;
   if (playerDamageCooldown > 0) playerDamageCooldown--;
   if (weaponCooldown > 0) weaponCooldown--;
@@ -3752,7 +3873,7 @@ function drawRoom() {
       ctx.fillStyle = isActive ? "#c1f3bd" : "#e2c2a0";
       ctx.fillRect(obj.x + obj.w / 2 - 1, obj.y + (isActive ? 8 : 11), 2, 4);
 
-    } else if (obj.type === "researcherWill" || obj.type === "researcherLetter" || obj.type === "fax") {
+    } else if (obj.type === "researcherWill" || obj.type === "researcherLetter" || obj.type === "runeTranslation" || obj.type === "fax") {
       ctx.fillStyle = "#302215";
       ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
       ctx.fillStyle = "#e5d9b7";

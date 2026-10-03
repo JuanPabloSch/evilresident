@@ -191,6 +191,21 @@ canvas {
 .door-code-actions button:focus-visible { outline: 2px solid #b8d69a; outline-offset: 1px; }
 .door-code-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .door-code-actions button[type="submit"] { border-color: #77915d; background: #344529; }
+.lab-computer-dialog { width: 270px; }
+.lab-login-fields { display: grid; gap: 8px; }
+.lab-login-fields[hidden] { display: none; }
+.lab-login-fields label { display: grid; gap: 4px; color: #c8c1a8; font-size: 10px; }
+.lab-login-fields input {
+  width: 100%;
+  min-width: 0;
+  padding: 7px;
+  border: 1px solid #71694d;
+  background: #080a08;
+  color: #e7eadc;
+  font: 12px monospace;
+  letter-spacing: 0;
+}
+.lab-login-fields input:focus-visible { outline: 2px solid #b8d69a; outline-offset: 1px; }
 
 .info {
   display: grid;
@@ -584,6 +599,37 @@ canvas {
   font-size: 10px;
 }
 .file-list .inventory-empty { color: #888a7f; }
+.file-list .file-open {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.file-list .file-open:hover, .file-list .file-open:focus-visible { color: #fff6c8; }
+
+.file-reader {
+  max-height: 220px;
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid #334438;
+  background: #111a1b;
+  color: #d3d7c4;
+}
+.file-back {
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: #c5ce9e;
+  font: inherit;
+  cursor: pointer;
+}
+.file-reader h3 { margin: 12px 0 4px; color: #e7dfbd; font-size: 11px; }
+.file-reader-subtitle { margin: 0 0 12px; color: #b7bc9c; text-align: center; }
+.file-reader-body p { margin: 0 0 10px; font-size: 10px; line-height: 1.55; white-space: pre-line; }
 
 .inventory-list {
   display: grid;

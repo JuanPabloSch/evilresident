@@ -39,6 +39,23 @@
               </div>
             </form>
           </dialog>
+          <dialog id="lab-computer-dialog" class="door-code-dialog lab-computer-dialog" aria-labelledby="lab-computer-title">
+            <form id="lab-computer-form">
+              <h2 id="lab-computer-title">Laboratory Security System</h2>
+              <p id="lab-computer-message" class="door-code-message">Ingresá las credenciales del investigador.</p>
+              <div id="lab-login-fields" class="lab-login-fields">
+                <label>Username<input id="lab-username" autocomplete="off"></label>
+                <label>Password<input id="lab-password" type="password" autocomplete="off"></label>
+              </div>
+              <div id="lab-secondary-fields" class="lab-login-fields" hidden>
+                <label>Secondary password<input id="lab-secondary-password" autocomplete="off"></label>
+              </div>
+              <div class="door-code-actions">
+                <button id="lab-computer-close" type="button">Cerrar</button>
+                <button type="submit">Ingresar</button>
+              </div>
+            </form>
+          </dialog>
         </div>
         <div class="control-column">
           <ul class="info" aria-label="Controles">
@@ -106,6 +123,12 @@
       <section id="files-view" class="status-view" role="tabpanel" aria-labelledby="files-tab" hidden>
         <h3 class="inventory-title">ARCHIVOS LEÍDOS Y RECOGIDOS</h3>
         <ul id="files-list" class="file-list"><li class="inventory-empty">Todavía no encontraste archivos.</li></ul>
+        <article id="files-reader" class="file-reader" hidden>
+          <button id="files-back" class="file-back" type="button">← Volver a Files</button>
+          <h3 id="files-reader-title"></h3>
+          <p id="files-reader-subtitle" class="file-reader-subtitle"></p>
+          <div id="files-reader-body" class="file-reader-body"></div>
+        </article>
       </section>
       <p id="pickup-hint" class="pickup-hint" aria-live="polite">Acercate a un objeto y pulsá E.</p>
     </aside>
