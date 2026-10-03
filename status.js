@@ -361,7 +361,7 @@ const STATUS = (() => {
         label.textContent = `${name} ×${count}`;
         slot.appendChild(label);
         const herb = ["Hierba verde", "Hierba roja", "Hierba azul", "Mezcla verde ×2"].includes(name);
-        const usable = ["Hierba verde", "Hierba azul", "Mezcla verde ×2", "Mezcla verde ×3", "Mezcla verde y roja", "Mezcla verde y azul", STATUS_ITEMS.doomBook1, STATUS_ITEMS.doomBook2].includes(name);
+        const usable = ["Hierba verde", "Hierba azul", "Mezcla verde ×2", "Mezcla verde ×3", "Mezcla verde y roja", "Mezcla verde y azul", STATUS_ITEMS.doomBook1, STATUS_ITEMS.doomBook2, STATUS_ITEMS.flare].includes(name);
         const weaponItem = ["Berreta", "Cuchillo de supervivencia", "Escopeta", "Colt Python", "Lanzagranadas", "Bazooka", "Rocket Launcher"].includes(name);
         const launcherAmmo = ["Flame Rounds", "Acid Rounds", "Explosive Rounds"].includes(name);
         if (usable || herb || weaponItem || launcherAmmo) {
@@ -421,6 +421,10 @@ const STATUS = (() => {
   }
 
   function useItem(name) {
+    if (name === STATUS_ITEMS.flare) {
+      weaponHandlers.useFlare();
+      return;
+    }
     const bookMedal = name === STATUS_ITEMS.doomBook1 ? "eagleMedal"
       : name === STATUS_ITEMS.doomBook2 ? "wolfMedal" : null;
     if (bookMedal) {

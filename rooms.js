@@ -18,8 +18,6 @@ const ROOMS = {
       { type: "inkRibbon", x: 68, y: 58, w: 8, h: 8 },
       { type: "inkRibbon", x: 110, y: 58, w: 8, h: 8 },
       { type: "staticCharacter", character: "redVest", x: 82, y: 142, w: 18, h: 22 },
-      { type: "staticCharacter", character: "medic", x: 218, y: 116, w: 16, h: 22 },
-      { type: "staticCharacter", character: "sunglasses", x: 258, y: 142, w: 16, h: 22 },
       { type: "lockpick", x: 104, y: 148, w: 12, h: 8, giftFrom: "Barry" }
     ]
   },
@@ -1508,7 +1506,8 @@ outsideBoiler: {
       { id: "door1ToMainLab", x: 66, y: 182, w: 30, h: 8, targetRoom: "mainLab", spawnX: 150, spawnY: 24 }
     ],
     interactables: [
-      { type: "elevator", x: 240, y: 21, w: 30, h: 38, solid: false }
+      { type: "elevator", x: 240, y: 21, w: 30, h: 38, solid: false },
+      { type: "staticCharacter", character: "sunglasses", x: 136, y: 49, w: 18, h: 25, armed: true, labWesker: true }
     ]
   },
   mainLab: {
@@ -1522,7 +1521,7 @@ outsideBoiler: {
     ],
     interactables: [
       { type: "tyrantTube", x: 22, y: 53, w: 38, h: 55, solid: true },
-      { type: "keypadPanel", x: 62, y: 73, w: 24, h: 16, solid: false },
+      { type: "tyrantReleaseConsole", x: 62, y: 73, w: 24, h: 16, solid: false },
       { type: "masterKey", x: 31, y: 126, w: 12, h: 8 },
       { type: "specimenTube", x: 91, y: 49, w: 40, h: 38, solid: true },
       { type: "specimenTube", x: 133, y: 49, w: 40, h: 38, solid: true },
@@ -2465,9 +2464,8 @@ outsideBoiler: {
     interactables: [
       { type: "elevator", x: 258, y: 20, w: 30, h: 28, solid: false },
       { type: "flare", x: 238, y: 27, w: 8, h: 14 },
-      { type: "helicopterShadow", x: 106, y: 57, w: 108, h: 76 },
-      { type: "tyrant", x: 238, y: 113, w: 34, h: 55 },
-      { type: "rocketLauncher", x: 94, y: 151, w: 30, h: 10 }
+      { type: "helicopterShadow", x: 106, y: 57, w: 108, h: 76, revealed: false },
+      { type: "rocketLauncher", x: 136, y: 142, w: 30, h: 10, revealed: false }
     ]
   },
   privateLibrary: {

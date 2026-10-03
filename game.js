@@ -472,6 +472,7 @@ const ENEMY_TYPES = {
   adder: { sight: 95, speed: 0.58, attackRange: 14, damage: 6, attackDelay: 52 },
   hunter: { sight: 175, speed: 0.72, attackRange: 22, damage: 18, attackDelay: 38 },
   blackTiger: { sight: 200, speed: 0.42, attackRange: 35, damage: 24, attackDelay: 32 },
+  tyrant: { sight: 220, speed: 0.34, attackRange: 26, damage: 20, attackDelay: 52 },
   yawn: { sight: 180, speed: 0.32, attackRange: 35, damage: 12, attackDelay: 78 },
   chimera: { sight: 140, speed: 0.52, attackRange: 20, damage: 12, attackDelay: 44 },
   plant42: { sight: 210, speed: 0.16, attackRange: 38, damage: 12, attackDelay: 48 }
@@ -533,7 +534,26 @@ function chooseLauncherAmmo(name) {
   STATUS.setPickupHint(`${name} seleccionadas para ${equippedWeapon === "bazooka" ? "la bazooka" : "el lanzagranadas"}.`);
 }
 
-STATUS.setWeaponHandlers({ equip: equipWeapon, selectAmmo: chooseLauncherAmmo });
+function useHeliportFlare() {
+  if (currentRoom !== "heliport") {
+    STATUS.setPickupHint("La flare solo sirve en el heliport para pedir el rescate.");
+    return;
+  }
+  const room = ROOMS.heliport;
+  if (room.finalEncounterStarted) {
+    STATUS.setPickupHint("Brad ya vio la señal. El rescate está en marcha.");
+    return;
+  }
+  if (!STATUS.consumeItem("flare")) return;
+  room.finalEncounterStarted = true;
+  room.finalEncounterStartedAt = gameFrame;
+  const shadow = room.interactables.find((obj) => obj.type === "helicopterShadow");
+  if (shadow) shadow.revealed = true;
+  STATUS.setPickupHint("La flare se encendió. Brad recibió la señal y se acerca en el helicóptero.");
+  updateAmmoDisplay();
+}
+
+STATUS.setWeaponHandlers({ equip: equipWeapon, selectAmmo: chooseLauncherAmmo, useFlare: useHeliportFlare });
 
 function canvasPoint(event) {
   const rect = canvas.getBoundingClientRect();
@@ -553,6 +573,7 @@ function reloadWeapon() {
 
 function fireWeapon() {
   if (STATUS.isOpen() || doorCodeDialog.open || labComputerDialog.open || vJoltDialog.open || weaponCooldown > 0) return;
+  if (currentRoom === "mainLab" && ROOMS.mainLab.tyrantSceneRunning) return;
   const activePlant = ROOMS[currentRoom]?.interactables.find((obj) => obj.type === "plant42");
   if (activePlant && activePlant.phase && activePlant.phase !== "fight") return;
   if (WEAPON_ITEMS[equippedWeapon] && !STATUS.hasItem(WEAPON_ITEMS[equippedWeapon])) {
@@ -622,7 +643,9 @@ function fireWeapon() {
   let targetDistance = range;
 
   room.interactables.forEach((obj) => {
-    if (!["zombie", "zombieDog", "spider", "neptune", "wasp", "crow", "adder", "hunter", "blackTiger", "yawn", "chimera", "plant42"].includes(obj.type)) return;
+    if (!["zombie", "zombieDog", "spider", "neptune", "wasp", "crow", "adder", "hunter", "blackTiger", "yawn", "chimera", "plant42", "tyrant"].includes(obj.type)) return;
+    if (obj.type === "tyrant" && obj.phase !== "fight" && !(obj.finalEncounter && obj.phase === "downed" && equippedWeapon === "rocketLauncher")) return;
+    if (obj.type === "tyrant" && obj.phase === "exploding") return;
     const scriptedYawn = obj.type === "yawn" && ["atticFirst", "lessonSecond"].includes(obj.encounter);
     if (scriptedYawn && obj.phase !== "circling") return;
     const dx = obj.x + obj.w / 2 - originX;
@@ -641,7 +664,7 @@ function fireWeapon() {
     const smallEnemy = ["crow", "adder", "wasp"].includes(target.type);
     const boss = ["blackTiger", "yawn", "tyrant", "plant42"].includes(target.type);
     const scriptedYawn = target.type === "yawn" && ["atticFirst", "lessonSecond"].includes(target.encounter);
-    const defaultHitPoints = target.type === "plant42" ? 900 : scriptedYawn ? 400 : smallEnemy ? 10 : target.type === "zombieDog" ? 60 : boss ? 300 : 100;
+    const defaultHitPoints = target.type === "plant42" ? 900 : target.type === "tyrant" ? 1000 : scriptedYawn ? 400 : smallEnemy ? 10 : target.type === "zombieDog" ? 60 : boss ? 300 : 100;
     const hunterSized = ["hunter", "chimera"].includes(target.type);
     const plant42Damage = target.type === "plant42"
       ? equippedWeapon === "handgun" ? 30
@@ -652,7 +675,16 @@ function fireWeapon() {
                 : ["acidRounds", "explosiveRounds"].includes(ammo.type) ? 60 : 0
               : equippedWeapon === "rocketLauncher" ? 900 : 0
       : null;
-    const damage = target.type === "plant42" ? plant42Damage
+    const tyrantDamage = target.type === "tyrant"
+      ? equippedWeapon === "handgun" ? 20
+        : equippedWeapon === "shotgun" ? 50
+          : equippedWeapon === "colt" ? 67
+            : ["bazooka", "grenadeLauncher"].includes(equippedWeapon) ? 50
+              : equippedWeapon === "rocketLauncher" ? target.finalEncounter ? 1000 : 250
+                : equippedWeapon === "knife" ? 0 : 0
+      : null;
+    const damage = target.type === "tyrant" ? tyrantDamage
+      : target.type === "plant42" ? plant42Damage
       : scriptedYawn && equippedWeapon === "shotgun" ? 34
       : target.type === "zombieDog" ? equippedWeapon === "handgun" ? 20 : 100
       : equippedWeapon === "knife" ? 10
@@ -661,7 +693,14 @@ function fireWeapon() {
           : equippedWeapon === "colt" ? hunterSized ? 50 : 100
             : equippedWeapon === "rocketLauncher" ? 250 : 50;
     const remaining = (weapon.hitPoints.get(target) ?? defaultHitPoints) - damage;
-    if (remaining <= 0 && scriptedYawn) {
+    if (target.type === "tyrant" && target.finalEncounter && target.phase === "downed" && equippedWeapon === "rocketLauncher") {
+      target.phase = "exploding";
+      target.explodeStartedAt = gameFrame;
+      target.alerted = false;
+      target.attackAt = undefined;
+      room.finalTyrantDefeated = true;
+      STATUS.setPickupHint("¡El cohete alcanzó al Tyrant! La criatura explotó en pedazos.");
+    } else if (remaining <= 0 && scriptedYawn) {
       target.phase = target.encounter === "atticFirst" ? "retreating" : "dying";
       target.alerted = false;
       target.attackAt = undefined;
@@ -669,6 +708,20 @@ function fireWeapon() {
         const hole = room.interactables.find((obj) => obj.type === "floorHole");
         if (hole) hole.revealed = true;
       }
+    } else if (remaining <= 0 && target.type === "tyrant" && target.finalEncounter) {
+      target.phase = "downed";
+      target.alerted = false;
+      target.attackAt = undefined;
+      target.downedAt = gameFrame;
+      room.finalTyrantDownedAt = gameFrame;
+      STATUS.setPickupHint("El Tyrant cayó, pero sigue vivo. ¡Brad está lanzando algo desde el helicóptero!");
+    } else if (remaining <= 0 && target.type === "tyrant") {
+      target.phase = "downed";
+      target.alerted = false;
+      target.attackAt = undefined;
+      room.tyrantPhaseComplete = true;
+      room.tyrantSceneRunning = false;
+      STATUS.setPickupHint("El Tyrant cayó, pero sigue vivo. Podés salir de Main Lab.");
     } else if (remaining <= 0) {
       if (target.type === "plant42" && target.route === "barry") {
         target.phase = "shrinking";
@@ -980,6 +1033,7 @@ function updateBarryLessonScene(room) {
 }
 
 function updateEnemies(room) {
+  updateHeliportFinale(room);
   const hive = room.interactables.find((obj) => obj.type === "giantBeehive");
   if (hive) {
     const activeWasps = room.interactables.some((obj) => obj.type === "wasp");
@@ -1051,6 +1105,9 @@ function updateEnemies(room) {
 
   room.interactables.forEach((enemy) => {
     if (enemy.type === "plant42" && enemy.phase && enemy.phase !== "fight") return;
+    if (enemy.type === "tyrant" && enemy.phase !== "fight" && !(enemy.finalEncounter && enemy.phase === "downed" && equippedWeapon === "rocketLauncher")) return;
+    if (enemy.type === "tyrant" && enemy.phase === "exploding") return;
+    if (enemy.type === "tyrant" && enemy.finalEncounter && enemy.phase === "downed") return;
     if (enemy.type === "yawn" && enemy.encounter === "atticFirst") {
       updateAtticYawnEncounter(room, enemy);
       return;
@@ -1102,8 +1159,10 @@ function updateEnemies(room) {
       return;
     }
 
-    const stepX = (playerX - enemyX) / distance * behavior.speed;
-    const stepY = (playerY - enemyY) / distance * behavior.speed;
+    const charging = enemy.type === "tyrant" && enemy.finalEncounter && gameFrame % 180 < 55;
+    const movementSpeed = charging ? 1.35 : behavior.speed;
+    const stepX = (playerX - enemyX) / distance * movementSpeed;
+    const stepY = (playerY - enemyY) / distance * movementSpeed;
     const canOccupy = (x, y) => {
       const bounds = room.bounds;
       const box = { x, y, w: enemy.w, h: enemy.h };
@@ -1117,6 +1176,50 @@ function updateEnemies(room) {
     if (canOccupy(enemy.x, enemy.y + stepY)) enemy.y += stepY;
     enemy.animFrame = Math.floor(gameFrame / 12) % 2;
   });
+}
+
+function updateHeliportFinale(room) {
+  if (currentRoom !== "heliport" || !room.finalEncounterStarted || room.finalEncounterComplete) return;
+  const elapsed = gameFrame - room.finalEncounterStartedAt;
+  const tyrant = room.interactables.find((obj) => obj.type === "tyrant" && obj.finalEncounter);
+  const launcher = room.interactables.find((obj) => obj.type === "rocketLauncher" && obj.finalDrop);
+  const shadow = room.interactables.find((obj) => obj.type === "helicopterShadow");
+  if (shadow && elapsed < 100) {
+    shadow.x = 106 + Math.sin(elapsed / 24) * 16;
+    shadow.y = 57 + Math.sin(elapsed / 18) * 4;
+  }
+
+  if (!tyrant && elapsed >= 100) {
+    room.interactables.push({ type: "floorCrack", x: 133, y: 116, w: 42, h: 20, revealed: true });
+    room.interactables.push({
+      type: "tyrant", x: 133, y: 98, w: 40, h: 58,
+      phase: "emerging", revealed: true, finalEncounter: true
+    });
+    STATUS.setPickupHint("El Tyrant rompe el piso del heliport y emerge debajo del helicóptero.");
+    return;
+  }
+
+  if (tyrant?.phase === "emerging" && elapsed >= 130) {
+    tyrant.phase = "fight";
+    tyrant.alerted = true;
+    tyrant.attackAt = gameFrame + 45;
+    STATUS.setPickupHint("¡El Tyrant va por vos! Esquivá sus embestidas y atacalo.");
+  }
+  if (tyrant?.phase === "downed" && gameFrame - tyrant.downedAt >= 90 && !launcher && !room.finalRocketLauncherSpawned) {
+    room.interactables.push({ type: "rocketLauncher", x: 138, y: 82, w: 30, h: 10, finalDrop: true, revealed: true, falling: true, pickupAfter: gameFrame + 25 });
+    room.finalRocketLauncherSpawned = true;
+    STATUS.setPickupHint("Brad te lanzó el Rocket Launcher. Recogelo, equipalo y terminá con el Tyrant.");
+  }
+  if (launcher?.falling) {
+    launcher.y = Math.min(143, launcher.y + 2.5);
+    if (launcher.y >= 143) launcher.falling = false;
+  }
+  if (tyrant?.phase === "exploding" && gameFrame - tyrant.explodeStartedAt >= 42) {
+    room.interactables.splice(room.interactables.indexOf(tyrant), 1);
+    room.finalEncounterComplete = true;
+    room.finalTyrantDefeated = true;
+    STATUS.setPickupHint("El Tyrant quedó destruido. El helicóptero de Brad te espera para escapar.");
+  }
 }
 
 function updatePlant42Encounter(room) {
@@ -1226,7 +1329,7 @@ function collectNearbyItem() {
     return;
   }
   const itemIndex = room.interactables.findIndex((obj) =>
-    STATUS.getItemName(obj.type) && obj.revealed !== false && (!obj.requiresDark || !trophyLightsOn) && (!obj.requiresLadder || isStepLadderInPlace(room, obj.requiresLadder)) && checkCollision(playerReach, obj)
+    STATUS.getItemName(obj.type) && obj.revealed !== false && (!obj.pickupAfter || gameFrame >= obj.pickupAfter) && (!obj.requiresDark || !trophyLightsOn) && (!obj.requiresLadder || isStepLadderInPlace(room, obj.requiresLadder)) && checkCollision(playerReach, obj)
   );
   if (itemIndex === -1) {
     STATUS.setPickupHint("No hay objetos al alcance.");
@@ -1257,14 +1360,55 @@ function collectNearbyItem() {
 }
 
 function isBossEncounterActive(room) {
+  if (room === ROOMS.heliport && room.finalEncounterStarted && !room.finalEncounterComplete) return true;
   return room.interactables.some((obj) => {
     if (obj.type === "blackTiger") return true;
     if (obj.type === "plant42") return true;
+    if (obj.type === "tyrant" && obj.phase !== "downed") return true;
     if (obj.type === "yawn" && obj.revealed !== false) {
       return ["emerging", "circling", "retreating", "dying"].includes(obj.phase);
     }
     return false;
   });
+}
+
+function updateTyrantReleaseScene(room) {
+  if (currentRoom !== "mainLab" || !room.tyrantSceneRunning) return false;
+  const elapsed = gameFrame - room.tyrantSceneStartedAt;
+  const tube = room.interactables.find((obj) => obj.type === "tyrantTube");
+  const wesker = room.interactables.find((obj) => obj.type === "staticCharacter" && obj.labWesker);
+  let tyrant = room.interactables.find((obj) => obj.type === "tyrant");
+
+  if (elapsed >= 25 && tyrant && tyrant.revealed === false) {
+    tyrant.revealed = true;
+    if (tube) {
+      tube.broken = true;
+      tube.solid = false;
+    }
+    STATUS.setPickupHint("El Tyrant rompió el tubo de contención.");
+  }
+  if (tyrant?.phase === "emerging") {
+    tyrant.y = Math.min(80, 55 + Math.max(0, elapsed - 25) * 0.55);
+  }
+  if (elapsed >= 65 && tyrant && tyrant.phase !== "attackWesker" && tyrant.phase !== "fight") {
+    tyrant.phase = "attackWesker";
+    tyrant.x = 67;
+    tyrant.y = 72;
+    if (wesker) {
+      room.interactables.splice(room.interactables.indexOf(wesker), 1);
+      room.interactables.push({ type: "weskerBody", x: 66, y: 99, w: 25, h: 12 });
+    }
+    STATUS.setPickupHint("El Tyrant golpeó a Wesker. Ahora viene por vos.");
+  }
+  if (elapsed >= 100 && tyrant) {
+    tyrant.phase = "fight";
+    tyrant.alerted = true;
+    tyrant.attackAt = gameFrame + 40;
+    room.tyrantSceneRunning = false;
+    STATUS.setPickupHint("Primera fase: derrotá al Tyrant. No dejes que se acerque.");
+    return false;
+  }
+  return true;
 }
 
 function nearbyDoor() {
@@ -1431,6 +1575,15 @@ function updateInteractionPrompt() {
   const gasValveControl = room.interactables.find((obj) => obj.type === "gasValveControl" && checkCollision(ladderReach, obj));
   if (gasValveControl) {
     interactionPrompt.textContent = gasValveControl.activated ? "Válvulas de ventilación cerradas" : "E · Cerrar las válvulas de ventilación";
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const tyrantConsole = room.interactables.find((obj) => obj.type === "tyrantReleaseConsole" && checkCollision(ladderReach, obj));
+  if (tyrantConsole) {
+    interactionPrompt.textContent = room.tyrantPhaseComplete
+      ? "El tubo de contención está destruido"
+      : room.tyrantSceneRunning ? "El sistema de contención está en marcha"
+        : room.weskerArrived ? "E · Activar el terminal del tubo" : "El terminal no responde";
     interactionPrompt.hidden = false;
     return;
   }
@@ -1672,7 +1825,7 @@ function updateInteractionPrompt() {
     interactionPrompt.hidden = false;
     return;
   }
-  const item = room.interactables.find((obj) => STATUS.getItemName(obj.type) && obj.revealed !== false && (!obj.requiresDark || !trophyLightsOn) && (!obj.requiresLadder || isStepLadderInPlace(room, obj.requiresLadder)) && checkCollision(itemReach, obj));
+  const item = room.interactables.find((obj) => STATUS.getItemName(obj.type) && obj.revealed !== false && (!obj.pickupAfter || gameFrame >= obj.pickupAfter) && (!obj.requiresDark || !trophyLightsOn) && (!obj.requiresLadder || isStepLadderInPlace(room, obj.requiresLadder)) && checkCollision(itemReach, obj));
   interactionPrompt.textContent = item
     ? item.type === "goldEmblem" && !STATUS.hasItem("mansionEmblem")
       ? "Primero necesitás el Emblem del Dining Room"
@@ -1708,6 +1861,19 @@ function transitionThroughDoor(door) {
     if (control) control.activated = false;
     room.gasActive = false;
     room.nextGasDamageAt = undefined;
+  }
+  if (currentRoom === "mainLabEntryB4" && door.targetRoom === "mainLab" && !ROOMS.mainLab.tyrantPhaseComplete) {
+    const entry = ROOMS.mainLabEntryB4;
+    const entryWesker = entry.interactables.find((obj) => obj.type === "staticCharacter" && obj.labWesker);
+    if (entryWesker) entry.interactables.splice(entry.interactables.indexOf(entryWesker), 1);
+    ROOMS.mainLab.weskerArrived = true;
+    if (!ROOMS.mainLab.interactables.some((obj) => obj.type === "staticCharacter" && obj.labWesker)) {
+      ROOMS.mainLab.interactables.push({ type: "staticCharacter", character: "sunglasses", x: 69, y: 91, w: 18, h: 25, armed: true, labWesker: true });
+    }
+    STATUS.setPickupHint("Wesker te llevó a Main Lab y está junto al terminal del tubo.");
+  }
+  if (currentRoom === "elevatorEntry" && door.targetRoom === "mainLabEntryB4" && !ROOMS.mainLab.tyrantPhaseComplete) {
+    STATUS.setPickupHint("Wesker te apunta con su arma. Te ordena que lo acompañes a Main Lab.");
   }
   currentRoom = door.targetRoom;
   player.x = door.spawnX;
@@ -1779,6 +1945,7 @@ function interactNearby() {
   const activePlant = ROOMS[currentRoom]?.interactables.find((obj) => obj.type === "plant42");
   if (activePlant && activePlant.phase && activePlant.phase !== "fight") return;
   const room = ROOMS[currentRoom];
+  if (currentRoom === "mainLab" && room.tyrantSceneRunning) return;
   const movableLadder = room.interactables.find((obj) => obj.type === "stepLadder" && obj.resettable);
   const ladderReach = { x: player.x - 14, y: player.y - 14, w: PLAYER_WIDTH + 28, h: PLAYER_HEIGHT + 28 };
   const ladderDoor = room.doors.find((door) => door.stepLadderTarget);
@@ -1841,6 +2008,23 @@ function interactNearby() {
     const bridge = room.interactables.find((obj) => obj.type === "waterBridge");
     if (bridge) bridge.active = true;
     STATUS.setPickupHint("El cajón completó el puente. Ya podés cruzar el canal y seguir hacia Water Tank.");
+    updateInteractionPrompt();
+    return;
+  }
+  const tyrantConsole = room.interactables.find((obj) => obj.type === "tyrantReleaseConsole" && checkCollision(ladderReach, obj));
+  if (tyrantConsole) {
+    if (room.tyrantPhaseComplete) {
+      STATUS.setPickupHint("El Tyrant cayó. El tubo ya no puede volver a abrirse.");
+    } else if (!room.weskerArrived) {
+      STATUS.setPickupHint("El terminal está bloqueado. Necesitás que Wesker te acompañe desde Main Lab Entry.");
+    } else if (!room.tyrantSceneRunning && !room.tyrantPhaseStarted) {
+      room.tyrantSceneRunning = true;
+      room.tyrantPhaseStarted = true;
+      room.tyrantSceneStartedAt = gameFrame;
+      tyrantConsole.activated = true;
+      room.interactables.push({ type: "tyrant", x: 31, y: 52, w: 40, h: 58, phase: "emerging", revealed: false });
+      STATUS.setPickupHint("Wesker activa la computadora. El tubo comienza a temblar.");
+    }
     updateInteractionPrompt();
     return;
   }
@@ -2298,11 +2482,12 @@ function update() {
   player.aimAngle = Math.atan2(aimPoint.y - (player.y + PLAYER_HEIGHT / 2), aimPoint.x - (player.x + PLAYER_WIDTH / 2));
   const room = ROOMS[currentRoom];
   updatePlant42Encounter(room);
+  const tyrantSceneLocked = updateTyrantReleaseScene(room);
   const plant42Locked = currentRoom === "plant42Room" && room.interactables.some((obj) => obj.type === "plant42" && ["shrinking", "regrowing", "captured", "barryEntering", "burning"].includes(obj.phase));
   player.dx = 0;
   player.dy = 0;
 
-  if (!plant42Locked) {
+  if (!plant42Locked && !tyrantSceneLocked) {
     if (keys.has("ArrowLeft") || keys.has("a")) player.dx -= WALK_SPEED;
     if (keys.has("ArrowRight") || keys.has("d")) player.dx += WALK_SPEED;
     if (keys.has("ArrowUp") || keys.has("w")) player.dy -= WALK_SPEED;
@@ -2493,6 +2678,17 @@ function drawRoom() {
       ctx.lineTo(obj.x + obj.w, obj.y + obj.h / 2);
       ctx.stroke();
       ctx.globalAlpha = 1;
+
+    } else if (obj.type === "weskerBody") {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+      ctx.fillRect(obj.x + 2, obj.y + obj.h - 2, obj.w - 1, 4);
+      ctx.fillStyle = "#17191a";
+      ctx.fillRect(obj.x + 1, obj.y + 4, obj.w - 5, 8);
+      ctx.fillRect(obj.x + 6, obj.y + 1, 9, 6);
+      ctx.fillStyle = "#d2b18f";
+      ctx.fillRect(obj.x + obj.w - 8, obj.y + 3, 7, 6);
+      ctx.fillStyle = "#8c2923";
+      ctx.fillRect(obj.x + 10, obj.y + 5, 7, 5);
 
     } else if (obj.type === "staticCharacter") {
       drawStaticCharacter(obj);
@@ -3174,6 +3370,22 @@ function drawRoom() {
       ctx.fillRect(obj.x + obj.w * 0.25, obj.y + obj.h * 0.24, obj.w * 0.48, obj.h * 0.035);
       ctx.restore();
 
+    } else if (obj.type === "floorCrack") {
+      ctx.fillStyle = "#10110f";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.strokeStyle = "#555247";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(obj.x + obj.w / 2, obj.y + obj.h / 2);
+      ctx.lineTo(obj.x + 3, obj.y + 2);
+      ctx.moveTo(obj.x + obj.w / 2, obj.y + obj.h / 2);
+      ctx.lineTo(obj.x + obj.w - 2, obj.y + 1);
+      ctx.moveTo(obj.x + obj.w / 2, obj.y + obj.h / 2);
+      ctx.lineTo(obj.x + obj.w - 1, obj.y + obj.h - 2);
+      ctx.moveTo(obj.x + obj.w / 2, obj.y + obj.h / 2);
+      ctx.lineTo(obj.x + 2, obj.y + obj.h - 1);
+      ctx.stroke();
+
     } else if (obj.type === "tyrantTube" || obj.type === "specimenTube") {
       ctx.fillStyle = "#202b2d";
       ctx.fillRect(obj.x - 2, obj.y - 2, obj.w + 4, obj.h + 4);
@@ -3203,33 +3415,113 @@ function drawRoom() {
       ctx.moveTo(obj.x + 9, obj.y + 5);
       ctx.lineTo(obj.x + 9, obj.y + obj.h - 6);
       ctx.stroke();
+      if (obj.type === "tyrantTube" && obj.broken) {
+        ctx.strokeStyle = "#d9ebe2";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(obj.x + 9, obj.y + 22);
+        ctx.lineTo(obj.x + 16, obj.y + 28);
+        ctx.lineTo(obj.x + 11, obj.y + 35);
+        ctx.moveTo(obj.x + 16, obj.y + 28);
+        ctx.lineTo(obj.x + 23, obj.y + 20);
+        ctx.lineTo(obj.x + 27, obj.y + 27);
+        ctx.stroke();
+      }
 
     } else if (obj.type === "tyrant") {
+      if (obj.phase === "exploding") {
+        const burst = Math.min(1, (gameFrame - obj.explodeStartedAt) / 42);
+        const fragments = [
+          [4, 18, 11, 9, "#a6423a"], [20, 12, 9, 10, "#65747b"],
+          [31, 25, 7, 11, "#bd6252"], [11, 35, 10, 8, "#252d31"],
+          [27, 45, 10, 7, "#a9b2ad"], [2, 49, 8, 6, "#303a3f"]
+        ];
+        fragments.forEach(([offsetX, offsetY, width, height, color], index) => {
+          const direction = index % 2 === 0 ? -1 : 1;
+          ctx.fillStyle = color;
+          ctx.fillRect(obj.x + offsetX + direction * burst * (8 + index * 2), obj.y + offsetY - burst * (index % 3) * 9, width, height);
+        });
+        return;
+      }
       ctx.fillStyle = "rgba(0, 0, 0, 0.38)";
       ctx.beginPath();
       ctx.ellipse(obj.x + obj.w / 2, obj.y + obj.h - 3, obj.w * 0.48, 4, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = "#252724";
-      ctx.fillRect(obj.x + 7, obj.y + 36, 8, 15);
-      ctx.fillRect(obj.x + 19, obj.y + 35, 8, 16);
-      ctx.fillStyle = "#111310";
-      ctx.fillRect(obj.x + 5, obj.y + 49, 11, 4);
-      ctx.fillRect(obj.x + 18, obj.y + 49, 12, 4);
-      ctx.fillStyle = "#565951";
-      ctx.fillRect(obj.x + 5, obj.y + 17, 25, 23);
-      ctx.fillRect(obj.x + 2, obj.y + 19, 8, 11);
-      ctx.fillRect(obj.x + 24, obj.y + 21, 7, 15);
-      ctx.fillStyle = "#777a70";
-      ctx.fillRect(obj.x + 12, obj.y + 7, 14, 13);
-      ctx.fillRect(obj.x + 15, obj.y + 3, 9, 7);
-      ctx.fillStyle = "#252724";
-      ctx.fillRect(obj.x + 13, obj.y + 12, 3, 2);
-      ctx.fillRect(obj.x + 23, obj.y + 12, 3, 2);
-      ctx.fillStyle = "#762f2a";
-      ctx.fillRect(obj.x + 15, obj.y + 23, 7, 10);
-      ctx.fillStyle = "#9b9b8c";
-      ctx.fillRect(obj.x + 28, obj.y + 33, 4, 4);
-      ctx.fillRect(obj.x + 29, obj.y + 37, 2, 5);
+      if (obj.phase === "downed") {
+        ctx.save();
+        ctx.translate(obj.x + obj.w / 2, obj.y + obj.h / 2);
+        ctx.rotate(-0.14);
+        ctx.fillStyle = "#171a1b";
+        ctx.fillRect(-19, -5, 33, 12);
+        ctx.fillStyle = "#252d31";
+        ctx.fillRect(-16, -7, 23, 16);
+        ctx.fillRect(-22, -3, 8, 6);
+        ctx.fillStyle = "#65747b";
+        ctx.fillRect(-5, -7, 13, 14);
+        ctx.fillRect(8, -5, 9, 10);
+        ctx.fillStyle = "#a6423a";
+        ctx.fillRect(-9, -7, 8, 8);
+        ctx.fillRect(-13, -4, 5, 6);
+        ctx.fillStyle = "#bd6252";
+        ctx.fillRect(-7, -6, 3, 3);
+        ctx.fillStyle = "#a9b2ad";
+        ctx.fillRect(16, -3, 8, 2);
+        ctx.fillRect(21, -5, 2, 3);
+        ctx.fillRect(21, 1, 2, 4);
+        ctx.restore();
+        return;
+      }
+      const tx = obj.x;
+      const ty = obj.y;
+      ctx.fillStyle = "#171a1b";
+      ctx.fillRect(tx + 8, ty + 37, 10, 15);
+      ctx.fillRect(tx + 22, ty + 37, 10, 15);
+      ctx.fillStyle = "#252d31";
+      ctx.fillRect(tx + 7, ty + 39, 10, 11);
+      ctx.fillRect(tx + 23, ty + 39, 10, 11);
+      ctx.fillStyle = "#111314";
+      ctx.fillRect(tx + 4, ty + 51, 14, 4);
+      ctx.fillRect(tx + 21, ty + 51, 14, 4);
+      ctx.fillStyle = "#4a555b";
+      ctx.fillRect(tx + 10, ty + 31, 19, 11);
+      ctx.fillStyle = "#303a3f";
+      ctx.fillRect(tx + 6, ty + 17, 29, 22);
+      ctx.fillRect(tx + 2, ty + 19, 9, 13);
+      ctx.fillRect(tx + 28, ty + 20, 8, 16);
+      ctx.fillStyle = "#6b7a80";
+      ctx.fillRect(tx + 11, ty + 19, 18, 6);
+      ctx.fillRect(tx + 13, ty + 27, 14, 8);
+      ctx.fillStyle = "#3e494e";
+      ctx.fillRect(tx + 14, ty + 20, 3, 13);
+      ctx.fillRect(tx + 23, ty + 20, 3, 13);
+      ctx.fillStyle = "#8b9694";
+      ctx.fillRect(tx + 14, ty + 7, 14, 13);
+      ctx.fillRect(tx + 17, ty + 3, 10, 7);
+      ctx.fillRect(tx + 12, ty + 11, 3, 7);
+      ctx.fillStyle = "#26292a";
+      ctx.fillRect(tx + 15, ty + 13, 3, 2);
+      ctx.fillRect(tx + 24, ty + 13, 3, 2);
+      ctx.fillRect(tx + 18, ty + 17, 7, 2);
+      ctx.fillStyle = "#a33b35";
+      ctx.fillRect(tx + 3, ty + 17, 11, 9);
+      ctx.fillRect(tx + 1, ty + 20, 9, 14);
+      ctx.fillRect(tx + 4, ty + 29, 7, 9);
+      ctx.fillRect(tx + 9, ty + 23, 7, 6);
+      ctx.fillStyle = "#c55346";
+      ctx.fillRect(tx + 4, ty + 18, 5, 5);
+      ctx.fillRect(tx + 2, ty + 25, 4, 6);
+      ctx.fillRect(tx + 7, ty + 31, 3, 5);
+      ctx.fillStyle = "#722e2c";
+      ctx.fillRect(tx + 6, ty + 22, 2, 9);
+      ctx.fillRect(tx + 10, ty + 18, 2, 7);
+      ctx.fillRect(tx + 12, ty + 26, 2, 7);
+      ctx.fillStyle = "#303a3f";
+      ctx.fillRect(tx + 30, ty + 33, 6, 7);
+      ctx.fillStyle = "#aeb9b5";
+      ctx.fillRect(tx + 32, ty + 39, 4, 4);
+      ctx.fillRect(tx + 34, ty + 43, 2, 5);
+      ctx.fillRect(tx + 31, ty + 43, 2, 4);
+      ctx.fillRect(tx + 36, ty + 42, 2, 5);
 
     } else if (obj.type === "flare") {
       ctx.fillStyle = "#1b1712";
@@ -3521,7 +3813,7 @@ function drawRoom() {
       ctx.fillRect(obj.x + 2, obj.y + 8, 3, 14);
       ctx.fillRect(obj.x + obj.w - 5, obj.y + 8, 3, 14);
 
-    } else if (obj.type === "keypadPanel") {
+    } else if (obj.type === "keypadPanel" || obj.type === "tyrantReleaseConsole") {
       ctx.fillStyle = "#101313";
       ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
       ctx.fillStyle = "#59625b";
@@ -3946,15 +4238,23 @@ function drawRoom() {
     ctx.fillStyle = "rgba(0, 0, 0, 0.32)";
     ctx.fillRect(obj.x + 2, obj.y + obj.h - 2, obj.w - 2, 4);
     ctx.fillStyle = "#d8ad87";
-    ctx.fillRect(obj.x + 2, obj.y + 2, 9, 9);
-    ctx.fillStyle = "#4b3020";
-    ctx.fillRect(obj.x + 1, obj.y + 1, 8, 3);
-    ctx.fillRect(obj.x + 2, obj.y + 1, 3, 7);
-    ctx.fillStyle = "#536a48";
-    ctx.fillRect(obj.x + 11, obj.y + 3, 14, 8);
-    ctx.fillStyle = "#374535";
-    ctx.fillRect(obj.x + 22, obj.y + 4, 7, 6);
+    ctx.fillRect(obj.x + 3, obj.y + 2, 9, 9);
+    ctx.fillStyle = "#493020";
+    ctx.fillRect(obj.x + 3, obj.y + 1, 9, 3);
+    ctx.fillRect(obj.x + 2, obj.y + 3, 3, 5);
+    ctx.fillStyle = "#252523";
+    ctx.fillRect(obj.x + 5, obj.y + 7, 2, 1);
+    ctx.fillRect(obj.x + 9, obj.y + 7, 2, 1);
+    ctx.fillStyle = "#30536a";
+    ctx.fillRect(obj.x + 12, obj.y + 3, 14, 9);
+    ctx.fillRect(obj.x + 10, obj.y + 4, 4, 8);
+    ctx.fillStyle = "#34433d";
+    ctx.fillRect(obj.x + 14, obj.y + 3, 10, 9);
+    ctx.fillStyle = "#59634d";
+    ctx.fillRect(obj.x + 16, obj.y + 4, 3, 7);
+    ctx.fillRect(obj.x + 21, obj.y + 4, 2, 7);
     ctx.fillStyle = "#b8a98e";
+    ctx.fillRect(obj.x + 18, obj.y + 5, 2, 2);
     ctx.fillRect(obj.x + 24, obj.y + 4, 5, 2);
 
   } else if (obj.type === "detentionCell") {
@@ -5416,22 +5716,34 @@ function drawStaticCharacter(obj) {
     ctx.fillRect(x + 13, y + 12, 10, 2);
     ctx.fillRect(x + 20, y + 11, 3, 1);
   } else if (obj.character === "redVest") {
-    ctx.fillStyle = "#4a3024";
-    ctx.fillRect(x + 4, y + 1, 10, 6);
-    ctx.fillStyle = "#d5a27b";
-    ctx.fillRect(x + 4, y + 5, 11, 7);
-    ctx.fillStyle = "#72513c";
-    ctx.fillRect(x + 5, y + 9, 9, 3);
-    ctx.fillStyle = "#aaa69a";
-    ctx.fillRect(x + 1, y + 10, 4, 7);
-    ctx.fillRect(x + 14, y + 10, 4, 7);
-    ctx.fillStyle = "#9a2822";
-    ctx.fillRect(x + 3, y + 11, 14, 7);
-    ctx.fillStyle = "#6c7771";
-    ctx.fillRect(x + 4, y + 18, 5, 4);
-    ctx.fillRect(x + 12, y + 18, 5, 4);
-    ctx.fillStyle = "#272b29";
-    ctx.fillRect(x + 8, y + 12, 2, 4);
+    ctx.fillStyle = "#33251e";
+    ctx.fillRect(x + 4, y + 2, 11, 5);
+    ctx.fillRect(x + 3, y + 4, 3, 4);
+    ctx.fillStyle = "#bf8c68";
+    ctx.fillRect(x + 5, y + 5, 10, 7);
+    ctx.fillStyle = "#5d3929";
+    ctx.fillRect(x + 6, y + 9, 8, 3);
+    ctx.fillStyle = "#302620";
+    ctx.fillRect(x + 7, y + 9, 6, 2);
+    ctx.fillStyle = "#686960";
+    ctx.fillRect(x + 1, y + 10, 4, 8);
+    ctx.fillRect(x + 14, y + 10, 4, 8);
+    ctx.fillStyle = "#77251f";
+    ctx.fillRect(x + 3, y + 11, 14, 8);
+    ctx.fillStyle = "#9a3027";
+    ctx.fillRect(x + 4, y + 12, 12, 5);
+    ctx.fillStyle = "#493a2d";
+    ctx.fillRect(x + 4, y + 12, 3, 5);
+    ctx.fillRect(x + 12, y + 12, 3, 5);
+    ctx.fillStyle = "#a58b62";
+    ctx.fillRect(x + 5, y + 12, 2, 2);
+    ctx.fillRect(x + 12, y + 12, 2, 2);
+    ctx.fillStyle = "#252b29";
+    ctx.fillRect(x + 5, y + 19, 5, 4);
+    ctx.fillRect(x + 12, y + 19, 5, 4);
+    ctx.fillStyle = "#6b756f";
+    ctx.fillRect(x + 5, y + 18, 5, 2);
+    ctx.fillRect(x + 12, y + 18, 5, 2);
     if (obj.plant42Barry) {
       ctx.fillStyle = "#242923";
       ctx.fillRect(x + 13, y + 12, 10, 4);
@@ -5458,21 +5770,52 @@ function drawStaticCharacter(obj) {
     ctx.fillStyle = "#edc3a0";
     ctx.fillRect(x, y + 15, 3, 3);
   } else if (obj.character === "sunglasses") {
-    ctx.fillStyle = "#d0b583";
-    ctx.fillRect(x + 4, y + 2, 9, 3);
-    ctx.fillStyle = "#e2b993";
-    ctx.fillRect(x + 5, y + 5, 8, 6);
-    ctx.fillStyle = "#17191a";
-    ctx.fillRect(x + 4, y + 7, 10, 3);
-    ctx.fillStyle = "#111416";
-    ctx.fillRect(x + 3, y + 10, 12, 9);
-    ctx.fillRect(x + 1, y + 11, 3, 7);
-    ctx.fillRect(x + 14, y + 11, 3, 7);
-    ctx.fillStyle = "#292b2c";
-    ctx.fillRect(x + 4, y + 19, 4, 3);
-    ctx.fillRect(x + 11, y + 19, 4, 3);
-    ctx.fillStyle = "#c5c5bc";
-    ctx.fillRect(x + 8, y + 11, 2, 7);
+    ctx.fillStyle = "#111315";
+    ctx.fillRect(x + 4, y + 20, 5, 5);
+    ctx.fillRect(x + 12, y + 20, 5, 5);
+    ctx.fillStyle = "#242629";
+    ctx.fillRect(x + 3, y + 22, 7, 3);
+    ctx.fillRect(x + 11, y + 22, 7, 3);
+    ctx.fillStyle = "#34251f";
+    ctx.fillRect(x + 5, y + 10, 11, 11);
+    ctx.fillRect(x + 3, y + 12, 3, 8);
+    ctx.fillRect(x + 15, y + 12, 3, 8);
+    ctx.fillStyle = "#151719";
+    ctx.fillRect(x + 4, y + 11, 13, 8);
+    ctx.fillRect(x + 2, y + 12, 4, 6);
+    ctx.fillRect(x + 15, y + 12, 4, 6);
+    ctx.fillStyle = "#d4a653";
+    ctx.fillRect(x + 5, y + 1, 10, 4);
+    ctx.fillRect(x + 3, y + 3, 4, 4);
+    ctx.fillRect(x + 7, y + 4, 9, 3);
+    ctx.fillStyle = "#efd08a";
+    ctx.fillRect(x + 8, y + 2, 6, 2);
+    ctx.fillStyle = "#e0b38e";
+    ctx.fillRect(x + 7, y + 5, 8, 6);
+    ctx.fillStyle = "#141719";
+    ctx.fillRect(x + 5, y + 7, 12, 3);
+    ctx.fillStyle = "#07090a";
+    ctx.fillRect(x + 6, y + 7, 4, 3);
+    ctx.fillRect(x + 12, y + 7, 4, 3);
+    ctx.fillStyle = "#383b3c";
+    ctx.fillRect(x + 10, y + 7, 2, 2);
+    ctx.fillStyle = "#1a1d1f";
+    ctx.fillRect(x + 6, y + 10, 11, 2);
+    ctx.fillStyle = "#414649";
+    ctx.fillRect(x + 9, y + 12, 2, 6);
+    ctx.fillStyle = "#6e4a2f";
+    ctx.fillRect(x + 6, y + 18, 11, 2);
+    ctx.fillStyle = "#987044";
+    ctx.fillRect(x + 8, y + 18, 2, 2);
+    if (obj.armed) {
+      ctx.fillStyle = "#d6aa83";
+      ctx.fillRect(x + 16, y + 15, 4, 3);
+      ctx.fillStyle = "#17191a";
+      ctx.fillRect(x + 19, y + 13, 8, 3);
+      ctx.fillStyle = "#747a78";
+      ctx.fillRect(x + 25, y + 12, 4, 2);
+      ctx.fillRect(x + 20, y + 16, 2, 3);
+    }
   }
 }
 
@@ -5480,23 +5823,35 @@ function drawPlayer() {
   const x = Math.round(player.x);
   const y = Math.round(player.y);
 
-  ctx.fillStyle = "#2b4374";
-  ctx.fillRect(x + 2, y, 8, 3);
+  ctx.fillStyle = "#171b1d";
+  ctx.fillRect(x + 2, y, 8, 2);
+  ctx.fillStyle = "#31516a";
+  ctx.fillRect(x + 2, y + 1, 8, 3);
+  ctx.fillStyle = "#d5c4a0";
+  ctx.fillRect(x + 7, y + 1, 2, 2);
   ctx.fillStyle = "#e9c39a";
-  ctx.fillRect(x + 3, y + 3, 6, 3);
-  ctx.fillStyle = "#3b5998";
-  ctx.fillRect(x + 1, y + 6, 10, 5);
-  ctx.fillStyle = "#e9c39a";
+  ctx.fillRect(x + 3, y + 4, 6, 3);
+  ctx.fillStyle = "#15202a";
+  ctx.fillRect(x + 2, y + 6, 8, 2);
+  ctx.fillStyle = "#42647c";
+  ctx.fillRect(x + 1, y + 7, 10, 5);
+  ctx.fillStyle = "#9ba5a0";
   ctx.fillRect(x, y + 7, 2, 4);
   ctx.fillRect(x + 10, y + 7, 2, 4);
+  ctx.fillStyle = "#c4b49a";
+  ctx.fillRect(x + 2, y + 8, 2, 3);
+  ctx.fillRect(x + 8, y + 8, 2, 3);
+  ctx.fillStyle = "#252a2c";
+  ctx.fillRect(x + 2, y + 12, 3, 4);
+  ctx.fillRect(x + 7, y + 12, 3, 4);
 
-  ctx.fillStyle = "#111111";
+  ctx.fillStyle = "#141719";
   if (player.animFrame === 0) {
-    ctx.fillRect(x + 2, y + 11, 3, 5);
-    ctx.fillRect(x + 7, y + 11, 3, 5);
+    ctx.fillRect(x + 2, y + 14, 3, 2);
+    ctx.fillRect(x + 7, y + 14, 3, 2);
   } else {
-    ctx.fillRect(x + 1, y + 11, 4, 5);
-    ctx.fillRect(x + 7, y + 11, 4, 5);
+    ctx.fillRect(x + 1, y + 14, 4, 2);
+    ctx.fillRect(x + 7, y + 14, 4, 2);
   }
 
   ctx.save();
