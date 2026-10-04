@@ -6,12 +6,32 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <section id="start-screen" class="start-screen" aria-label="Resident Evil title screen">
+    <div class="start-menu">
+      <nav id="title-main-menu" aria-label="Main menu">
+        <button id="start-new-game" type="button">Start</button>
+        <button id="start-load-game" type="button">Load</button>
+        <button id="start-extras" type="button">Extras</button>
+      </nav>
+      <nav id="title-extras-menu" aria-label="Extras menu" hidden>
+        <button type="button">Characters</button>
+        <button type="button">Enemies</button>
+        <button type="button">Gallery</button>
+        <button id="extras-back" type="button">Back</button>
+      </nav>
+    </div>
+  </section>
   <main class="layout">
     <section class="game-panel" aria-label="Juego">
       <h1 id="room-title">MAIN HALL 1F</h1>
       <div class="game-layout">
         <div class="game-screen">
           <canvas id="game" width="320" height="192" aria-label="Pantalla del juego"></canvas>
+          <section id="intro-sequence" class="intro-sequence" hidden aria-label="1998, Raccoon Forest">
+            <img id="intro-sequence-image" alt="">
+            <header><strong id="intro-sequence-date"></strong><span id="intro-sequence-location"></span></header>
+            <p id="intro-sequence-action"></p>
+          </section>
           <button id="scene-dialogue" class="scene-dialogue" type="button" hidden aria-label="Avanzar diálogo">
             <span id="scene-speaker" class="scene-speaker"></span>
             <span id="scene-line" class="scene-line"></span>
@@ -188,6 +208,7 @@
   <script src="rooms.js"></script>
   <script src="map.js"></script>
   <script src="status.js"></script>
+  <script src="intro-cutscene.js"></script>
   <script src="game.js"></script>
 </body>
 </html>

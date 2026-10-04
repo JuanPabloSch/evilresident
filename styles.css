@@ -6,6 +6,108 @@ body {
   margin: 0;
 }
 
+.start-screen {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  place-items: end center;
+  padding: 0 20px 4vh;
+  background-color: #050407;
+  background-image: url("Assets/start-screen.jfif");
+  background-position: center;
+  background-size: 70% auto;
+  background-repeat: no-repeat;
+}
+
+.start-screen[hidden] { display: none; }
+
+.start-menu {
+  display: grid;
+  width: min(220px, 100%);
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid rgba(190, 53, 48, 0.8);
+  background: rgba(5, 6, 8, 0.78);
+}
+
+.start-menu h1 {
+  margin: 0;
+  color: #d64a3f;
+  font-size: 25px;
+  line-height: 1.1;
+}
+
+.start-menu nav { display: grid; gap: 5px; }
+
+.start-menu button {
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #e8d8bd;
+  font: bold 15px Georgia, "Times New Roman", serif;
+  text-align: center;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.start-menu button:hover, .start-menu button:focus-visible {
+  border-color: #a3322c;
+  background: rgba(117, 25, 27, 0.48);
+  color: #fff0da;
+}
+
+.intro-sequence {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  overflow: hidden;
+  background: #030403;
+  color: #ede9dd;
+}
+
+.intro-sequence[hidden] { display: none; }
+.intro-sequence img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
+.intro-sequence header {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 9px;
+  background: rgba(0, 0, 0, 0.72);
+  font: 10px monospace;
+}
+.intro-sequence header strong { color: #e2be68; }
+.intro-sequence header span { text-align: right; }
+.intro-sequence p {
+  position: absolute;
+  right: 8px;
+  bottom: 47%;
+  left: 8px;
+  margin: 0;
+  color: #f0eada;
+  font: 10px/1.3 monospace;
+  text-shadow: 1px 1px #000, -1px -1px #000;
+}
+
+.intro-sequence:not([hidden]) ~ .scene-dialogue {
+  position: fixed;
+  z-index: 21;
+  right: 20px;
+  bottom: 20px;
+  left: 20px;
+  max-height: 34vh;
+  font-size: 14px;
+}
+
+@media (max-width: 560px) {
+  .start-screen { padding: 0 20px 3vh; background-size: auto 70%; }
+  .start-menu { width: min(220px, calc(100% - 36px)); }
+}
+
 .layout {
   box-sizing: border-box;
   display: flex;

@@ -1,4 +1,4 @@
-// Standalone intro content. This file is intentionally not loaded by index.html yet.
+// Intro content shown after selecting Start on the title screen.
 window.GAME_INTRO_CUTSCENE = {
   title: "Resident Evil",
   date: "July 1998",

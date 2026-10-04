@@ -16,9 +16,7 @@ const ROOMS = {
     { type: "balconyRight", x: 200, y: 24, w: 102, h: 30, solid: true },
       { type: "typewriter", x: 80, y: 54, w: 26, h: 20, solid: true },
       { type: "inkRibbon", x: 68, y: 58, w: 8, h: 8 },
-      { type: "inkRibbon", x: 110, y: 58, w: 8, h: 8 },
-      { type: "staticCharacter", character: "redVest", x: 82, y: 142, w: 18, h: 22 },
-      { type: "lockpick", x: 104, y: 148, w: 12, h: 8, giftFrom: "Barry" }
+      { type: "inkRibbon", x: 110, y: 58, w: 8, h: 8 }
     ]
   },
 
@@ -65,7 +63,7 @@ diningRoom: {
       { type: "kenneth", x: 35, y: 30, w: 16, h: 12, solid: true },
       { type: "handgunAmmo", x: 55, y: 29, w: 10, h: 6 },
       { type: "handgunAmmo", x: 55, y: 40, w: 10, h: 6 },
-      { type: "zombie", x: 35, y: 55, w: 12, h: 14, solid: true },
+      { type: "zombie", x: 35, y: 55, w: 12, h: 14, solid: true, kennethZombie: true },
       { type: "window", x: 30, y: 18, w: 26, h: 4 }
     ]
   },

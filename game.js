@@ -249,6 +249,18 @@ const endingCutsceneImage = document.getElementById("ending-cutscene-image");
 const endingCutsceneCaption = document.getElementById("ending-cutscene-caption");
 const endingCutsceneCount = document.getElementById("ending-cutscene-count");
 const endingCutsceneNext = document.getElementById("ending-cutscene-next");
+const startScreen = document.getElementById("start-screen");
+const startNewGame = document.getElementById("start-new-game");
+const startLoadGame = document.getElementById("start-load-game");
+const startExtras = document.getElementById("start-extras");
+const titleMainMenu = document.getElementById("title-main-menu");
+const titleExtrasMenu = document.getElementById("title-extras-menu");
+const extrasBack = document.getElementById("extras-back");
+const introSequence = document.getElementById("intro-sequence");
+const introSequenceImage = document.getElementById("intro-sequence-image");
+const introSequenceDate = document.getElementById("intro-sequence-date");
+const introSequenceLocation = document.getElementById("intro-sequence-location");
+const introSequenceAction = document.getElementById("intro-sequence-action");
 const sceneSpeaker = document.getElementById("scene-speaker");
 const sceneLine = document.getElementById("scene-line");
 const scenePrompt = document.getElementById("scene-prompt");
@@ -257,6 +269,9 @@ let emergencyCountdownStartFrame = null;
 let emergencyCountdownStopFrame = null;
 let emergencyCountdownExpired = false;
 let endingCutsceneActive = false;
+let gameStarted = false;
+let introCutsceneActive = false;
+let introCutsceneScene = 0;
 let endingCutsceneSlide = 0;
 let endingCutsceneTimer = null;
 let mansionReturnAmbushesSpawned = false;
@@ -738,6 +753,8 @@ function activateSaveSlot(index) {
   if (saveMenuMode === "load") {
     try {
       restoreGameSnapshot(existing.snapshot);
+      gameStarted = true;
+      startScreen.hidden = true;
       saveGameDialog.close();
       STATUS.setPickupHint("Partida cargada.");
     } catch {
@@ -772,6 +789,53 @@ function activateSaveSlot(index) {
   saveGameMessage.textContent += ` Cintas de tinta: ${STATUS.getItemCount("inkRibbon")}.`;
   renderSaveMenu();
 }
+
+function playIntroCutsceneScene(index) {
+  const intro = window.GAME_INTRO_CUTSCENE;
+  if (!intro || index >= intro.scenes.length) {
+    introCutsceneActive = false;
+    introSequence.hidden = true;
+    gameStarted = true;
+    document.getElementById("room-title").textContent = ROOMS[currentRoom].name;
+    updateInteractionPrompt();
+    return;
+  }
+  introCutsceneScene = index;
+  const scene = intro.scenes[index];
+  introSequenceImage.src = scene.image;
+  introSequenceImage.alt = scene.alt || "";
+  introSequenceDate.textContent = intro.date || "";
+  introSequenceLocation.textContent = intro.location || "";
+  introSequenceAction.textContent = scene.action || "";
+  beginDialogue(scene.dialogue, () => playIntroCutsceneScene(index + 1));
+}
+
+function startNewGameFlow() {
+  startScreen.hidden = true;
+  introSequence.hidden = false;
+  introCutsceneActive = true;
+  playIntroCutsceneScene(0);
+}
+
+function openTitleLoadMenu() {
+  saveMenuMode = "load";
+  saveGameMessage.textContent = "Elegí una partida guardada.";
+  renderSaveMenu();
+  saveGameDialog.showModal();
+}
+
+startNewGame.addEventListener("click", startNewGameFlow);
+startLoadGame.addEventListener("click", openTitleLoadMenu);
+startExtras.addEventListener("click", () => {
+  titleMainMenu.hidden = true;
+  titleExtrasMenu.hidden = false;
+  titleExtrasMenu.querySelector("button").focus();
+});
+extrasBack.addEventListener("click", () => {
+  titleExtrasMenu.hidden = true;
+  titleMainMenu.hidden = false;
+  startExtras.focus();
+});
 
 saveModeSave.addEventListener("click", () => { saveMenuMode = "save"; renderSaveMenu(); });
 saveModeLoad.addEventListener("click", () => { saveMenuMode = "load"; renderSaveMenu(); });
@@ -842,6 +906,7 @@ function reloadWeapon() {
 
 function fireWeapon() {
   if (STATUS.isOpen() || doorCodeDialog.open || labComputerDialog.open || vJoltDialog.open || weaponCooldown > 0) return;
+  if (currentRoom === "diningRoom" && ["ambush", "ambushDialogue", "barryShooting", "afterShots"].includes(ROOMS.diningRoom.openingPhase)) return;
   if (currentRoom === "mainLab" && ROOMS.mainLab.tyrantSceneRunning) return;
   if (currentRoom === "enricoRoom" && ROOMS.enricoRoom.enricoSceneActive) return;
   if (currentRoom === "mainLabEntryB4" && ROOMS.mainLabEntryB4.weskerEntrySceneActive) return;
@@ -1008,6 +1073,8 @@ function fireWeapon() {
         STATUS.setPickupHint("Plant 42 se marchitó... pero algo vuelve a moverse entre sus ramas.");
       } else {
         room.interactables.splice(room.interactables.indexOf(target), 1);
+        if (target.kennethZombie) ROOMS.teaRoom.kennethZombieKilled = true;
+        if (target.diningAmbushZombie) ROOMS.diningRoom.diningZombieDefeated = true;
         if (target.roofedHunter) {
           room.roofedHunterDefeated = true;
           STATUS.setPickupHint("El Hunter cayó. La entrada a Back Passage está despejada.");
@@ -1085,6 +1152,117 @@ function beginDialogue(lines, onComplete) {
   sceneDialogue.hidden = false;
   sceneDialogue.focus();
   refreshDialogue();
+}
+
+function movePlayerToRoom(roomId, x, y) {
+  currentRoom = roomId;
+  player.x = x;
+  player.y = y;
+  document.getElementById("room-title").textContent = ROOMS[roomId].name;
+  MANSION_MAP.setCurrentRoom(roomId);
+}
+
+function updateOpeningMansionScene() {
+  const hall = ROOMS.mainHall;
+  const dining = ROOMS.diningRoom;
+  const teaRoom = ROOMS.teaRoom;
+
+  if (currentRoom === "mainHall" && !hall.openingIntroStarted && !hall.openingIntroComplete) {
+    hall.openingIntroStarted = true;
+    hall.interactables.push(
+      { type: "staticCharacter", character: "redVest", x: 82, y: 142, w: 18, h: 22, openingBarry: true },
+      { type: "staticCharacter", character: "sunglasses", x: 108, y: 142, w: 18, h: 25, openingWesker: true }
+    );
+    beginDialogue([
+      { speaker: "Barry", text: "What is this?" },
+      { speaker: "Wesker", text: "Wow, what a mansion!" },
+      { speaker: "Jill", text: "Captain Wesker, where's Chris?" },
+      { speaker: "Wesker", text: "Stop it! Don't open that door!" },
+      { speaker: "Jill", text: "But Chris is--" },
+      { speaker: "Barry", text: "What is it?" },
+      { speaker: "Wesker", text: "Maybe it's... Chris... Now, Jill--Can you go?" },
+      { speaker: "Barry", text: "I'm going with you. Chris is our old partner, ya' know." },
+      { speaker: "Wesker", text: "Okay. Let me handle this. Stay alert!" }
+    ], () => {
+      hall.openingIntroComplete = true;
+      hall.interactables = hall.interactables.filter((obj) => !obj.openingBarry && !obj.openingWesker);
+      dining.openingPhase = "arrival";
+      if (!dining.interactables.some((obj) => obj.openingBarry)) {
+        dining.interactables.push({ type: "staticCharacter", character: "redVest", x: 28, y: 92, w: 18, h: 22, openingBarry: true });
+      }
+      movePlayerToRoom("diningRoom", 270, 90);
+      updateInteractionPrompt();
+    });
+    return;
+  }
+
+  if (currentRoom === "diningRoom" && dining.openingPhase === "arrival" && !dialogueState) {
+    beginDialogue([{ speaker: "Barry", text: "A dining room..." }], () => {
+      dining.openingPhase = "investigate";
+      const barry = dining.interactables.find((obj) => obj.openingBarry);
+      if (barry) { barry.x = 23; barry.y = 105; }
+      STATUS.setPickupHint("Barry fue a revisar la chimenea. Acercate a la mancha de sangre.");
+      updateInteractionPrompt();
+    });
+    return;
+  }
+
+  if (currentRoom === "diningRoom" && dining.openingPhase === "ambush" && !dialogueState) {
+    dining.openingPhase = "ambushDialogue";
+    beginDialogue([
+      { speaker: "Jill", text: "Barry?" },
+      { speaker: "Barry", text: "What is it?" },
+      { speaker: "Jill", text: "Watch out! It's a monster!" },
+      { speaker: "Barry", text: "Let me take care of this. What IS it?" }
+    ], () => {
+      dining.openingPhase = "barryShooting";
+      dining.barryShotCount = 0;
+      dining.nextBarryShotAt = gameFrame + 12;
+    });
+    return;
+  }
+
+  if (currentRoom === "diningRoom" && dining.openingPhase === "barryShooting") {
+    if (gameFrame >= dining.nextBarryShotAt) {
+      const barry = dining.interactables.find((obj) => obj.openingBarry);
+      if (barry) barry.firingUntilFrame = gameFrame + 5;
+      dining.barryShotCount++;
+      dining.nextBarryShotAt = gameFrame + 14;
+      if (dining.barryShotCount >= 2) dining.openingPhase = "afterShots";
+    }
+    return;
+  }
+
+  if (currentRoom === "diningRoom" && dining.openingPhase === "afterShots" && !dialogueState) {
+    dining.interactables = dining.interactables.filter((obj) => !obj.diningAmbushZombie);
+    dining.diningZombieDefeated = true;
+    beginDialogue([{ speaker: "Jill", text: "Kenneth was killed too; maybe by this creature... Anyway, let's report this to Wesker." }], () => {
+      dining.openingPhase = "returnToHall";
+      STATUS.setPickupHint("Volvé al Main Hall con Barry.");
+    });
+    return;
+  }
+
+  if (currentRoom === "mainHall" && hall.openingIntroComplete && !hall.openingReturnComplete && !dialogueState && dining.openingPhase === "returnToHall") {
+    hall.openingReturnStarted = true;
+    beginDialogue([
+      { speaker: "Jill", text: "Wesker!" },
+      { speaker: "Barry", text: "He's gone!" },
+      { speaker: "Barry", text: "He left his gun..." },
+      { speaker: "Jill", text: "Why?" },
+      { speaker: "Barry", text: "I have no idea. But we have to find out what happened to Chris first. Jill, check that room again." },
+      { speaker: "Jill", text: "Alright." },
+      { speaker: "Barry", text: "Jill, here's a lockpick. It might be handy if you, the master of unlocking, take it with you." },
+      { speaker: "Jill", text: "Thanks, Barry." }
+    ], () => {
+      hall.openingReturnComplete = true;
+      hall.interactables = hall.interactables.filter((obj) => !obj.openingBarry && !obj.openingWesker);
+      STATUS.addItem("lockpick");
+      STATUS.setPickupHint("Barry te dio el Lockpick.");
+      updateInteractionPrompt();
+    });
+  }
+
 }
 
 function refreshDialogue() {
@@ -1686,6 +1864,7 @@ function updateEndingSequence(room) {
 function updateEnemies(room) {
   updateHeliportFinale(room);
   if (room === ROOMS.centralCorridorGH && room.postPlantWeskerSceneActive) return;
+  if (currentRoom === "diningRoom" && ["ambushDialogue", "barryShooting", "afterShots"].includes(room.openingPhase)) return;
   const hive = room.interactables.find((obj) => obj.type === "giantBeehive");
   if (hive) {
     const activeWasps = room.interactables.some((obj) => obj.type === "wasp");
@@ -2477,6 +2656,14 @@ function updateInteractionPrompt() {
     interactionPrompt.hidden = false;
     return;
   }
+  const bloodStain = currentRoom === "diningRoom" && room.openingPhase === "investigate"
+    ? room.interactables.find((obj) => obj.type === "bloodStain" && checkCollision(reach, obj))
+    : null;
+  if (bloodStain) {
+    interactionPrompt.textContent = "E · Examinar la sangre";
+    interactionPrompt.hidden = false;
+    return;
+  }
   const controlSwitch = room.interactables.find((obj) =>
     ["waterDrainSwitch", "armsStorageSwitch"].includes(obj.type) && checkCollision(switchReach, obj)
   );
@@ -2527,6 +2714,7 @@ function updateInteractionPrompt() {
 }
 
 function transitionThroughDoor(door) {
+  const sourceRoom = currentRoom;
   if (isBossEncounterActive(ROOMS[currentRoom])) {
     STATUS.setPickupHint("No puedo irme ahora. Hay algo más urgente.");
     return;
@@ -2573,6 +2761,22 @@ function transitionThroughDoor(door) {
   const titleElem = document.getElementById("room-title");
   if (titleElem) titleElem.innerText = ROOMS[currentRoom].name;
   MANSION_MAP.setCurrentRoom(currentRoom);
+  if (sourceRoom === "teaRoom" && currentRoom === "diningRoom" && ROOMS.teaRoom.kennethZombieKilled && ROOMS.diningRoom.openingPhase === "investigate") {
+    const dining = ROOMS.diningRoom;
+    dining.openingPhase = "ambush";
+    dining.interactables.push({ type: "zombie", x: 80, y: 35, w: 12, h: 14, solid: true, diningAmbushZombie: true });
+    const barry = dining.interactables.find((obj) => obj.openingBarry);
+    if (barry) {
+      barry.x = 28;
+      barry.y = 36;
+    } else {
+      dining.interactables.push({ type: "staticCharacter", character: "redVest", x: 28, y: 36, w: 18, h: 22, openingBarry: true });
+    }
+  }
+  if (sourceRoom === "diningRoom" && currentRoom === "mainHall" && ROOMS.diningRoom.openingPhase === "returnToHall") {
+    const barry = ROOMS.mainHall.interactables.find((obj) => obj.type === "staticCharacter" && obj.openingBarry);
+    if (!barry) ROOMS.mainHall.interactables.push({ type: "staticCharacter", character: "redVest", x: 82, y: 138, w: 18, h: 22, openingBarry: true });
+  }
 }
 
 function findRoomTestSpawn(room) {
@@ -2915,6 +3119,22 @@ function interactNearby() {
     return;
   }
   const reach = { x: player.x - 14, y: player.y - 14, w: PLAYER_WIDTH + 28, h: PLAYER_HEIGHT + 28 };
+  if (currentRoom === "diningRoom" && room.openingPhase === "investigate" && checkCollision(reach, room.interactables.find((obj) => obj.type === "bloodStain"))) {
+    room.openingPhase = "searching";
+    beginDialogue([
+      { speaker: "Barry", text: "What? What is this?" },
+      { speaker: "Jill", text: "What is it?" },
+      { speaker: "Barry", text: "Blood." },
+      { speaker: "Barry", text: "Jill, see if you can find any other clues." },
+      { speaker: "Barry", text: "I'll be examining this." },
+      { speaker: "Barry", text: "Hope this is not Chris' blood..." }
+    ], () => {
+      room.openingPhase = "investigate";
+      STATUS.setPickupHint("Revisá el Tea Room junto a Kenneth.");
+      updateInteractionPrompt();
+    });
+    return;
+  }
   const medalPillar = room.interactables.find((obj) => obj.type === "pillar" && obj.medalSocket && checkCollision(reach, obj));
   if (medalPillar) {
     if (medalPillar.medalInserted) {
@@ -3207,7 +3427,7 @@ function interactNearby() {
 }
 
 function update() {
-  if (endingCutsceneActive || dialogueState || STATUS.isOpen() || doorCodeDialog.open || labComputerDialog.open || vJoltDialog.open || saveGameDialog.open) return;
+  if (!gameStarted || introCutsceneActive || endingCutsceneActive || dialogueState || STATUS.isOpen() || doorCodeDialog.open || labComputerDialog.open || vJoltDialog.open || saveGameDialog.open) return;
   gameFrame++;
   if (playerDamageCooldown > 0) playerDamageCooldown--;
   if (weaponCooldown > 0) weaponCooldown--;
@@ -3215,6 +3435,7 @@ function update() {
   player.aimAngle = Math.atan2(aimPoint.y - (player.y + PLAYER_HEIGHT / 2), aimPoint.x - (player.x + PLAYER_WIDTH / 2));
   const room = ROOMS[currentRoom];
   updateEnricoScene(room);
+  updateOpeningMansionScene();
   updateWeskerLabEntryScene(room);
   updateChrisRescueScene(room);
   updateRichardScene(room);
@@ -3233,10 +3454,11 @@ function update() {
   const postPlantWeskerSceneLocked = currentRoom === "centralCorridorGH" && room.postPlantWeskerSceneActive;
   const emergencySceneLocked = currentRoom === "emergencyTunnel" && room.emergencySceneActive;
   const endingSequenceLocked = currentRoom === "heliport" && room.endingSequencePhase && room.endingSequencePhase !== "complete";
+  const barryDiningShotsLocked = currentRoom === "diningRoom" && room.openingPhase === "barryShooting";
   player.dx = 0;
   player.dy = 0;
 
-  if (!plant42Locked && !tyrantSceneLocked && !enricoSceneLocked && !weskerEntrySceneLocked && !chrisRescueLocked && !richardSceneLocked && !roofedHunterSceneLocked && !postPlantWeskerSceneLocked && !emergencySceneLocked && !endingSequenceLocked) {
+  if (!plant42Locked && !tyrantSceneLocked && !enricoSceneLocked && !weskerEntrySceneLocked && !chrisRescueLocked && !richardSceneLocked && !roofedHunterSceneLocked && !postPlantWeskerSceneLocked && !emergencySceneLocked && !endingSequenceLocked && !barryDiningShotsLocked) {
     if (keys.has("ArrowLeft") || keys.has("a")) player.dx -= WALK_SPEED;
     if (keys.has("ArrowRight") || keys.has("d")) player.dx += WALK_SPEED;
     if (keys.has("ArrowUp") || keys.has("w")) player.dy -= WALK_SPEED;
@@ -6589,13 +6811,19 @@ function drawStaticCharacter(obj) {
     ctx.fillStyle = "#6b756f";
     ctx.fillRect(x + 5, y + 18, 5, 2);
     ctx.fillRect(x + 12, y + 18, 5, 2);
-    if (obj.plant42Barry) {
+    if (obj.plant42Barry || obj.openingBarry) {
       ctx.fillStyle = "#242923";
       ctx.fillRect(x + 13, y + 12, 10, 4);
       ctx.fillStyle = "#8a7852";
       ctx.fillRect(x + 19, y + 11, 5, 2);
       ctx.fillStyle = "#b64a20";
       ctx.fillRect(x + 23, y + 12, 3, 2);
+      if (obj.firingUntilFrame > gameFrame) {
+        ctx.fillStyle = "#ffd55a";
+        ctx.fillRect(x + 27, y + 10, 6, 7);
+        ctx.fillStyle = "#fff3b0";
+        ctx.fillRect(x + 30, y + 12, 5, 3);
+      }
     }
   } else if (obj.character === "medic") {
     ctx.fillStyle = "#4a2c1d";
