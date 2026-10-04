@@ -1,6 +1,8 @@
 // Standalone intro content. This file is intentionally not loaded by index.html yet.
 window.GAME_INTRO_CUTSCENE = {
   title: "Resident Evil",
+  date: "July 1998",
+  location: "Raccoon Forest",
   advanceMode: "dialogue",
   typewriterMsPerCharacter: 24,
   scenes: [
@@ -9,9 +11,11 @@ window.GAME_INTRO_CUTSCENE = {
       alt: "Map of the forest northwest of Raccoon City",
       dialogue: [
         {
-          speaker: "Chris Redfield (Narrator)",
-          text: "Raccoon City... Alpha Team is flying over the forest area northwest of the city, searching for the helicopter of their compatriots, Bravo Team, who disappeared during their investigation of a series of bizarre murder cases..."
-        }
+          speaker: "Chris (narrating)",
+          text: "Alpha Team is flying around the Forest zone situated in north-west Raccoon City, where we're searching for the helicopter of our compatriots; \"Bravo Team\", who disappeared during the middle of our mission."
+        },
+        { speaker: "Wesker", text: "Chris, have you found it yet?" },
+        { speaker: "Chris", text: "No, I haven't found it yet." }
       ]
     },
     {
@@ -19,16 +23,8 @@ window.GAME_INTRO_CUTSCENE = {
       alt: "Newspaper reports about the bizarre murders",
       dialogue: [
         {
-          speaker: "Chris Redfield (Narrator)",
-          text: "Bizarre murder cases have recently occurred in Raccoon City. There are outlandish reports of families being attacked by a group of about ten people. Was it a cult?"
-        },
-        {
-          speaker: "Chris Redfield (Narrator)",
-          text: "Victims were apparently eaten..."
-        },
-        {
-          speaker: "Chris Redfield (Narrator)",
-          text: "The Bravo Team was sent in to investigate, but we lost contact. Alpha Team was dispatched to locate them."
+          speaker: "Chris (narrating)",
+          text: "Bizarre murder cases have recently occurred in Raccoon City. There are outlandish reports of families being attacked by a group of about ten people. Victims were apparently eaten. Bravo Team went to the hideout of the group, and disappeared."
         }
       ]
     },
@@ -37,10 +33,10 @@ window.GAME_INTRO_CUTSCENE = {
       alt: "Alpha Team searching the dark forest",
       action: "The helicopter lands in the middle of the dark forest.",
       dialogue: [
-        { speaker: "Chris Redfield", text: "Look, Jill! It's Bravo Team's chopper!" },
+        { speaker: "Jill", text: "Look Chris!" },
         {
-          speaker: "Chris Redfield (Narrator)",
-          text: "No one was aboard, but strangely, most of the equipment was still there. However, we soon discovered why..."
+          speaker: "Chris (narrating)",
+          text: "It was Bravo Team's Helicopter. Nobody was in it. But strangely, most of the equipment was still there. However, we soon discovered why."
         }
       ]
     },
@@ -50,10 +46,11 @@ window.GAME_INTRO_CUTSCENE = {
       action: "Joseph Frost finds a severed hand. Mutant dogs attack.",
       dialogue: [
         { speaker: "Joseph Frost", text: "Hey! Come here!" },
-        { speaker: "Joseph Frost", text: "Ahhh! Nooo!" },
-        { speaker: "Albert Wesker", text: "Huh? Joseph, no! Don't go!" },
-        { speaker: "Jill Valentine", text: "Joseph!" },
-        { speaker: "Albert Wesker", text: "Run! For that house!" }
+        { speaker: "Joseph", text: "Arg!" },
+        { speaker: "Joseph", text: "Arg!" },
+        { speaker: "Jill", text: "Joseph!" },
+        { speaker: "Chris", text: "No! Don't go!" },
+        { speaker: "Chris", text: "Jill, run for that house!" }
       ]
     },
     {
@@ -62,7 +59,7 @@ window.GAME_INTRO_CUTSCENE = {
       action: "The surviving members flee into the mansion.",
       dialogue: [
         {
-          speaker: "Chris Redfield (Narrator)",
+          speaker: "Chris (narrating)",
           text: "They have escaped into the mansion, where they thought it was safe. Yet..."
         }
       ]

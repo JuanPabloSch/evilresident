@@ -82,6 +82,19 @@
               </div>
             </form>
           </dialog>
+          <dialog id="save-game-dialog" class="door-code-dialog save-game-dialog" aria-labelledby="save-game-title">
+            <section class="save-game-content">
+              <h2 id="save-game-title">Máquina de escribir</h2>
+              <p id="save-game-count" class="door-code-message"></p>
+              <p id="save-game-message" class="door-code-message" aria-live="polite"></p>
+              <nav class="save-game-modes" aria-label="Acciones de partida">
+                <button id="save-mode-save" type="button">Guardar partida</button>
+                <button id="save-mode-load" type="button">Cargar partida</button>
+              </nav>
+              <div id="save-slot-list" class="save-slot-list"></div>
+              <div class="door-code-actions"><button id="save-menu-close" type="button">Cerrar</button></div>
+            </section>
+          </dialog>
         </div>
         <div class="control-column">
           <ul class="info" aria-label="Controles">

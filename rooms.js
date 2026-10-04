@@ -322,6 +322,8 @@ tigerStatueRoom: {
       // Estantería 's' (vertical a la derecha)
       { type: "shelfVertical", x: 180, y: 85, w: 20, h: 50, solid: true },
 
+      { type: "typewriter", x: 148, y: 105, w: 22, h: 18 },
+
       // Suero 'se'
       { type: "serum", x: 185, y: 90, w: 8, h: 10 },
 

@@ -269,6 +269,27 @@ canvas {
 .door-code-actions button[type="submit"] { border-color: #77915d; background: #344529; }
 .lab-computer-dialog { width: 270px; }
 .v-jolt-dialog { width: 290px; }
+.save-game-dialog { width: 280px; }
+.save-game-content { display: grid; gap: 10px; }
+.save-game-content h2 { margin: 0; color: #e2be68; font-size: 14px; text-align: center; }
+.save-game-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.save-game-modes button,
+.save-slot-button {
+  min-height: 34px;
+  border: 1px solid #71694d;
+  background: #30291c;
+  color: #f1e8ce;
+  font: inherit;
+  cursor: pointer;
+}
+.save-game-modes button[aria-pressed="true"] { border-color: #77915d; background: #344529; }
+.save-slot-list { display: grid; gap: 5px; }
+.save-slot-button { display: grid; gap: 3px; padding: 7px; text-align: left; }
+.save-slot-button small { color: #c8c1a8; font-size: 10px; }
+.save-slot-button:disabled { color: #817c6e; cursor: default; opacity: .7; }
+.save-slot-button:not(:disabled):hover,
+.save-game-modes button:hover { background: #51432a; }
+.save-game-dialog .door-code-actions { grid-template-columns: 1fr; }
 .v-jolt-selects { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .v-jolt-selects label { display: grid; gap: 4px; color: #c8c1a8; font-size: 10px; }
 .v-jolt-selects select {

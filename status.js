@@ -272,7 +272,7 @@ const FILE_CONTENTS = {
     ]
   }
 };
-const STATUS_KEY_ITEMS = new Set(["lockpick", "rope", "brokenShotgun", "eagleMedal", "wolfMedal"]);
+const STATUS_KEY_ITEMS = new Set(["lockpick", "rope", "brokenShotgun", "eagleMedal", "wolfMedal", "radio"]);
 const AMMO_PICKUP_QUANTITIES = {
   handgunAmmo: 15,
   shotgunShells: 7,
@@ -640,6 +640,29 @@ const STATUS = (() => {
   renderFiles();
   setHealth(health);
   return {
+    serialize() {
+      return {
+        items: [...items], keyItems: [...keyItems], files: [...files], fileIds: [...fileIds],
+        health, poisoned, poisonFrames, handgunReserve, rocketReserve, storedHandgunReserve,
+        storedItems: [...storedItems]
+      };
+    },
+    restore(data) {
+      items.clear(); (data.items || []).forEach(([key, value]) => items.set(key, value));
+      keyItems.clear(); (data.keyItems || []).forEach((value) => keyItems.add(value));
+      files.clear(); (data.files || []).forEach(([key, value]) => files.set(key, value));
+      fileIds.clear(); (data.fileIds || []).forEach((value) => fileIds.add(value));
+      storedItems.clear(); (data.storedItems || []).forEach(([key, value]) => storedItems.set(key, value));
+      health = data.health ?? 100;
+      poisoned = Boolean(data.poisoned);
+      poisonFrames = data.poisonFrames || 0;
+      handgunReserve = data.handgunReserve || 0;
+      rocketReserve = data.rocketReserve || 0;
+      storedHandgunReserve = data.storedHandgunReserve || 0;
+      document.getElementById("poison-status").hidden = !poisoned;
+      renderInventory(); renderKeyItems(); renderFiles(); renderChest(); setHealth(health);
+      panel.hidden = true; chestPanel.hidden = true; toggle.setAttribute("aria-expanded", "false");
+    },
     toggle() { setOpen(panel.hidden); },
     isOpen() { return !panel.hidden || !chestPanel.hidden; },
     openChest() {

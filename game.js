@@ -280,6 +280,15 @@ const vJoltMessage = document.getElementById("v-jolt-message");
 const vJoltReagentA = document.getElementById("v-jolt-reagent-a");
 const vJoltReagentB = document.getElementById("v-jolt-reagent-b");
 const vJoltClose = document.getElementById("v-jolt-close");
+const saveGameDialog = document.getElementById("save-game-dialog");
+const saveGameCount = document.getElementById("save-game-count");
+const saveGameMessage = document.getElementById("save-game-message");
+const saveSlotList = document.getElementById("save-slot-list");
+const saveModeSave = document.getElementById("save-mode-save");
+const saveModeLoad = document.getElementById("save-mode-load");
+let saveMenuMode = "save";
+const SAVE_STORAGE_KEY = "resident-evil-atari-saves-v1";
+const SAVE_SLOT_COUNT = 3;
 let activeVJoltMixer = null;
 let pendingCodeDoor = null;
 let enteredDoorCode = "";
@@ -520,6 +529,11 @@ function spawnMansionReturnAmbushes() {
     const room = ROOMS[roomId];
     if (!room || room.mansionReturnAmbushesSpawned) return;
     room.interactables = room.interactables.filter((obj) => !ENEMY_TYPES[obj.type]);
+    if (roomId === "roofedPassage") {
+      room.roofedHunterPending = true;
+      room.mansionReturnAmbushesSpawned = true;
+      return;
+    }
     const size = encounter.type === "hunter" ? { w: 26, h: 30 }
       : encounter.type === "spider" ? { w: 24, h: 22 }
         : { w: 12, h: 14 };
@@ -560,6 +574,209 @@ function updateAmmoDisplay() {
   document.getElementById("ammo-type").textContent = ammoLabel;
   STATUS.setWeaponDisplay(WEAPON_NAMES[equippedWeapon], loaded, reserve, ammoLabel);
 }
+
+function updateRoofedHunterAmbush(room) {
+  if (currentRoom !== "roofedPassage" || !room.roofedHunterSceneActive) return;
+  const hunter = room.interactables.find((obj) => obj.scriptedRoofedHunter);
+  const elapsed = gameFrame - room.roofedHunterStartedAt;
+  if (room.roofedHunterPhase === "doorOpening" && elapsed >= 18) {
+    const gardenDoor = room.doors.find((door) => door.id === "doorToStoreroom");
+    if (gardenDoor) gardenDoor.scriptOpen = true;
+    room.interactables.push({
+      type: "hunter", x: 151, y: 41, w: 26, h: 30,
+      scriptedRoofedHunter: true, roofedHunter: true, alerted: false, animFrame: 0
+    });
+    room.roofedHunterPhase = "running";
+    room.roofedHunterWaypoint = 0;
+    room.roofedHunterStartedAt = gameFrame;
+    STATUS.setPickupHint("¡La puerta de Garden Shed se abrió de golpe!");
+    return;
+  }
+  if (room.roofedHunterPhase !== "running" || !hunter) return;
+  const route = [{ x: 42, y: 42 }, { x: 42, y: 125 }];
+  const target = route[room.roofedHunterWaypoint];
+  if (!target) return;
+  const dx = target.x - hunter.x;
+  const dy = target.y - hunter.y;
+  const distance = Math.hypot(dx, dy);
+  const speed = 2.1;
+  if (distance <= speed) {
+    hunter.x = target.x;
+    hunter.y = target.y;
+    room.roofedHunterWaypoint++;
+    if (room.roofedHunterWaypoint >= route.length) {
+      hunter.scriptedRoofedHunter = false;
+      hunter.alerted = true;
+      hunter.attackAt = gameFrame + 45;
+      room.roofedHunterSceneActive = false;
+      room.roofedHunterPhase = "fight";
+      const gardenDoor = room.doors.find((door) => door.id === "doorToStoreroom");
+      if (gardenDoor) gardenDoor.scriptOpen = false;
+      STATUS.setPickupHint("¡Un Hunter irrumpió desde Garden Shed!");
+      updateInteractionPrompt();
+    }
+  } else {
+    hunter.x += dx / distance * speed;
+    hunter.y += dy / distance * speed;
+  }
+  hunter.animFrame = Math.floor(gameFrame / 5) % 2;
+}
+
+function readSaveData() {
+  try {
+    const data = JSON.parse(localStorage.getItem(SAVE_STORAGE_KEY) || "{}");
+    return {
+      totalSaves: Math.max(0, Number(data.totalSaves) || 0),
+      slots: Array.from({ length: SAVE_SLOT_COUNT }, (_, index) => data.slots?.[index] || null)
+    };
+  } catch {
+    return { totalSaves: 0, slots: Array(SAVE_SLOT_COUNT).fill(null) };
+  }
+}
+
+function writeSaveData(data) {
+  localStorage.setItem(SAVE_STORAGE_KEY, JSON.stringify(data));
+}
+
+function createGameSnapshot() {
+  const rooms = JSON.parse(JSON.stringify(ROOMS));
+  Object.entries(ROOMS).forEach(([roomId, room]) => {
+    room.interactables.forEach((obj, index) => {
+      const hp = weapon.hitPoints.get(obj);
+      if (hp !== undefined) rooms[roomId].interactables[index]._savedHitPoints = hp;
+    });
+  });
+  return {
+    version: 1, rooms, currentRoom, player: { ...player }, gameFrame,
+    trophyLightsOn, waterDrained, armsStorageUnlocked, labBlackoutRestored,
+    labElevatorCircuitConnected, weaponLoaded: weapon.loaded, equippedWeapon,
+    selectedLauncherAmmo, unlockedLocks: [...unlockedLocks], status: STATUS.serialize(),
+    playerDamageCooldown, weaponCooldown, emergencyCountdownStartFrame,
+    emergencyCountdownStopFrame, emergencyCountdownExpired, mansionReturnAmbushesSpawned
+  };
+}
+
+function restoreGameSnapshot(snapshot) {
+  if (snapshot?.version !== 1 || !ROOMS[snapshot.currentRoom]) throw new Error("Partida incompatible.");
+  Object.entries(snapshot.rooms).forEach(([roomId, savedRoom]) => {
+    if (!ROOMS[roomId]) return;
+    Object.keys(ROOMS[roomId]).forEach((key) => delete ROOMS[roomId][key]);
+    Object.assign(ROOMS[roomId], savedRoom);
+    ROOMS[roomId].interactables.forEach((obj) => {
+      if (Number.isFinite(obj._savedHitPoints)) {
+        weapon.hitPoints.set(obj, obj._savedHitPoints);
+        delete obj._savedHitPoints;
+      }
+    });
+    ROOMS[roomId].interactables.filter((obj) => obj.type === "plant42" && obj.barry).forEach((plant) => {
+      plant.barry = ROOMS[roomId].interactables.find((obj) => obj.plant42Barry) || plant.barry;
+    });
+  });
+  currentRoom = snapshot.currentRoom;
+  player = { ...player, ...snapshot.player, dx: 0, dy: 0, isMoving: false };
+  gameFrame = snapshot.gameFrame || 0;
+  trophyLightsOn = Boolean(snapshot.trophyLightsOn);
+  waterDrained = Boolean(snapshot.waterDrained);
+  armsStorageUnlocked = Boolean(snapshot.armsStorageUnlocked);
+  labBlackoutRestored = Boolean(snapshot.labBlackoutRestored);
+  labElevatorCircuitConnected = Boolean(snapshot.labElevatorCircuitConnected);
+  weapon.loaded = snapshot.weaponLoaded ?? weapon.capacity;
+  equippedWeapon = snapshot.equippedWeapon || "handgun";
+  selectedLauncherAmmo = snapshot.selectedLauncherAmmo || "flameRounds";
+  unlockedLocks.clear(); (snapshot.unlockedLocks || []).forEach((lock) => unlockedLocks.add(lock));
+  playerDamageCooldown = snapshot.playerDamageCooldown || 0;
+  weaponCooldown = snapshot.weaponCooldown || 0;
+  emergencyCountdownStartFrame = snapshot.emergencyCountdownStartFrame ?? null;
+  emergencyCountdownStopFrame = snapshot.emergencyCountdownStopFrame ?? null;
+  emergencyCountdownExpired = Boolean(snapshot.emergencyCountdownExpired);
+  mansionReturnAmbushesSpawned = Boolean(snapshot.mansionReturnAmbushesSpawned);
+  endingCutsceneActive = false;
+  dialogueState = null;
+  STATUS.restore(snapshot.status || {});
+  document.getElementById("room-title").textContent = ROOMS[currentRoom].name;
+  MANSION_MAP.setCurrentRoom(currentRoom);
+  selfDestructTimer.hidden = true;
+  updateAmmoDisplay();
+  updateInteractionPrompt();
+}
+
+function renderSaveMenu() {
+  const data = readSaveData();
+  saveGameCount.textContent = `Veces que guardaste: ${data.totalSaves}`;
+  saveModeSave.setAttribute("aria-pressed", String(saveMenuMode === "save"));
+  saveModeLoad.setAttribute("aria-pressed", String(saveMenuMode === "load"));
+  saveSlotList.replaceChildren();
+  data.slots.forEach((slot, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "save-slot-button";
+    const title = document.createElement("span");
+    title.textContent = `Espacio ${index + 1} · ${slot ? saveMenuMode === "save" ? "Guardado" : "Partida guardada" : "Vacío"}`;
+    button.appendChild(title);
+    if (slot) {
+      const detail = document.createElement("small");
+      detail.textContent = `${new Date(slot.savedAt).toLocaleString()} · ${slot.saves} ${slot.saves === 1 ? "guardado" : "guardados"}`;
+      button.appendChild(detail);
+    }
+    button.disabled = saveMenuMode === "load" ? !slot : STATUS.getItemCount("inkRibbon") < 1;
+    button.addEventListener("click", () => activateSaveSlot(index));
+    saveSlotList.appendChild(button);
+  });
+  saveModeLoad.disabled = data.slots.every((slot) => !slot);
+}
+
+function openSaveMenu() {
+  saveMenuMode = "save";
+  saveGameMessage.textContent = `Cintas de tinta: ${STATUS.getItemCount("inkRibbon")}`;
+  renderSaveMenu();
+  saveGameDialog.showModal();
+}
+
+function activateSaveSlot(index) {
+  const data = readSaveData();
+  const existing = data.slots[index];
+  if (saveMenuMode === "load") {
+    try {
+      restoreGameSnapshot(existing.snapshot);
+      saveGameDialog.close();
+      STATUS.setPickupHint("Partida cargada.");
+    } catch {
+      saveGameMessage.textContent = "No se pudo cargar esta partida.";
+    }
+    return;
+  }
+  if (!STATUS.hasItem("inkRibbon")) {
+    saveGameMessage.textContent = "Necesitás una cinta de tinta para guardar.";
+    renderSaveMenu();
+    return;
+  }
+  if (existing && !window.confirm(`¿Reemplazar el guardado del espacio ${index + 1}?`)) return;
+  const previousStatus = STATUS.serialize();
+  try {
+    STATUS.consumeItem("inkRibbon");
+    data.totalSaves++;
+    data.slots[index] = {
+      savedAt: new Date().toISOString(),
+      saves: (existing?.saves || 0) + 1,
+      snapshot: createGameSnapshot()
+    };
+    writeSaveData(data);
+    saveGameMessage.textContent = "Partida guardada.";
+    saveGameMessage.dataset.state = "success";
+  } catch {
+    STATUS.restore(previousStatus);
+    data.totalSaves--;
+    saveGameMessage.textContent = "No se pudo guardar. El espacio del navegador no está disponible.";
+    saveGameMessage.dataset.state = "error";
+  }
+  saveGameMessage.textContent += ` Cintas de tinta: ${STATUS.getItemCount("inkRibbon")}.`;
+  renderSaveMenu();
+}
+
+saveModeSave.addEventListener("click", () => { saveMenuMode = "save"; renderSaveMenu(); });
+saveModeLoad.addEventListener("click", () => { saveMenuMode = "load"; renderSaveMenu(); });
+document.getElementById("save-menu-close").addEventListener("click", () => saveGameDialog.close());
+saveGameDialog.addEventListener("close", updateInteractionPrompt);
 
 function equipWeapon(name) {
   const match = Object.entries(WEAPON_NAMES).find(([, label]) => label === name);
@@ -630,6 +847,8 @@ function fireWeapon() {
   if (currentRoom === "mainLabEntryB4" && ROOMS.mainLabEntryB4.weskerEntrySceneActive) return;
   if (currentRoom === "cellRoom" && ROOMS.cellRoom.chrisRescueActive) return;
   if (currentRoom === "emergencyTunnel" && ROOMS.emergencyTunnel.emergencySceneActive) return;
+  if (currentRoom === "roofedPassage" && ROOMS.roofedPassage.roofedHunterSceneActive) return;
+  if (currentRoom === "centralCorridorGH" && ROOMS.centralCorridorGH.postPlantWeskerSceneActive) return;
   if (currentRoom === "heliport" && ROOMS.heliport.endingSequencePhase && ROOMS.heliport.endingSequencePhase !== "complete") return;
   const activePlant = ROOMS[currentRoom]?.interactables.find((obj) => obj.type === "plant42");
   if (activePlant && activePlant.phase && activePlant.phase !== "fight") return;
@@ -789,6 +1008,10 @@ function fireWeapon() {
         STATUS.setPickupHint("Plant 42 se marchitó... pero algo vuelve a moverse entre sus ramas.");
       } else {
         room.interactables.splice(room.interactables.indexOf(target), 1);
+        if (target.roofedHunter) {
+          room.roofedHunterDefeated = true;
+          STATUS.setPickupHint("El Hunter cayó. La entrada a Back Passage está despejada.");
+        }
       }
       if (target.type === "plant42" && target.route !== "barry") {
         const helmetKey = room.interactables.find((obj) => obj.type === "helmetKey");
@@ -846,6 +1069,7 @@ window.addEventListener("keydown", (e) => {
     } else if (e.key === "Escape") doorCodeDialog.close();
     return;
   }
+  if (saveGameDialog.open) return;
   if (e.target.closest?.("#debug-room-control")) return;
   const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   keys.add(key);
@@ -1323,6 +1547,62 @@ function updateEmergencyTunnelScene(room) {
   });
 }
 
+function updateRichardScene(room) {
+  if (currentRoom !== "pillarPassage" || room.richardSceneComplete || dialogueState) return;
+  const richard = room.interactables.find((obj) => obj.type === "richardBody");
+  if (!richard || room.richardSceneStarted) return;
+  room.richardSceneStarted = true;
+  room.richardSceneActive = true;
+  beginDialogue([
+    { speaker: "Jill", text: "Richard! What happened?" },
+    { speaker: "Richard", text: "This whole place is a killing zone. There are monsters..." },
+    { speaker: "Jill", text: "What did this to you?" },
+    { speaker: "Richard", text: "A big snake... and it had to be poisonous..." },
+    { speaker: "Jill", text: "Poisonous!? Richard, hold on!" },
+    { speaker: "Richard", text: "Jill, here's... my radio... you should... keep it... I'm..." }
+  ], () => {
+    richard.dead = true;
+    room.richardSceneActive = false;
+    room.richardSceneComplete = true;
+    const radio = room.interactables.find((obj) => obj.type === "radio");
+    if (STATUS.addItem("radio") && radio) room.interactables.splice(room.interactables.indexOf(radio), 1);
+    STATUS.setPickupHint("Richard murió por el veneno de Yawn. No hay tiempo para buscar el Serum.");
+  });
+}
+
+function updatePostPlantWeskerScene(room) {
+  if (currentRoom !== "centralCorridorGH" || !mansionReturnAmbushesSpawned || room.postPlantWeskerSceneComplete || dialogueState) return;
+  if (room.postPlantWeskerSceneStarted) return;
+  room.postPlantWeskerSceneStarted = true;
+  room.postPlantWeskerSceneActive = true;
+  const wesker = {
+    type: "staticCharacter", character: "sunglasses", x: 260, y: 88, w: 18, h: 25,
+    armed: true, postPlantWesker: true
+  };
+  room.interactables.push(wesker);
+  beginDialogue([
+    { speaker: "Jill", text: "Wesker!" },
+    { speaker: "Wesker", text: "Jill... so you're safe." },
+    { speaker: "Jill", text: "That's what I was going to say." },
+    { speaker: "Jill", text: "Where on earth have you been? You disappeared from the hall all of a sudden." },
+    { speaker: "Wesker", text: "I'm sorry, but I have my reasons." },
+    { speaker: "Wesker", text: "Perhaps you guys have met them?" },
+    { speaker: "Wesker", text: "It was all I could do to protect myself against those... strange creatures." },
+    { speaker: "Jill", text: "Is that right? Anyway, it's good to see you're safe." },
+    { speaker: "Wesker", text: "Jill, our first priority is to get out of here." },
+    { speaker: "Jill", text: "Yes, you're right." },
+    { speaker: "Wesker", text: "Now there are a lot of rooms in that mansion that we can't get into because they're locked up." },
+    { speaker: "Wesker", text: "I have been looking around for clues..." },
+    { speaker: "Jill", text: "Okay, I'll go to the other house and see if I can find any clues." },
+    { speaker: "Wesker", text: "Will you do that? I'm counting on you." }
+  ], () => {
+    room.interactables.splice(room.interactables.indexOf(wesker), 1);
+    room.postPlantWeskerSceneActive = false;
+    room.postPlantWeskerSceneComplete = true;
+    STATUS.setPickupHint("Wesker te pidió volver a la mansión y buscar pistas en las habitaciones cerradas.");
+  });
+}
+
 function updateEmergencyCountdown() {
   if (emergencyCountdownStartFrame === null) return;
   if (ROOMS.heliport.finalEncounterComplete && emergencyCountdownStopFrame === null) {
@@ -1405,6 +1685,7 @@ function updateEndingSequence(room) {
 
 function updateEnemies(room) {
   updateHeliportFinale(room);
+  if (room === ROOMS.centralCorridorGH && room.postPlantWeskerSceneActive) return;
   const hive = room.interactables.find((obj) => obj.type === "giantBeehive");
   if (hive) {
     const activeWasps = room.interactables.some((obj) => obj.type === "wasp");
@@ -1475,6 +1756,7 @@ function updateEnemies(room) {
   const obstacles = room.interactables.filter((obj) => obj.solid && !ENEMY_TYPES[obj.type]);
 
   room.interactables.forEach((enemy) => {
+    if (enemy.scriptedRoofedHunter) return;
     if (enemy.type === "plant42" && enemy.phase && enemy.phase !== "fight") return;
     if (enemy.type === "tyrant" && enemy.phase !== "fight" && !(enemy.finalEncounter && enemy.phase === "downed" && equippedWeapon === "rocketLauncher")) return;
     if (enemy.type === "tyrant" && enemy.phase === "exploding") return;
@@ -1754,6 +2036,8 @@ function isBossEncounterActive(room) {
   if (room === ROOMS.mainLab && room.tyrantSceneRunning) return true;
   if (room === ROOMS.cellRoom && room.chrisRescueActive) return true;
   if (room === ROOMS.emergencyTunnel && room.emergencySceneActive) return true;
+  if (room === ROOMS.roofedPassage && room.roofedHunterSceneActive) return true;
+  if (room === ROOMS.centralCorridorGH && room.postPlantWeskerSceneActive) return true;
   return room.interactables.some((obj) => {
     if (obj.type === "blackTiger") return true;
     if (obj.type === "plant42") return true;
@@ -1957,6 +2241,12 @@ function updateInteractionPrompt() {
   const room = ROOMS[currentRoom];
   const movableLadder = room.interactables.find((obj) => obj.type === "stepLadder" && obj.resettable);
   const ladderReach = { x: player.x - 14, y: player.y - 14, w: PLAYER_WIDTH + 28, h: PLAYER_HEIGHT + 28 };
+  const typewriter = room.interactables.find((obj) => obj.type === "typewriter" && checkCollision(ladderReach, obj));
+  if (typewriter) {
+    interactionPrompt.textContent = "E · Usar máquina de escribir";
+    interactionPrompt.hidden = false;
+    return;
+  }
   const ladderDoor = room.doors.find((door) => door.stepLadderTarget);
   if (movableLadder && ladderDoor && !isStepLadderInPlace(room, ladderDoor.stepLadderTarget) && checkCollision(ladderReach, movableLadder)) {
     interactionPrompt.textContent = "E · Reubicar escalerita";
@@ -1970,18 +2260,6 @@ function updateInteractionPrompt() {
       : labPowerConsole.type === "powerElevatorTerminal"
         ? labElevatorCircuitConnected ? "Circuito del ascensor conectado" : "E · Conectar circuito del ascensor"
         : labElevatorCircuitConnected ? "E · Activar ascensor" : "El ascensor no tiene corriente";
-    interactionPrompt.hidden = false;
-    return;
-  }
-  const kenneth = room.interactables.find((obj) => obj.type === "kenneth" && checkCollision(ladderReach, obj));
-  if (kenneth) {
-    interactionPrompt.textContent = "E · Inspect body";
-    interactionPrompt.hidden = false;
-    return;
-  }
-  const forest = room.interactables.find((obj) => obj.type === "spencerBody" && checkCollision(ladderReach, obj));
-  if (forest) {
-    interactionPrompt.textContent = "E · Inspect body";
     interactionPrompt.hidden = false;
     return;
   }
@@ -2239,12 +2517,13 @@ function updateInteractionPrompt() {
     return;
   }
   const item = room.interactables.find((obj) => STATUS.getItemName(obj.type) && obj.revealed !== false && (!obj.pickupAfter || gameFrame >= obj.pickupAfter) && (!obj.requiresDark || !trophyLightsOn) && (!obj.requiresLadder || isStepLadderInPlace(room, obj.requiresLadder)) && checkCollision(itemReach, obj));
+  const inspectableBody = room.interactables.find((obj) => ["kenneth", "spencerBody"].includes(obj.type) && checkCollision(itemReach, obj));
   interactionPrompt.textContent = item
     ? item.type === "goldEmblem" && !STATUS.hasItem("mansionEmblem")
       ? "Primero necesitás el Emblem del Dining Room"
       : `E · Recoger: ${STATUS.getItemName(item.type)}`
-    : "";
-  interactionPrompt.hidden = !item;
+    : inspectableBody ? "E · Inspeccionar" : "";
+  interactionPrompt.hidden = !item && !inspectableBody;
 }
 
 function transitionThroughDoor(door) {
@@ -2361,6 +2640,11 @@ function interactNearby() {
   if (currentRoom === "mainLab" && room.tyrantSceneRunning) return;
   const movableLadder = room.interactables.find((obj) => obj.type === "stepLadder" && obj.resettable);
   const ladderReach = { x: player.x - 14, y: player.y - 14, w: PLAYER_WIDTH + 28, h: PLAYER_HEIGHT + 28 };
+  const typewriter = room.interactables.find((obj) => obj.type === "typewriter" && checkCollision(ladderReach, obj));
+  if (typewriter) {
+    openSaveMenu();
+    return;
+  }
   const ladderDoor = room.doors.find((door) => door.stepLadderTarget);
   if (movableLadder && ladderDoor && !isStepLadderInPlace(room, ladderDoor.stepLadderTarget) && checkCollision(ladderReach, movableLadder)) {
     movableLadder.x = movableLadder.startX;
@@ -2399,18 +2683,6 @@ function interactNearby() {
       if (elevatorDoor) elevatorDoor.disabled = false;
       STATUS.setPickupHint("La alimentación y el circuito quedaron conectados. El ascensor ya funciona.");
     }
-    updateInteractionPrompt();
-    return;
-  }
-  const kenneth = room.interactables.find((obj) => obj.type === "kenneth" && checkCollision(ladderReach, obj));
-  if (kenneth) {
-    STATUS.setPickupHint("He's Kenneth from the S.T.A.R.S Bravo team...! Now he's become a mere shadow of his former self.");
-    updateInteractionPrompt();
-    return;
-  }
-  const forest = room.interactables.find((obj) => obj.type === "spencerBody" && checkCollision(ladderReach, obj));
-  if (forest) {
-    STATUS.setPickupHint("It's Forest. He's been pecked to death by crows...!");
     updateInteractionPrompt();
     return;
   }
@@ -2546,6 +2818,14 @@ function interactNearby() {
   }
   const door = nearbyDoor();
   if (door) {
+    if (currentRoom === "roofedPassage" && door.id === "doorToBackPassage" && room.roofedHunterPending) {
+      room.roofedHunterPending = false;
+      room.roofedHunterSceneActive = true;
+      room.roofedHunterPhase = "doorOpening";
+      room.roofedHunterStartedAt = gameFrame;
+      STATUS.setPickupHint("Algo golpea la puerta de Garden Shed...");
+      return;
+    }
     if (isBossEncounterActive(room)) {
       STATUS.setPickupHint("No puedo irme ahora. Hay algo más urgente.");
       return;
@@ -2905,11 +3185,29 @@ function interactNearby() {
     updateInteractionPrompt();
     return;
   }
+  const pickupReach = { x: player.x - 8, y: player.y - 8, w: PLAYER_WIDTH + 16, h: PLAYER_HEIGHT + 16 };
+  const reachablePickup = room.interactables.some((obj) =>
+    STATUS.getItemName(obj.type) && obj.revealed !== false && (!obj.pickupAfter || gameFrame >= obj.pickupAfter) && (!obj.requiresDark || !trophyLightsOn) && (!obj.requiresLadder || isStepLadderInPlace(room, obj.requiresLadder)) && checkCollision(pickupReach, obj)
+  );
+  if (reachablePickup) {
+    collectNearbyItem();
+    return;
+  }
+  const inspectableBody = room.interactables.find((obj) => ["kenneth", "spencerBody"].includes(obj.type) && checkCollision(pickupReach, obj));
+  if (inspectableBody) {
+    beginDialogue([{
+      speaker: "Jill",
+      text: inspectableBody.type === "kenneth"
+        ? "He's Kenneth from the S.T.A.R.S Bravo team...! Now he's become a mere shadow of his former self."
+        : "It's Forest. He's been pecked to death by crows...!"
+    }]);
+    return;
+  }
   collectNearbyItem();
 }
 
 function update() {
-  if (endingCutsceneActive || dialogueState || STATUS.isOpen() || doorCodeDialog.open || labComputerDialog.open || vJoltDialog.open) return;
+  if (endingCutsceneActive || dialogueState || STATUS.isOpen() || doorCodeDialog.open || labComputerDialog.open || vJoltDialog.open || saveGameDialog.open) return;
   gameFrame++;
   if (playerDamageCooldown > 0) playerDamageCooldown--;
   if (weaponCooldown > 0) weaponCooldown--;
@@ -2919,7 +3217,10 @@ function update() {
   updateEnricoScene(room);
   updateWeskerLabEntryScene(room);
   updateChrisRescueScene(room);
+  updateRichardScene(room);
+  updatePostPlantWeskerScene(room);
   updateEmergencyTunnelScene(room);
+  updateRoofedHunterAmbush(room);
   updateEndingSequence(room);
   updatePlant42Encounter(room);
   const tyrantSceneLocked = updateTyrantReleaseScene(room);
@@ -2927,12 +3228,15 @@ function update() {
   const enricoSceneLocked = currentRoom === "enricoRoom" && room.enricoSceneActive;
   const weskerEntrySceneLocked = currentRoom === "mainLabEntryB4" && room.weskerEntrySceneActive;
   const chrisRescueLocked = currentRoom === "cellRoom" && room.chrisRescueActive;
+  const richardSceneLocked = currentRoom === "pillarPassage" && room.richardSceneActive;
+  const roofedHunterSceneLocked = currentRoom === "roofedPassage" && room.roofedHunterSceneActive;
+  const postPlantWeskerSceneLocked = currentRoom === "centralCorridorGH" && room.postPlantWeskerSceneActive;
   const emergencySceneLocked = currentRoom === "emergencyTunnel" && room.emergencySceneActive;
   const endingSequenceLocked = currentRoom === "heliport" && room.endingSequencePhase && room.endingSequencePhase !== "complete";
   player.dx = 0;
   player.dy = 0;
 
-  if (!plant42Locked && !tyrantSceneLocked && !enricoSceneLocked && !weskerEntrySceneLocked && !chrisRescueLocked && !emergencySceneLocked && !endingSequenceLocked) {
+  if (!plant42Locked && !tyrantSceneLocked && !enricoSceneLocked && !weskerEntrySceneLocked && !chrisRescueLocked && !richardSceneLocked && !roofedHunterSceneLocked && !postPlantWeskerSceneLocked && !emergencySceneLocked && !endingSequenceLocked) {
     if (keys.has("ArrowLeft") || keys.has("a")) player.dx -= WALK_SPEED;
     if (keys.has("ArrowRight") || keys.has("d")) player.dx += WALK_SPEED;
     if (keys.has("ArrowUp") || keys.has("w")) player.dy -= WALK_SPEED;
@@ -3092,6 +3396,12 @@ function drawRoom() {
       ctx.strokeStyle = "#7c9383";
       ctx.lineWidth = 1;
       ctx.strokeRect(d.x + 1, d.y + 1, d.w - 2, d.h - 2);
+    } else if (d.scriptOpen) {
+      ctx.fillStyle = "#11120e";
+      ctx.fillRect(d.x, d.y, d.w, d.h);
+      ctx.fillStyle = "#62442c";
+      if (d.h > d.w) ctx.fillRect(d.x + d.w, d.y + 2, 3, d.h - 4);
+      else ctx.fillRect(d.x + 2, d.y + d.h, d.w - 4, 3);
     } else {
       ctx.fillStyle = PALETTE.door;
       ctx.fillRect(d.x, d.y, d.w, d.h);
