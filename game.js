@@ -255,7 +255,10 @@ const startLoadGame = document.getElementById("start-load-game");
 const startExtras = document.getElementById("start-extras");
 const titleMainMenu = document.getElementById("title-main-menu");
 const titleExtrasMenu = document.getElementById("title-extras-menu");
+const charactersScreen = document.getElementById("characters-screen");
 const extrasBack = document.getElementById("extras-back");
+const extrasCharacters = document.getElementById("extras-characters");
+const charactersBack = document.getElementById("characters-back");
 const introSequence = document.getElementById("intro-sequence");
 const introSequenceImage = document.getElementById("intro-sequence-image");
 const introSequenceDate = document.getElementById("intro-sequence-date");
@@ -835,6 +838,16 @@ extrasBack.addEventListener("click", () => {
   titleExtrasMenu.hidden = true;
   titleMainMenu.hidden = false;
   startExtras.focus();
+});
+extrasCharacters.addEventListener("click", () => {
+  titleExtrasMenu.hidden = true;
+  charactersScreen.hidden = false;
+  charactersBack.focus();
+});
+charactersBack.addEventListener("click", () => {
+  charactersScreen.hidden = true;
+  titleExtrasMenu.hidden = false;
+  extrasCharacters.focus();
 });
 
 saveModeSave.addEventListener("click", () => { saveMenuMode = "save"; renderSaveMenu(); });

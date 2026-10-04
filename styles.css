@@ -39,6 +39,7 @@ body {
 }
 
 .start-menu nav { display: grid; gap: 5px; }
+.start-menu nav[hidden] { display: none; }
 
 .start-menu button {
   padding: 8px 10px;
@@ -55,6 +56,31 @@ body {
   border-color: #a3322c;
   background: rgba(117, 25, 27, 0.48);
   color: #fff0da;
+}
+
+.characters-screen {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  background: #030405;
+}
+
+.characters-screen[hidden] { display: none; }
+.characters-screen img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.characters-screen button {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  padding: 8px 14px;
+  border: 1px solid #a3322c;
+  background: rgba(5, 6, 8, 0.9);
+  color: #e8d8bd;
+  font: bold 14px Georgia, "Times New Roman", serif;
+  text-transform: uppercase;
+  cursor: pointer;
 }
 
 .intro-sequence {
