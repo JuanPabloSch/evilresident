@@ -259,6 +259,7 @@ let emergencyCountdownExpired = false;
 let endingCutsceneActive = false;
 let endingCutsceneSlide = 0;
 let endingCutsceneTimer = null;
+let mansionReturnAmbushesSpawned = false;
 const doorCodeDialog = document.getElementById("door-code-dialog");
 const doorCodeForm = document.getElementById("door-code-form");
 const doorCodeDisplay = document.getElementById("door-code-display");
@@ -494,6 +495,40 @@ const ENEMY_TYPES = {
   chimera: { sight: 140, speed: 0.52, attackRange: 20, damage: 12, attackDelay: 44 },
   plant42: { sight: 210, speed: 0.16, attackRange: 38, damage: 12, attackDelay: 48 }
 };
+
+const MANSION_RETURN_ENCOUNTERS = {
+  westStairway1F: { type: "hunter", positions: [[38, 34], [90, 136]] },
+  centralCorridor: { type: "hunter", positions: [[260, 34]] },
+  teaRoom: { type: "hunter", positions: [[48, 106], [112, 106]] },
+  wardrobe: { type: "hunter", positions: [[156, 92]] },
+  windingPassage: { type: "hunter", positions: [[152, 112]] },
+  backPassage: { type: "hunter", positions: [[40, 72]] },
+  eastStairway1F: { type: "hunter", positions: [[34, 98]] },
+  roofedPassage: { type: "hunter", positions: [[34, 82]] },
+  westStairway2F: { type: "hunter", positions: [[34, 74]] },
+  diningRoom2F: { type: "hunter", positions: [[22, 101], [272, 146]] },
+  eastStairway2F: { type: "hunter", positions: [[42, 106], [242, 64]] },
+  cPassage: { type: "hunter", positions: [[270, 110]] },
+  outsideBoiler: { type: "zombie", positions: [[210, 36], [210, 94], [210, 142]] },
+  lPassage: { type: "spider", positions: [[46, 132], [190, 42]] }
+};
+
+function spawnMansionReturnAmbushes() {
+  if (mansionReturnAmbushesSpawned) return;
+  mansionReturnAmbushesSpawned = true;
+  Object.entries(MANSION_RETURN_ENCOUNTERS).forEach(([roomId, encounter]) => {
+    const room = ROOMS[roomId];
+    if (!room || room.mansionReturnAmbushesSpawned) return;
+    room.interactables = room.interactables.filter((obj) => !ENEMY_TYPES[obj.type]);
+    const size = encounter.type === "hunter" ? { w: 26, h: 30 }
+      : encounter.type === "spider" ? { w: 24, h: 22 }
+        : { w: 12, h: 14 };
+    encounter.positions.forEach(([x, y]) => {
+      room.interactables.push({ type: encounter.type, x, y, ...size });
+    });
+    room.mansionReturnAmbushesSpawned = true;
+  });
+}
 
 function updateAmmoDisplay() {
   let loaded;
@@ -759,6 +794,7 @@ function fireWeapon() {
         const helmetKey = room.interactables.find((obj) => obj.type === "helmetKey");
         if (helmetKey) helmetKey.revealed = true;
         STATUS.setPickupHint("Plant 42 cayó. La Helmet Key quedó al descubierto.");
+        spawnMansionReturnAmbushes();
       }
     } else if (remaining > 0) {
       weapon.hitPoints.set(target, remaining);
@@ -1613,6 +1649,7 @@ function updatePlant42Encounter(room) {
     const helmetKey = room.interactables.find((obj) => obj.type === "helmetKey");
     if (helmetKey) helmetKey.revealed = true;
     STATUS.setPickupHint("Barry quemó a Plant 42 por completo. La Helmet Key quedó al descubierto.");
+    spawnMansionReturnAmbushes();
     beginDialogue([
       { speaker: "Jill", text: "You saved me!" },
       { speaker: "Barry", text: "Yeah." },
