@@ -242,6 +242,23 @@ let gameFrame = 0;
 let playerDamageCooldown = 0;
 const unlockedLocks = new Set();
 const interactionPrompt = document.getElementById("interaction-prompt");
+const sceneDialogue = document.getElementById("scene-dialogue");
+const selfDestructTimer = document.getElementById("self-destruct-timer");
+const endingCutscene = document.getElementById("ending-cutscene");
+const endingCutsceneImage = document.getElementById("ending-cutscene-image");
+const endingCutsceneCaption = document.getElementById("ending-cutscene-caption");
+const endingCutsceneCount = document.getElementById("ending-cutscene-count");
+const endingCutsceneNext = document.getElementById("ending-cutscene-next");
+const sceneSpeaker = document.getElementById("scene-speaker");
+const sceneLine = document.getElementById("scene-line");
+const scenePrompt = document.getElementById("scene-prompt");
+let dialogueState = null;
+let emergencyCountdownStartFrame = null;
+let emergencyCountdownStopFrame = null;
+let emergencyCountdownExpired = false;
+let endingCutsceneActive = false;
+let endingCutsceneSlide = 0;
+let endingCutsceneTimer = null;
 const doorCodeDialog = document.getElementById("door-code-dialog");
 const doorCodeForm = document.getElementById("door-code-form");
 const doorCodeDisplay = document.getElementById("door-code-display");
@@ -574,6 +591,11 @@ function reloadWeapon() {
 function fireWeapon() {
   if (STATUS.isOpen() || doorCodeDialog.open || labComputerDialog.open || vJoltDialog.open || weaponCooldown > 0) return;
   if (currentRoom === "mainLab" && ROOMS.mainLab.tyrantSceneRunning) return;
+  if (currentRoom === "enricoRoom" && ROOMS.enricoRoom.enricoSceneActive) return;
+  if (currentRoom === "mainLabEntryB4" && ROOMS.mainLabEntryB4.weskerEntrySceneActive) return;
+  if (currentRoom === "cellRoom" && ROOMS.cellRoom.chrisRescueActive) return;
+  if (currentRoom === "emergencyTunnel" && ROOMS.emergencyTunnel.emergencySceneActive) return;
+  if (currentRoom === "heliport" && ROOMS.heliport.endingSequencePhase && ROOMS.heliport.endingSequencePhase !== "complete") return;
   const activePlant = ROOMS[currentRoom]?.interactables.find((obj) => obj.type === "plant42");
   if (activePlant && activePlant.phase && activePlant.phase !== "fight") return;
   if (WEAPON_ITEMS[equippedWeapon] && !STATUS.hasItem(WEAPON_ITEMS[equippedWeapon])) {
@@ -751,6 +773,10 @@ canvas.addEventListener("mousemove", (event) => {
 });
 canvas.addEventListener("mousedown", (event) => {
   event.preventDefault();
+  if (dialogueState) {
+    advanceDialogue();
+    return;
+  }
   if (event.button === 0) fireWeapon();
   if (event.button === 2) reloadWeapon();
 });
@@ -759,6 +785,11 @@ updateAmmoDisplay();
 
 const keys = new Set();
 window.addEventListener("keydown", (e) => {
+  if (dialogueState) {
+    e.preventDefault();
+    if (!e.repeat && ["e", "Enter", " "].includes(e.key.length === 1 ? e.key.toLowerCase() : e.key)) advanceDialogue();
+    return;
+  }
   if (vJoltDialog.open) {
     if (e.key === "Escape") vJoltDialog.close();
     else if (!e.target.matches?.("select, button")) e.preventDefault();
@@ -787,6 +818,56 @@ window.addEventListener("keydown", (e) => {
   if (key === "e" && !e.repeat && !STATUS.isOpen()) interactNearby();
 });
 window.addEventListener("keyup", (e) => keys.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key));
+
+function beginDialogue(lines, onComplete) {
+  if (dialogueState) return;
+  dialogueState = { lines, index: 0, shown: 0, tick: 0, onComplete };
+  sceneDialogue.hidden = false;
+  sceneDialogue.focus();
+  refreshDialogue();
+}
+
+function refreshDialogue() {
+  const line = dialogueState?.lines[dialogueState.index];
+  if (!line) return;
+  sceneSpeaker.textContent = line.speaker;
+  sceneLine.textContent = line.text.slice(0, dialogueState.shown);
+  scenePrompt.textContent = dialogueState.shown < line.text.length ? "E · completar" : "E · continuar";
+}
+
+function updateDialogue() {
+  if (!dialogueState) return;
+  dialogueState.tick++;
+  if (dialogueState.tick % 2 === 0) {
+    const line = dialogueState.lines[dialogueState.index];
+    dialogueState.shown = Math.min(line.text.length, dialogueState.shown + 2);
+    refreshDialogue();
+  }
+}
+
+function advanceDialogue() {
+  if (!dialogueState) return;
+  const line = dialogueState.lines[dialogueState.index];
+  if (dialogueState.shown < line.text.length) {
+    dialogueState.shown = line.text.length;
+    refreshDialogue();
+    return;
+  }
+  dialogueState.index++;
+  if (dialogueState.index >= dialogueState.lines.length) {
+    const onComplete = dialogueState.onComplete;
+    dialogueState = null;
+    sceneDialogue.hidden = true;
+    onComplete?.();
+    return;
+  }
+  dialogueState.shown = 0;
+  dialogueState.tick = 0;
+  refreshDialogue();
+}
+
+sceneDialogue.addEventListener("click", advanceDialogue);
+endingCutsceneNext.addEventListener("click", advanceEndingCutscene);
 
 function checkCollision(rect1, rect2) {
   return (
@@ -1008,28 +1089,282 @@ function updateLessonYawnEncounter(room, yawn) {
 }
 
 function updateBarryLessonScene(room) {
-  if (!room.yawnSecondFightComplete || room.lessonBarrySceneDone) return;
+  if (!room.yawnSecondFightComplete) return;
+  if (room.lessonBarrySceneDone && !room.interactables.some((obj) => obj.type === "staticCharacter" && obj.lessonBarry)) return;
   let barry = room.interactables.find((obj) => obj.type === "staticCharacter" && obj.lessonBarry);
   if (!barry) {
     barry = {
       type: "staticCharacter", character: "redVest", x: 248, y: 54, w: 18, h: 22,
-      lessonBarry: true, sceneStartedAt: gameFrame, rewardGiven: false
+      lessonBarry: true, dialogueStarted: false, rewardGiven: false
     };
     room.interactables.push(barry);
   }
 
+  if (barry.leaving) {
+    barry.x += 1.1;
+    if (barry.x > 282) room.interactables.splice(room.interactables.indexOf(barry), 1);
+    return;
+  }
+  if (room.lessonBarrySceneDone) return;
   const targetX = 216;
   if (barry.x > targetX) {
     barry.x = Math.max(targetX, barry.x - 0.7);
     return;
   }
-  if (gameFrame - barry.sceneStartedAt < 85 || barry.rewardGiven) return;
+  if (barry.dialogueStarted) return;
+  barry.dialogueStarted = true;
+  beginDialogue([
+    { speaker: "Barry", text: "Jill, have you found anything interesting?" },
+    { speaker: "Jill", text: "Yes, but I can't see very well." },
+    { speaker: "Barry", text: "How about going down to check by yourself. I have a rope here." },
+    { speaker: "Jill", text: "Oh, do you? Well then I'll try to go down using the rope." },
+    { speaker: "Barry", text: "Wait." },
+    { speaker: "Barry", text: "Jill, I've found something!" },
+    { speaker: "Jill", text: "Thank you. I'll take this then." }
+  ], () => {
+    STATUS.addItem("rope");
+    STATUS.addItem("passNumber");
+    barry.rewardGiven = true;
+    barry.leaving = true;
+    room.lessonBarrySceneDone = true;
+    STATUS.setPickupHint("Barry te dio la Rope y el archivo Pass Number. Después salió de la habitación.");
+  });
+}
 
-  STATUS.addItem("rope");
-  STATUS.addItem("passNumber");
-  barry.rewardGiven = true;
-  room.lessonBarrySceneDone = true;
-  STATUS.setPickupHint("Barry entró por la puerta y te dio la Rope y el archivo Pass Number.");
+function updateEnricoScene(room) {
+  if (currentRoom !== "enricoRoom" || room.enricoSceneComplete || dialogueState) return;
+  const enrico = room.interactables.find((obj) => obj.type === "enrico");
+  if (!enrico) return;
+
+  if (!room.enricoSceneStarted) {
+    room.enricoSceneStarted = true;
+    room.enricoSceneActive = true;
+    beginDialogue([
+      { speaker: "Enrico", text: "Is that Jill?" },
+      { speaker: "Jill", text: "Is that voice Enrico's?" },
+      { speaker: "Enrico", text: "Yeah." },
+      { speaker: "Jill", text: "You're alive!" },
+      { speaker: "Enrico", text: "Wait there! Are you with anybody, Jill?" },
+      { speaker: "Jill", text: "Wha— What!? Oh no. I'm alone but why are you asking?" },
+      { speaker: "Enrico", text: "Listen, the S.T.A.R.S. are going to be finished soon. Someone is a traitor. Everything was plotted from the start by Umbrella. aaahhh" }
+    ], () => {
+      room.enricoShadow = { type: "enricoShadow", x: 306, y: 128, w: 12, h: 25, phase: "entering" };
+      room.interactables.push(room.enricoShadow);
+    });
+    return;
+  }
+
+  const shadow = room.enricoShadow;
+  if (!shadow) return;
+  if (shadow.phase === "entering") {
+    shadow.x -= 2.1;
+    if (shadow.x <= 282) {
+      shadow.phase = "shooting";
+      shadow.phaseStartedAt = gameFrame;
+      room.interactables.push({ type: "enricoShotFlash", x: enrico.x - 8, y: enrico.y + 7, w: 12, h: 10, startedAt: gameFrame });
+    }
+  } else if (shadow.phase === "shooting" && gameFrame - shadow.phaseStartedAt >= 8) {
+    enrico.dead = true;
+    shadow.phase = "fleeing";
+  } else if (shadow.phase === "fleeing") {
+    shadow.x += 3.4;
+    shadow.y -= 0.45;
+    if (shadow.x > 322) {
+      room.interactables.splice(room.interactables.indexOf(shadow), 1);
+      room.enricoShadow = null;
+      beginDialogue([
+        { speaker: "Jill", text: "Enricoooo..." }
+      ], () => {
+        room.enricoSceneActive = false;
+        room.enricoSceneComplete = true;
+        STATUS.setPickupHint("Enrico fue asesinado por una figura que escapó sin revelar su identidad.");
+      });
+    }
+  }
+  room.interactables = room.interactables.filter((obj) => obj.type !== "enricoShotFlash" || gameFrame - obj.startedAt < 6);
+}
+
+function updateWeskerLabEntryScene(room) {
+  if (currentRoom !== "mainLabEntryB4" || room.weskerEntrySceneComplete || dialogueState) return;
+  if (!room.interactables.some((obj) => obj.type === "staticCharacter" && obj.labWesker)) return;
+  if (room.weskerEntrySceneStarted) return;
+  room.weskerEntrySceneStarted = true;
+  room.weskerEntrySceneActive = true;
+  beginDialogue([
+    { speaker: "Jill", text: "Wesker?" },
+    { speaker: "Wesker", text: "Barry is no longer useful." },
+    { speaker: "Jill", text: "Just as I thought. You are the man behind all of this." },
+    { speaker: "Wesker", text: "Hah hah heh heh." },
+    { speaker: "Jill", text: "Why do you have to destroy S.T.A.R.S?" },
+    { speaker: "Wesker", text: "That's Umbrella's intention. This laboratory has been engaging in dangerous experiments, and recently an accident has occurred. Anyway, this disaster cannot be made public." },
+    { speaker: "Jill", text: "That's why having S.T.A.R.S. nosing about is so inconvenient. So you're a slave of Umbrella now, along with these virus monsters." },
+    { speaker: "Wesker", text: "I think you misunderstand me, Jill. To me, the monsters you mention mean nothing. I'm going to burn all of them together, with this entire laboratory. I must complete my mission, as ordered by Umbrella." },
+    { speaker: "Jill", text: "So you're planning something else?" },
+    { speaker: "Wesker", text: "If you succeeded in developing the world's most powerful biological weapon, what would you do? What if you were in charge?" },
+    { speaker: "Jill", text: "You must stop this now." },
+    { speaker: "Wesker", text: "You're a brave girl. But if I were you, I wouldn't give up such a big discovery. You guys are idiots. No one understands its real value." },
+    { speaker: "Jill", text: "So, you're going to steal all the research?" },
+    { speaker: "Wesker", text: "Better yet. I'm going to show you the Tyrant." }
+  ], () => {
+    room.weskerEntrySceneActive = false;
+    room.weskerEntrySceneComplete = true;
+    STATUS.setPickupHint("Wesker terminó de hablar. La puerta de Main Lab está libre.");
+  });
+}
+
+function updateChrisRescueScene(room) {
+  if (currentRoom !== "cellRoom" || room.chrisRescueComplete || dialogueState) return;
+  let chris = room.interactables.find((obj) => obj.type === "chrisInCell");
+  if (!chris) return;
+  const cell = room.interactables.find((obj) => obj.type === "detentionCell");
+  if (!room.chrisRescueStarted) {
+    room.chrisRescueStarted = true;
+    room.chrisRescueActive = true;
+    if (cell) {
+      cell.opened = true;
+      cell.solid = false;
+    }
+    chris.rescuePhase = "standing";
+    chris.standStartedAt = gameFrame;
+  }
+
+  if (chris.rescuePhase === "standing") {
+    if (gameFrame - chris.standStartedAt < 32) return;
+    chris.x = 144;
+    chris.y = 84;
+    chris.w = 15;
+    chris.h = 25;
+    chris.standing = true;
+    chris.rescuePhase = "approach";
+  }
+  if (chris.rescuePhase === "approach") {
+    chris.x = Math.max(101, chris.x - 1.05);
+    if (chris.x <= 101) {
+      chris.rescuePhase = "dialogue";
+      chris.handOnShoulder = true;
+      beginDialogue([
+        { speaker: "Chris", text: "Oh, Jill!" },
+        { speaker: "Jill", text: "Oh, Chris! You're safe!" },
+        { speaker: "Chris", text: "Yeah, I'm glad to see you're safe, too. Any news about Wesker?" },
+        { speaker: "Jill", text: "Let's talk about it later. Let's get out of here!" }
+      ], () => {
+        chris.handOnShoulder = false;
+        chris.rescuePhase = "leaving";
+      });
+    }
+  } else if (chris.rescuePhase === "leaving") {
+    chris.x -= 1.5;
+    chris.y = Math.max(82, chris.y - 0.12);
+    if (chris.x + chris.w < 58) {
+      room.interactables.splice(room.interactables.indexOf(chris), 1);
+      room.chrisRescueActive = false;
+      room.chrisRescueComplete = true;
+      STATUS.setPickupHint("Chris salió primero. Jill ya puede escapar por la puerta.");
+    }
+  }
+}
+
+function updateEmergencyTunnelScene(room) {
+  if (currentRoom !== "emergencyTunnel" || room.emergencySceneComplete || dialogueState) return;
+  if (room.emergencySceneStarted) return;
+  room.emergencySceneStarted = true;
+  room.emergencySceneActive = true;
+  emergencyCountdownStartFrame ??= gameFrame;
+  room.interactables.push(
+    { type: "staticCharacter", character: "greenSoldier", x: 113, y: 80, w: 15, h: 25, emergencyChris: true },
+    { type: "staticCharacter", character: "redVest", x: 137, y: 80, w: 17, h: 25, emergencyBarry: true }
+  );
+  STATUS.setPickupHint("Un rugido resuena en el túnel. ¡El sistema de autodestrucción se activó!");
+  beginDialogue([
+    { speaker: "Chris", text: "Go on, Jill! I'll take care of this!" },
+    { speaker: "Barry", text: "I'll assist you!" },
+    { speaker: "Jill", text: "Chris... Barry..." },
+    { speaker: "Chris", text: "Just go!" }
+  ], () => {
+    room.emergencySceneActive = false;
+    room.emergencySceneComplete = true;
+    STATUS.setPickupHint("Chris y Barry se quedaron conteniendo a la criatura. Recogé la batería junto al ascensor.");
+  });
+}
+
+function updateEmergencyCountdown() {
+  if (emergencyCountdownStartFrame === null) return;
+  if (ROOMS.heliport.finalEncounterComplete && emergencyCountdownStopFrame === null) {
+    emergencyCountdownStopFrame = gameFrame;
+  }
+  const endFrame = emergencyCountdownStopFrame ?? gameFrame;
+  const remainingFrames = Math.max(0, 3 * 60 * 60 - (endFrame - emergencyCountdownStartFrame));
+  const totalSeconds = Math.ceil(remainingFrames / 60);
+  selfDestructTimer.hidden = false;
+  selfDestructTimer.textContent = `${String(Math.floor(totalSeconds / 60)).padStart(2, "0")}:${String(totalSeconds % 60).padStart(2, "0")}`;
+  selfDestructTimer.classList.toggle("low-time", totalSeconds <= 30 && totalSeconds > 0);
+  if (totalSeconds === 0 && !emergencyCountdownExpired && !ROOMS.heliport.finalEncounterComplete) {
+    emergencyCountdownExpired = true;
+    STATUS.setHealth(0);
+    STATUS.setPickupHint("El sistema de autodestrucción se activó.");
+  }
+}
+
+const ENDING_SLIDES = [
+  { image: "Assets/ending-1.jfif", caption: "Brad picks up Jill, Chris, and Barry." },
+  { image: "Assets/ending-2.jfif", caption: "They escape by helicopter before the mansion explodes." },
+  { image: "Assets/ending-3.jfif", caption: "At last, they see the daylight." }
+];
+
+function showEndingSlide(index) {
+  endingCutsceneSlide = index;
+  const slide = ENDING_SLIDES[index];
+  endingCutsceneImage.src = slide.image;
+  endingCutsceneImage.alt = `Ending scene ${index + 1}`;
+  endingCutsceneCaption.textContent = slide.caption;
+  endingCutsceneCount.textContent = `${index + 1} / ${ENDING_SLIDES.length}`;
+  endingCutsceneNext.textContent = index === ENDING_SLIDES.length - 1 ? "The End" : "Next";
+  if (endingCutsceneTimer) clearTimeout(endingCutsceneTimer);
+  endingCutsceneTimer = index < ENDING_SLIDES.length - 1
+    ? setTimeout(() => advanceEndingCutscene(), 4200)
+    : null;
+}
+
+function beginEndingCutscene() {
+  if (endingCutsceneActive) return;
+  endingCutsceneActive = true;
+  endingCutscene.hidden = false;
+  showEndingSlide(0);
+  endingCutsceneNext.focus();
+}
+
+function advanceEndingCutscene() {
+  if (!endingCutsceneActive) return;
+  if (endingCutsceneTimer) clearTimeout(endingCutsceneTimer);
+  endingCutsceneTimer = null;
+  if (endingCutsceneSlide < ENDING_SLIDES.length - 1) {
+    showEndingSlide(endingCutsceneSlide + 1);
+    return;
+  }
+  endingCutsceneActive = false;
+  endingCutscene.hidden = true;
+  ROOMS.heliport.endingSequencePhase = "complete";
+  STATUS.setPickupHint("The End");
+}
+
+function updateEndingSequence(room) {
+  if (currentRoom !== "heliport" || !room.endingSequencePhase || room.endingSequencePhase === "complete") return;
+  if (room.endingSequencePhase === "delay") {
+    if (gameFrame - room.endingSequenceStartedAt < 120) return;
+    room.endingSequencePhase = "approach";
+    room.endingApproachStartedAt = gameFrame;
+  }
+  if (room.endingSequencePhase === "approach") {
+    const shadow = room.interactables.find((obj) => obj.type === "helicopterShadow");
+    const progress = Math.min(1, (gameFrame - room.endingApproachStartedAt) / 90);
+    if (shadow) {
+      shadow.x = 106 + (32 - 106) * progress;
+      shadow.y = 57 + (5 - 57) * progress;
+      shadow.w = 108 + (256 - 108) * progress;
+      shadow.h = 76 + (180 - 76) * progress;
+    }
+    if (progress >= 1) beginEndingCutscene();
+  }
 }
 
 function updateEnemies(room) {
@@ -1218,6 +1553,8 @@ function updateHeliportFinale(room) {
     room.interactables.splice(room.interactables.indexOf(tyrant), 1);
     room.finalEncounterComplete = true;
     room.finalTyrantDefeated = true;
+    room.endingSequencePhase = "delay";
+    room.endingSequenceStartedAt = gameFrame;
     STATUS.setPickupHint("El Tyrant quedó destruido. El helicóptero de Brad te espera para escapar.");
   }
 }
@@ -1254,6 +1591,11 @@ function updatePlant42Encounter(room) {
     plant.barry = { type: "staticCharacter", character: "redVest", x: 274, y: 144, w: 18, h: 22, plant42Barry: true };
     room.interactables.push(plant.barry);
     STATUS.setPickupHint("Barry irrumpió en la habitación con un lanzallamas.");
+    beginDialogue([
+      { speaker: "Barry", text: "What the hell is this!?" },
+      { speaker: "Jill", text: "Barry!" },
+      { speaker: "Barry", text: "Jill!" }
+    ]);
   } else if (plant.phase === "barryEntering") {
     plant.barry.x = Math.max(224, plant.barry.x - 1.35);
     if (plant.barry.x <= 224 && elapsed >= 95) {
@@ -1271,6 +1613,14 @@ function updatePlant42Encounter(room) {
     const helmetKey = room.interactables.find((obj) => obj.type === "helmetKey");
     if (helmetKey) helmetKey.revealed = true;
     STATUS.setPickupHint("Barry quemó a Plant 42 por completo. La Helmet Key quedó al descubierto.");
+    beginDialogue([
+      { speaker: "Jill", text: "You saved me!" },
+      { speaker: "Barry", text: "Yeah." },
+      { speaker: "Jill", text: "That was close. Thanks, Barry." },
+      { speaker: "Barry", text: "Don't mention it. What a monster. I can't believe, what the hell is the place, anyway!?" },
+      { speaker: "Barry", text: "Okay. I'm gonna stay in the soldier's area and take a look around. Though I'm sure there are still things in that other mansion as well. Anyway, let's start searching separately." },
+      { speaker: "Jill", text: "Okay." }
+    ]);
   }
   if (plant.phase && plant.phase !== "fight") {
     if (plant.phase === "shrinking") plant.renderScale = Math.max(0.12, 1 - (elapsed / 48) * 0.88);
@@ -1361,6 +1711,12 @@ function collectNearbyItem() {
 
 function isBossEncounterActive(room) {
   if (room === ROOMS.heliport && room.finalEncounterStarted && !room.finalEncounterComplete) return true;
+  if (room === ROOMS.heliport && room.endingSequencePhase && room.endingSequencePhase !== "complete") return true;
+  if (room === ROOMS.enricoRoom && room.enricoSceneActive) return true;
+  if (room === ROOMS.mainLabEntryB4 && room.weskerEntrySceneActive) return true;
+  if (room === ROOMS.mainLab && room.tyrantSceneRunning) return true;
+  if (room === ROOMS.cellRoom && room.chrisRescueActive) return true;
+  if (room === ROOMS.emergencyTunnel && room.emergencySceneActive) return true;
   return room.interactables.some((obj) => {
     if (obj.type === "blackTiger") return true;
     if (obj.type === "plant42") return true;
@@ -1394,19 +1750,27 @@ function updateTyrantReleaseScene(room) {
     tyrant.phase = "attackWesker";
     tyrant.x = 67;
     tyrant.y = 72;
-    if (wesker) {
-      room.interactables.splice(room.interactables.indexOf(wesker), 1);
-      room.interactables.push({ type: "weskerBody", x: 66, y: 99, w: 25, h: 12 });
+    if (!room.tyrantWeskerDialogueStarted) {
+      room.tyrantWeskerDialogueStarted = true;
+      beginDialogue([
+        { speaker: "Wesker", text: "What? Don't come this way! Nooooooo!" }
+      ], () => {
+        if (wesker) {
+          room.interactables.splice(room.interactables.indexOf(wesker), 1);
+          room.interactables.push({ type: "weskerBody", x: 66, y: 99, w: 25, h: 12 });
+        }
+        beginDialogue([
+          { speaker: "Jill", text: "It can't control what it does." }
+        ], () => {
+          tyrant.phase = "fight";
+          tyrant.alerted = true;
+          tyrant.attackAt = gameFrame + 40;
+          room.tyrantSceneRunning = false;
+          STATUS.setPickupHint("Primera fase: derrotá al Tyrant. No dejes que se acerque.");
+        });
+      });
     }
-    STATUS.setPickupHint("El Tyrant golpeó a Wesker. Ahora viene por vos.");
-  }
-  if (elapsed >= 100 && tyrant) {
-    tyrant.phase = "fight";
-    tyrant.alerted = true;
-    tyrant.attackAt = gameFrame + 40;
-    room.tyrantSceneRunning = false;
-    STATUS.setPickupHint("Primera fase: derrotá al Tyrant. No dejes que se acerque.");
-    return false;
+    return true;
   }
   return true;
 }
@@ -1569,6 +1933,18 @@ function updateInteractionPrompt() {
       : labPowerConsole.type === "powerElevatorTerminal"
         ? labElevatorCircuitConnected ? "Circuito del ascensor conectado" : "E · Conectar circuito del ascensor"
         : labElevatorCircuitConnected ? "E · Activar ascensor" : "El ascensor no tiene corriente";
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const kenneth = room.interactables.find((obj) => obj.type === "kenneth" && checkCollision(ladderReach, obj));
+  if (kenneth) {
+    interactionPrompt.textContent = "E · Inspect body";
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const forest = room.interactables.find((obj) => obj.type === "spencerBody" && checkCollision(ladderReach, obj));
+  if (forest) {
+    interactionPrompt.textContent = "E · Inspect body";
     interactionPrompt.hidden = false;
     return;
   }
@@ -1989,6 +2365,18 @@ function interactNearby() {
     updateInteractionPrompt();
     return;
   }
+  const kenneth = room.interactables.find((obj) => obj.type === "kenneth" && checkCollision(ladderReach, obj));
+  if (kenneth) {
+    STATUS.setPickupHint("He's Kenneth from the S.T.A.R.S Bravo team...! Now he's become a mere shadow of his former self.");
+    updateInteractionPrompt();
+    return;
+  }
+  const forest = room.interactables.find((obj) => obj.type === "spencerBody" && checkCollision(ladderReach, obj));
+  if (forest) {
+    STATUS.setPickupHint("It's Forest. He's been pecked to death by crows...!");
+    updateInteractionPrompt();
+    return;
+  }
   const gasValveControl = room.interactables.find((obj) => obj.type === "gasValveControl" && checkCollision(ladderReach, obj));
   if (gasValveControl) {
     gasValveControl.activated = true;
@@ -2020,10 +2408,18 @@ function interactNearby() {
     } else if (!room.tyrantSceneRunning && !room.tyrantPhaseStarted) {
       room.tyrantSceneRunning = true;
       room.tyrantPhaseStarted = true;
-      room.tyrantSceneStartedAt = gameFrame;
       tyrantConsole.activated = true;
-      room.interactables.push({ type: "tyrant", x: 31, y: 52, w: 40, h: 58, phase: "emerging", revealed: false });
-      STATUS.setPickupHint("Wesker activa la computadora. El tubo comienza a temblar.");
+      beginDialogue([
+        { speaker: "Wesker", text: "Tyrant virus is a super virus which creates a monster much stronger than human beings. Tyrant is the most powerful biological weapon in the world." },
+        { speaker: "Jill", text: "You don't mean you're experimenting on... real people?" },
+        { speaker: "Wesker", text: "This is really beautiful. All this power will be mine..." },
+        { speaker: "Jill", text: "For the sake of an awful creature?" },
+        { speaker: "Wesker", text: "Don't be upset. All weak people exist to be eaten." }
+      ], () => {
+        room.tyrantSceneStartedAt = gameFrame;
+        room.interactables.push({ type: "tyrant", x: 31, y: 52, w: 40, h: 55, phase: "emerging", revealed: false });
+        STATUS.setPickupHint("Wesker abre el tubo de contención.");
+      });
     }
     updateInteractionPrompt();
     return;
@@ -2073,7 +2469,9 @@ function interactNearby() {
       if (pairedDoor) pairedDoor.disabled = false;
       const elevator = room.interactables.find((obj) => obj.type === "elevator");
       if (elevator) elevator.powered = true;
-      STATUS.setPickupHint("Instalaste la batería. El ascensor del Courtyard Garden quedó activo y la puerta de Falls se desbloqueó.");
+      STATUS.setPickupHint(currentRoom === "emergencyTunnel"
+        ? "Instalaste la batería. El ascensor ya tiene corriente; subí al heliport."
+        : "Instalaste la batería. El ascensor del Courtyard Garden quedó activo y la puerta de Falls se desbloqueó.");
     }
     updateInteractionPrompt();
     return;
@@ -2474,20 +2872,30 @@ function interactNearby() {
 }
 
 function update() {
-  if (STATUS.isOpen() || doorCodeDialog.open || labComputerDialog.open || vJoltDialog.open) return;
+  if (endingCutsceneActive || dialogueState || STATUS.isOpen() || doorCodeDialog.open || labComputerDialog.open || vJoltDialog.open) return;
   gameFrame++;
   if (playerDamageCooldown > 0) playerDamageCooldown--;
   if (weaponCooldown > 0) weaponCooldown--;
   if (weapon.shotFlash > 0) weapon.shotFlash--;
   player.aimAngle = Math.atan2(aimPoint.y - (player.y + PLAYER_HEIGHT / 2), aimPoint.x - (player.x + PLAYER_WIDTH / 2));
   const room = ROOMS[currentRoom];
+  updateEnricoScene(room);
+  updateWeskerLabEntryScene(room);
+  updateChrisRescueScene(room);
+  updateEmergencyTunnelScene(room);
+  updateEndingSequence(room);
   updatePlant42Encounter(room);
   const tyrantSceneLocked = updateTyrantReleaseScene(room);
   const plant42Locked = currentRoom === "plant42Room" && room.interactables.some((obj) => obj.type === "plant42" && ["shrinking", "regrowing", "captured", "barryEntering", "burning"].includes(obj.phase));
+  const enricoSceneLocked = currentRoom === "enricoRoom" && room.enricoSceneActive;
+  const weskerEntrySceneLocked = currentRoom === "mainLabEntryB4" && room.weskerEntrySceneActive;
+  const chrisRescueLocked = currentRoom === "cellRoom" && room.chrisRescueActive;
+  const emergencySceneLocked = currentRoom === "emergencyTunnel" && room.emergencySceneActive;
+  const endingSequenceLocked = currentRoom === "heliport" && room.endingSequencePhase && room.endingSequencePhase !== "complete";
   player.dx = 0;
   player.dy = 0;
 
-  if (!plant42Locked && !tyrantSceneLocked) {
+  if (!plant42Locked && !tyrantSceneLocked && !enricoSceneLocked && !weskerEntrySceneLocked && !chrisRescueLocked && !emergencySceneLocked && !endingSequenceLocked) {
     if (keys.has("ArrowLeft") || keys.has("a")) player.dx -= WALK_SPEED;
     if (keys.has("ArrowRight") || keys.has("d")) player.dx += WALK_SPEED;
     if (keys.has("ArrowUp") || keys.has("w")) player.dy -= WALK_SPEED;
@@ -4237,6 +4645,33 @@ function drawRoom() {
   } else if (obj.type === "chrisInCell") {
     ctx.fillStyle = "rgba(0, 0, 0, 0.32)";
     ctx.fillRect(obj.x + 2, obj.y + obj.h - 2, obj.w - 2, 4);
+    if (obj.standing) {
+      ctx.fillStyle = "#171a1b";
+      ctx.fillRect(obj.x + 2, obj.y + 21, 5, 4);
+      ctx.fillRect(obj.x + 9, obj.y + 21, 5, 4);
+      ctx.fillStyle = "#343b3a";
+      ctx.fillRect(obj.x + 3, obj.y + 15, 5, 7);
+      ctx.fillRect(obj.x + 9, obj.y + 15, 5, 7);
+      ctx.fillStyle = "#30536a";
+      ctx.fillRect(obj.x + 2, obj.y + 8, 12, 9);
+      ctx.fillStyle = "#465548";
+      ctx.fillRect(obj.x + 4, obj.y + 9, 8, 7);
+      ctx.fillStyle = "#b8a98e";
+      ctx.fillRect(obj.x + 5, obj.y + 10, 2, 2);
+      ctx.fillRect(obj.x + 9, obj.y + 10, 2, 2);
+      ctx.fillStyle = "#d8ad87";
+      ctx.fillRect(obj.x + 4, obj.y + 2, 8, 7);
+      ctx.fillStyle = "#493020";
+      ctx.fillRect(obj.x + 3, obj.y + 1, 10, 3);
+      ctx.fillRect(obj.x + 3, obj.y + 3, 2, 4);
+      ctx.fillStyle = "#252523";
+      ctx.fillRect(obj.x + 5, obj.y + 5, 2, 1);
+      ctx.fillRect(obj.x + 10, obj.y + 5, 2, 1);
+      ctx.fillStyle = "#d8ad87";
+      ctx.fillRect(obj.x + 12, obj.y + 10, 3, 5);
+      if (obj.handOnShoulder) ctx.fillRect(obj.x - 1, obj.y + 9, 5, 3);
+      return;
+    }
     ctx.fillStyle = "#d8ad87";
     ctx.fillRect(obj.x + 3, obj.y + 2, 9, 9);
     ctx.fillStyle = "#493020";
@@ -4258,6 +4693,35 @@ function drawRoom() {
     ctx.fillRect(obj.x + 24, obj.y + 4, 5, 2);
 
   } else if (obj.type === "detentionCell") {
+    if (obj.opened) {
+      ctx.fillStyle = "rgba(35, 42, 41, 0.12)";
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+      ctx.strokeStyle = "#1b2221";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(obj.x + 1, obj.y + 1);
+      ctx.lineTo(obj.x + obj.w - 1, obj.y + 1);
+      ctx.lineTo(obj.x + obj.w - 1, obj.y + obj.h - 1);
+      ctx.lineTo(obj.x + 1, obj.y + obj.h - 1);
+      ctx.stroke();
+      ctx.strokeStyle = "#707c78";
+      ctx.lineWidth = 1;
+      for (let barX = obj.x + 8; barX < obj.x + obj.w - 4; barX += 8) {
+        ctx.beginPath();
+        ctx.moveTo(barX, obj.y + 2);
+        ctx.lineTo(barX, obj.y + obj.h - 2);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = "#8c9993";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(obj.x + 1, obj.y + 4);
+      ctx.lineTo(obj.x + 13, obj.y + 4);
+      ctx.lineTo(obj.x + 13, obj.y + obj.h - 4);
+      ctx.lineTo(obj.x + 1, obj.y + obj.h - 4);
+      ctx.stroke();
+      return;
+    }
     ctx.fillStyle = "rgba(35, 42, 41, 0.22)";
     ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
     ctx.strokeStyle = "#1b2221";
@@ -5496,6 +5960,23 @@ function drawRoom() {
       ctx.fillRect(obj.x + 14, obj.y + 8, 2, 2);
 
     } else if (obj.type === "enrico") {
+      if (obj.dead) {
+        ctx.save();
+        ctx.translate(obj.x + obj.w / 2, obj.y + obj.h / 2);
+        ctx.rotate(-0.16);
+        ctx.fillStyle = "#252a31";
+        ctx.fillRect(-10, -4, 15, 8);
+        ctx.fillRect(-13, -3, 6, 4);
+        ctx.fillStyle = "#46505a";
+        ctx.fillRect(-7, -3, 9, 6);
+        ctx.fillStyle = "#d6b49a";
+        ctx.fillRect(5, -4, 6, 7);
+        ctx.fillStyle = "#e4e1d5";
+        ctx.fillRect(5, -5, 6, 2);
+        ctx.fillStyle = "#661d1b";
+        ctx.fillRect(7, -1, 3, 3);
+        ctx.restore();
+      } else {
       ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
       ctx.fillRect(obj.x + 1, obj.y + obj.h - 3, obj.w + 2, 4);
       ctx.fillStyle = "#303845";
@@ -5513,6 +5994,23 @@ function drawRoom() {
       ctx.fillStyle = "#25221f";
       ctx.fillRect(obj.x + 7, obj.y + 5, 2, 1);
       ctx.fillRect(obj.x + 13, obj.y + 5, 2, 1);
+      }
+
+    } else if (obj.type === "enricoShadow") {
+      ctx.fillStyle = "#080909";
+      ctx.fillRect(obj.x + 1, obj.y, 10, 5);
+      ctx.fillRect(obj.x, obj.y + 5, 12, 13);
+      ctx.fillRect(obj.x + 1, obj.y + 18, 4, 7);
+      ctx.fillRect(obj.x + 7, obj.y + 18, 4, 7);
+      ctx.fillRect(obj.x - 3, obj.y + 8, 5, 5);
+      ctx.fillRect(obj.x - 8, obj.y + 9, 7, 2);
+
+    } else if (obj.type === "enricoShotFlash") {
+      ctx.fillStyle = "#f4d05f";
+      ctx.fillRect(obj.x + 3, obj.y + 2, 6, 6);
+      ctx.fillStyle = "#fff1b0";
+      ctx.fillRect(obj.x + 5, obj.y, 2, 10);
+      ctx.fillRect(obj.x, obj.y + 4, 12, 2);
 
     } else if (obj.type === "zombie") {
       // --- ZOMBIE PRIMER ENCUENTRO (De espaldas comiendo / arrodillado) ---
@@ -5917,7 +6415,9 @@ function drawTrophyDarkness() {
 
 function loop() {
   STATUS.tick();
+  updateDialogue();
   update();
+  updateEmergencyCountdown();
   drawRoom();
   drawPlayer();
   drawTrophyDarkness();

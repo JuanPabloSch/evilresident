@@ -12,6 +12,18 @@
       <div class="game-layout">
         <div class="game-screen">
           <canvas id="game" width="320" height="192" aria-label="Pantalla del juego"></canvas>
+          <button id="scene-dialogue" class="scene-dialogue" type="button" hidden aria-label="Avanzar diálogo">
+            <span id="scene-speaker" class="scene-speaker"></span>
+            <span id="scene-line" class="scene-line"></span>
+            <span id="scene-prompt" class="scene-prompt"></span>
+          </button>
+          <section id="ending-cutscene" class="ending-cutscene" hidden aria-label="Final">
+            <img id="ending-cutscene-image" alt="Escena final">
+            <p id="ending-cutscene-caption"></p>
+            <span id="ending-cutscene-count"></span>
+            <button id="ending-cutscene-next" type="button">Next</button>
+          </section>
+          <div id="self-destruct-timer" class="self-destruct-timer" hidden aria-live="polite"></div>
           <div class="ammo-display" aria-live="polite"><span id="ammo-loaded">12</span><i>/</i><span id="ammo-reserve">36</span><small id="ammo-type">9MM</small></div>
           <div id="interaction-prompt" class="interaction-prompt" aria-live="polite"></div>
           <dialog id="door-code-dialog" class="door-code-dialog" aria-labelledby="door-code-title">

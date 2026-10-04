@@ -99,6 +99,82 @@ canvas {
   cursor: crosshair;
 }
 
+.scene-dialogue {
+  position: absolute;
+  z-index: 3;
+  right: 12px;
+  bottom: 12px;
+  left: 12px;
+  display: grid;
+  gap: 3px;
+  max-height: 43%;
+  overflow: auto;
+  padding: 7px 9px 6px;
+  border: 2px solid #a88b50;
+  background: rgba(8, 10, 9, 0.95);
+  color: #e8e4d6;
+  font: 11px/1.25 monospace;
+  text-align: left;
+  cursor: pointer;
+}
+
+.scene-dialogue[hidden] { display: none; }
+.scene-speaker { color: #e2be68; font-weight: bold; }
+.scene-line { min-height: 2.5em; white-space: pre-wrap; }
+.scene-prompt { color: #a6b48d; font-size: 9px; text-align: right; }
+
+.ending-cutscene {
+  position: absolute;
+  z-index: 6;
+  inset: 0;
+  overflow: hidden;
+  background: #050605;
+  color: #f1f0e7;
+}
+
+.ending-cutscene[hidden] { display: none; }
+.ending-cutscene img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
+.ending-cutscene p {
+  position: absolute;
+  right: 8px;
+  bottom: 25px;
+  left: 8px;
+  margin: 0;
+  padding: 6px 7px;
+  background: rgba(5, 7, 6, 0.88);
+  color: #f1f0e7;
+  font: bold 11px/1.25 monospace;
+}
+.ending-cutscene span { position: absolute; right: 9px; top: 7px; color: #f1f0e7; font: 10px monospace; }
+.ending-cutscene button {
+  position: absolute;
+  right: 8px;
+  bottom: 5px;
+  padding: 2px 6px;
+  border: 1px solid #9e9a82;
+  border-radius: 0;
+  background: #11140f;
+  color: #f1f0e7;
+  font: 10px monospace;
+  cursor: pointer;
+}
+
+.self-destruct-timer {
+  position: absolute;
+  z-index: 2;
+  top: 10px;
+  left: 10px;
+  padding: 5px 7px;
+  border: 1px solid #b1483e;
+  background: rgba(12, 8, 7, 0.9);
+  color: #f0c7a5;
+  font: bold 14px/1 monospace;
+  pointer-events: none;
+}
+
+.self-destruct-timer.low-time { color: #ff5947; animation: timer-warning 0.8s steps(2, end) infinite; }
+@keyframes timer-warning { to { opacity: 0.45; } }
+
 .ammo-display {
   position: absolute;
   top: 10px;

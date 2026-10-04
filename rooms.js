@@ -1248,12 +1248,12 @@ outsideBoiler: {
     ],
     constrainToWalkablePolygon: true,
     doors: [
-      { id: "elevatorToHeliport", x: 20, y: 22, w: 8, h: 28, targetRoom: "heliport", spawnX: 260, spawnY: 34 },
+      { id: "elevatorToHeliport", x: 20, y: 22, w: 8, h: 28, targetRoom: "heliport", spawnX: 260, spawnY: 34, disabled: true, blockedMessage: "El ascensor no tiene corriente. Instalá la batería." },
       { id: "door1ToLaboratoryEntry", x: 292, y: 143, w: 8, h: 28, targetRoom: "laboratoryEntry", spawnX: 105, spawnY: 95 }
     ],
     interactables: [
       { type: "elevator", x: 29, y: 22, w: 26, h: 28, solid: false },
-      { type: "batterySocket", x: 62, y: 20, w: 24, h: 21, solid: false },
+      { type: "batterySocket", x: 62, y: 20, w: 24, h: 21, solid: false, elevatorDoorId: "elevatorToHeliport" },
       { type: "carBattery", x: 246, y: 151, w: 16, h: 12 }
     ]
   },
