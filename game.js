@@ -205,10 +205,11 @@ let player = {
   isMoving: false,
   animFrame: 0,
   animTimer: 0,
+  outfitIndex: 0,
   aimAngle: -Math.PI / 2
 };
 
-const weapon = { loaded: 12, capacity: 12, shotFlash: 0, hitPoints: new WeakMap() };
+const weapon = { loaded: 15, capacity: 15, shotFlash: 0, hitPoints: new WeakMap() };
 let equippedWeapon = "handgun";
 let selectedLauncherAmmo = "flameRounds";
 let weaponCooldown = 0;
@@ -239,6 +240,9 @@ const AMMO_INFO = {
 };
 let aimPoint = { x: 0, y: 0 };
 let gameFrame = 0;
+let playtimeMs = 0;
+let lastPlayTick = null;
+let runSaveCount = 0;
 let playerDamageCooldown = 0;
 const unlockedLocks = new Set();
 const interactionPrompt = document.getElementById("interaction-prompt");
@@ -259,6 +263,20 @@ const charactersScreen = document.getElementById("characters-screen");
 const extrasBack = document.getElementById("extras-back");
 const extrasCharacters = document.getElementById("extras-characters");
 const charactersBack = document.getElementById("characters-back");
+const extrasGallery = document.getElementById("extras-gallery");
+const galleryScreen = document.getElementById("gallery-screen");
+const galleryImage = document.getElementById("gallery-image");
+const galleryCount = document.getElementById("gallery-count");
+const galleryBack = document.getElementById("gallery-back");
+const galleryPrevious = document.getElementById("gallery-previous");
+const galleryNext = document.getElementById("gallery-next");
+let galleryIndex = 0;
+const GALLERY_IMAGES = [
+  { src: "Assets/gallery-ev1.png", alt: "Pixel-art zombie with the Evil Resident title" },
+  { src: "Assets/gallery-ev2.jfif", alt: "Evil Resident title artwork" },
+  { src: "Assets/gallery-ev3.jfif", alt: "Pixel-art portraits of Barry, Chris, Jill, Wesker and Rebecca" },
+  { src: "Assets/gallery-ev4.png", alt: "Golden Resident Evil-inspired emblem and project credit" }
+];
 const introSequence = document.getElementById("intro-sequence");
 const introSequenceImage = document.getElementById("intro-sequence-image");
 const introSequenceDate = document.getElementById("intro-sequence-date");
@@ -541,6 +559,12 @@ const MANSION_RETURN_ENCOUNTERS = {
 };
 
 function spawnMansionReturnAmbushes() {
+  const storeroomSupplies = ROOMS.mansionStoreroom.interactables;
+  storeroomSupplies
+    .filter((obj) => ["shotgunShells", "firstAidSpray", "acidRounds"].includes(obj.type))
+    .forEach((obj) => { obj.revealed = true; });
+  const barryNote = ROOMS.eastStairway1F.interactables.find((obj) => obj.type === "barrySupplyNote");
+  if (barryNote) barryNote.revealed = true;
   if (mansionReturnAmbushesSpawned) return;
   mansionReturnAmbushesSpawned = true;
   Object.entries(MANSION_RETURN_ENCOUNTERS).forEach(([roomId, encounter]) => {
@@ -560,6 +584,19 @@ function spawnMansionReturnAmbushes() {
     });
     room.mansionReturnAmbushesSpawned = true;
   });
+}
+
+function spawnSpiderlings(room, source) {
+  const offsets = [[-18, -12], [-6, -19], [8, -17], [19, -8], [18, 9], [6, 17], [-9, 16], [-20, 5]];
+  offsets.forEach(([dx, dy], index) => room.interactables.push({
+    type: "spiderling",
+    x: source.x + source.w / 2 + dx,
+    y: source.y + source.h / 2 + dy,
+    w: 8,
+    h: 7,
+    nextAttackAt: gameFrame + 35 + index * 3
+  }));
+  STATUS.setPickupHint("Pequeñas arañas se dispersaron por el suelo. Podés aplastarlas al caminar.");
 }
 
 function updateAmmoDisplay() {
@@ -665,7 +702,7 @@ function createGameSnapshot() {
     });
   });
   return {
-    version: 1, rooms, currentRoom, player: { ...player }, gameFrame,
+    version: 1, rooms, currentRoom, player: { ...player }, gameFrame, playtimeMs, runSaveCount,
     trophyLightsOn, waterDrained, armsStorageUnlocked, labBlackoutRestored,
     labElevatorCircuitConnected, weaponLoaded: weapon.loaded, equippedWeapon,
     selectedLauncherAmmo, unlockedLocks: [...unlockedLocks], status: STATUS.serialize(),
@@ -693,6 +730,9 @@ function restoreGameSnapshot(snapshot) {
   currentRoom = snapshot.currentRoom;
   player = { ...player, ...snapshot.player, dx: 0, dy: 0, isMoving: false };
   gameFrame = snapshot.gameFrame || 0;
+  playtimeMs = Math.max(0, Number(snapshot.playtimeMs) || 0);
+  runSaveCount = Math.max(0, Number(snapshot.runSaveCount) || 0);
+  lastPlayTick = null;
   trophyLightsOn = Boolean(snapshot.trophyLightsOn);
   waterDrained = Boolean(snapshot.waterDrained);
   armsStorageUnlocked = Boolean(snapshot.armsStorageUnlocked);
@@ -775,6 +815,7 @@ function activateSaveSlot(index) {
   try {
     STATUS.consumeItem("inkRibbon");
     data.totalSaves++;
+    runSaveCount++;
     data.slots[index] = {
       savedAt: new Date().toISOString(),
       saves: (existing?.saves || 0) + 1,
@@ -786,6 +827,7 @@ function activateSaveSlot(index) {
   } catch {
     STATUS.restore(previousStatus);
     data.totalSaves--;
+    runSaveCount = Math.max(0, runSaveCount - 1);
     saveGameMessage.textContent = "No se pudo guardar. El espacio del navegador no está disponible.";
     saveGameMessage.dataset.state = "error";
   }
@@ -814,6 +856,9 @@ function playIntroCutsceneScene(index) {
 }
 
 function startNewGameFlow() {
+  playtimeMs = 0;
+  lastPlayTick = null;
+  runSaveCount = 0;
   startScreen.hidden = true;
   introSequence.hidden = false;
   introCutsceneActive = true;
@@ -848,6 +893,25 @@ charactersBack.addEventListener("click", () => {
   charactersScreen.hidden = true;
   titleExtrasMenu.hidden = false;
   extrasCharacters.focus();
+});
+function showGalleryImage(index) {
+  galleryIndex = (index + GALLERY_IMAGES.length) % GALLERY_IMAGES.length;
+  galleryImage.src = GALLERY_IMAGES[galleryIndex].src;
+  galleryImage.alt = GALLERY_IMAGES[galleryIndex].alt;
+  galleryCount.textContent = `${galleryIndex + 1} / ${GALLERY_IMAGES.length}`;
+}
+extrasGallery.addEventListener("click", () => {
+  titleExtrasMenu.hidden = true;
+  galleryScreen.hidden = false;
+  showGalleryImage(0);
+  galleryBack.focus();
+});
+galleryPrevious.addEventListener("click", () => showGalleryImage(galleryIndex - 1));
+galleryNext.addEventListener("click", () => showGalleryImage(galleryIndex + 1));
+galleryBack.addEventListener("click", () => {
+  galleryScreen.hidden = true;
+  titleExtrasMenu.hidden = false;
+  extrasGallery.focus();
 });
 
 saveModeSave.addEventListener("click", () => { saveMenuMode = "save"; renderSaveMenu(); });
@@ -1025,8 +1089,9 @@ function fireWeapon() {
         : equippedWeapon === "shotgun" ? 60
           : equippedWeapon === "colt" ? 75
             : ["bazooka", "grenadeLauncher"].includes(equippedWeapon)
-              ? ["fireRounds", "flameRounds"].includes(ammo.type) ? 90
-                : ["acidRounds", "explosiveRounds"].includes(ammo.type) ? 60 : 0
+              ? ammo.type === "flameRounds" ? 110
+                : ammo.type === "fireRounds" ? 90
+                  : ["acidRounds", "explosiveRounds"].includes(ammo.type) ? 60 : 0
               : equippedWeapon === "rocketLauncher" ? 900 : 0
       : null;
     const tyrantDamage = target.type === "tyrant"
@@ -1039,6 +1104,7 @@ function fireWeapon() {
       : null;
     const damage = target.type === "tyrant" ? tyrantDamage
       : target.type === "plant42" ? plant42Damage
+      : ["spider", "blackTiger"].includes(target.type) && ["bazooka", "grenadeLauncher"].includes(equippedWeapon) && ammo.type === "flameRounds" ? 60
       : scriptedYawn && equippedWeapon === "shotgun" ? 34
       : target.type === "zombieDog" ? equippedWeapon === "handgun" ? 20 : 100
       : equippedWeapon === "knife" ? 10
@@ -1085,6 +1151,9 @@ function fireWeapon() {
         weapon.hitPoints.delete(target);
         STATUS.setPickupHint("Plant 42 se marchitó... pero algo vuelve a moverse entre sus ramas.");
       } else {
+        if (target.type === "blackTiger" || (target.type === "spider" && currentRoom === "recRoom")) {
+          spawnSpiderlings(room, target);
+        }
         room.interactables.splice(room.interactables.indexOf(target), 1);
         if (target.kennethZombie) ROOMS.teaRoom.kennethZombieKilled = true;
         if (target.diningAmbushZombie) ROOMS.diningRoom.diningZombieDefeated = true;
@@ -1738,6 +1807,73 @@ function updateEmergencyTunnelScene(room) {
   });
 }
 
+function updateTrapBarryRescue(room) {
+  if (currentRoom === "trapRoom" && room.rescuePending && !room.rescueDialogueStarted) {
+    const ceiling = room.interactables.find((obj) => obj.type === "ceilingTrap");
+    if (ceiling) ceiling.y = Math.min(71, 48 + (gameFrame - room.rescueStartedAt) * 0.55);
+    if (gameFrame - room.rescueStartedAt < 42) return;
+    room.rescueDialogueStarted = true;
+    beginDialogue([
+      { speaker: "Jill", text: "Hey... what's going on?" },
+      { speaker: "Barry", text: "Jill? Is that you, Jill? What happened?" },
+      { speaker: "Jill", text: "Barry? Help me, please. The door won't open. QUICK!" },
+      { speaker: "Barry", text: "Stay away from the door, Jill. I'm gonna kick this door down." },
+      { speaker: "Barry", text: "Hurry! This way." }
+    ], () => {
+      const winding = ROOMS.windingPassage;
+      currentRoom = "windingPassage";
+      player.x = 44;
+      player.y = 124;
+      document.getElementById("room-title").textContent = winding.name;
+      MANSION_MAP.setCurrentRoom(currentRoom);
+      let barry = winding.interactables.find((obj) => obj.trapRescueBarry);
+      if (!barry) {
+        barry = { type: "staticCharacter", character: "redVest", x: 59, y: 95, w: 18, h: 22, trapRescueBarry: true };
+        winding.interactables.push(barry);
+      }
+      room.rescuePending = false;
+      room.rescueActive = false;
+      room.rescueComplete = true;
+      STATUS.setPickupHint("Barry derribó la puerta y te sacó de la trampa.");
+      beginDialogue([
+        { speaker: "Jill", text: "Oh, Barry." },
+        { speaker: "Barry", text: "That was too close. You were almost a Jill sandwich." },
+        { speaker: "Jill", text: "You're right. Barry, thanks for saving my life. But Barry, didn't you say you were going back to the dining room to do some research? Why on earth are you here?" },
+        { speaker: "Barry", text: "Er... I just had something I wanted to check. Now, let's get back to searching for the lost Captain and Chris, shall we?" },
+        { speaker: "Jill", text: "Thank you, Barry." },
+        { speaker: "Barry", text: "Yeah, yeah..." }
+      ], () => beginDialogue([
+        { speaker: "Barry", text: "Jill!" },
+        { speaker: "Jill", text: "Barry!" },
+        { speaker: "Barry", text: "I found something good!" },
+        { speaker: "Jill", text: "What is it?" },
+        { speaker: "Barry", text: "It's a weapon. It's really powerful, especially against living things. Better take it with you!" },
+        { speaker: "Jill", text: "Thanks, Barry!" },
+        { speaker: "Barry", text: "I'm going to search this area a little more." }
+      ], () => {
+        if (!STATUS.addItem("acidRounds")) {
+          ROOMS.windingPassage.interactables.push({ type: "acidRounds", x: 56, y: 132, w: 10, h: 8 });
+          STATUS.setPickupHint("Barry dejó las Acid Rounds a tu lado; no había espacio en el inventario.");
+        } else {
+          STATUS.setPickupHint("Barry te dio 6 Acid Rounds.");
+        }
+        barry.leaving = true;
+        ROOMS.windingPassage.trapRescueDone = true;
+        updateInteractionPrompt();
+      }));
+    });
+  }
+
+  if (currentRoom === "windingPassage") {
+    const barry = room.interactables.find((obj) => obj.trapRescueBarry && obj.leaving);
+    if (barry) {
+      barry.x -= 1.2;
+      barry.y = Math.min(118, barry.y + 0.8);
+      if (barry.x <= 30) room.interactables.splice(room.interactables.indexOf(barry), 1);
+    }
+  }
+}
+
 function updateRichardScene(room) {
   if (currentRoom !== "pillarPassage" || room.richardSceneComplete || dialogueState) return;
   const richard = room.interactables.find((obj) => obj.type === "richardBody");
@@ -1818,12 +1954,24 @@ const ENDING_SLIDES = [
   { image: "Assets/ending-3.jfif", caption: "At last, they see the daylight." }
 ];
 
+function formatPlaytime(milliseconds) {
+  const totalSeconds = Math.floor(milliseconds / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
+    : `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
 function showEndingSlide(index) {
   endingCutsceneSlide = index;
   const slide = ENDING_SLIDES[index];
   endingCutsceneImage.src = slide.image;
   endingCutsceneImage.alt = `Ending scene ${index + 1}`;
-  endingCutsceneCaption.textContent = slide.caption;
+  endingCutsceneCaption.textContent = index === ENDING_SLIDES.length - 1
+    ? `${slide.caption}\n\nTime: ${formatPlaytime(playtimeMs)}  ·  Times saved: ${runSaveCount}`
+    : slide.caption;
   endingCutsceneCount.textContent = `${index + 1} / ${ENDING_SLIDES.length}`;
   endingCutsceneNext.textContent = index === ENDING_SLIDES.length - 1 ? "The End" : "Next";
   if (endingCutsceneTimer) clearTimeout(endingCutsceneTimer);
@@ -1933,6 +2081,16 @@ function updateEnemies(room) {
       monsterPlant.animFrame = 0;
     }
   }
+  const rootCrack = room.interactables.find((obj) => obj.type === "floorHole" && obj.rootActive && !obj.covered);
+  if (rootCrack && checkCollision({ x: player.x, y: player.y, w: PLAYER_WIDTH, h: PLAYER_HEIGHT }, rootCrack)) {
+    rootCrack.nextAttackAt ??= gameFrame + 24;
+    if (gameFrame >= rootCrack.nextAttackAt && playerDamageCooldown === 0) {
+      STATUS.setHealth(STATUS.getHealth() - 2);
+      playerDamageCooldown = 20;
+      rootCrack.nextAttackAt = gameFrame + 60;
+      STATUS.setPickupHint("Una raíz salió por la grieta y te alcanzó.");
+    }
+  }
   room.interactables.forEach((window) => {
     if (!window.dogEntryId || window.dogTriggered) return;
     const distance = Math.hypot(playerX - (window.x + window.w / 2), playerY - (window.y + window.h / 2));
@@ -1948,6 +2106,19 @@ function updateEnemies(room) {
   const obstacles = room.interactables.filter((obj) => obj.solid && !ENEMY_TYPES[obj.type]);
 
   room.interactables.forEach((enemy) => {
+    if (enemy.type === "spiderling") {
+      const playerBox = { x: player.x, y: player.y, w: PLAYER_WIDTH, h: PLAYER_HEIGHT };
+      if (checkCollision(playerBox, enemy)) {
+        if (player.isMoving) {
+          room.interactables.splice(room.interactables.indexOf(enemy), 1);
+        } else if (gameFrame >= (enemy.nextAttackAt ?? 0) && playerDamageCooldown === 0) {
+          STATUS.setHealth(STATUS.getHealth() - 1);
+          playerDamageCooldown = 16;
+          enemy.nextAttackAt = gameFrame + 35;
+        }
+      }
+      return;
+    }
     if (enemy.scriptedRoofedHunter) return;
     if (enemy.type === "plant42" && enemy.phase && enemy.phase !== "fight") return;
     if (enemy.type === "tyrant" && enemy.phase !== "fight" && !(enemy.finalEncounter && enemy.phase === "downed" && equippedWeapon === "rocketLauncher")) return;
@@ -2186,7 +2357,7 @@ function collectNearbyItem() {
     obj.requiresLadder && STATUS.getItemName(obj.type) && obj.revealed !== false && !isStepLadderInPlace(room, obj.requiresLadder) && checkCollision(playerReach, obj)
   );
   if (itemNeedsLadder) {
-    STATUS.setPickupHint("La Square Crank está en alto. Acercá la escalerita al estante.");
+    STATUS.setPickupHint(`${STATUS.getItemName(itemNeedsLadder.type)} está en alto. Acercá la escalerita para alcanzarla.`);
     return;
   }
   const itemIndex = room.interactables.findIndex((obj) =>
@@ -2201,9 +2372,12 @@ function collectNearbyItem() {
     STATUS.setPickupHint("No te lleves el Gold Emblem sin el Emblem del Dining Room; podrías quedar encerrado.");
     return;
   }
-  if (STATUS.addItem(item.type)) {
+  if (STATUS.addItem(item.type, item.quantity)) {
     room.interactables.splice(itemIndex, 1);
-    if (item.type === "mansionEmblem") {
+    if (item.type === "vJoltReport" && currentRoom === "room003") {
+      room.vJoltReportRemoved = true;
+      STATUS.setPickupHint("Sacaste el V-JOLT Report. Quedó un espacio vacío en la estantería.");
+    } else if (item.type === "mansionEmblem") {
       const socket = room.interactables.find((obj) => obj.type === "fireplaceSocket");
       if (socket) socket.revealed = true;
       STATUS.setPickupHint("Recogiste el Emblem. Quedó libre el hueco de la chimenea.");
@@ -2433,6 +2607,28 @@ function updateInteractionPrompt() {
   const room = ROOMS[currentRoom];
   const movableLadder = room.interactables.find((obj) => obj.type === "stepLadder" && obj.resettable);
   const ladderReach = { x: player.x - 14, y: player.y - 14, w: PLAYER_WIDTH + 28, h: PLAYER_HEIGHT + 28 };
+  const lockedNightstand = room.interactables.find((obj) => obj.type === "lockedNightstand" && !obj.opened && checkCollision(ladderReach, obj));
+  if (lockedNightstand) {
+    interactionPrompt.textContent = STATUS.hasItem("lockpick")
+      ? "E · Abrir mesita con Lockpick"
+      : "Mesita cerrada: necesitás Lockpick";
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const bookPuzzleShelf = currentRoom === "room003" && room.interactables.find((obj) => obj.bookPuzzleShelf && room.vJoltReportRemoved && !room.blankBookInserted && checkCollision(ladderReach, obj));
+  if (bookPuzzleShelf) {
+    interactionPrompt.textContent = STATUS.hasItem("blankBook")
+      ? "E · Colocar Blank Book en el espacio vacío"
+      : "El hueco de la estantería necesita el Blank Book";
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const clothesRack = currentRoom === "wardrobeCloset" && room.interactables.find((obj) => obj.type === "clothesRack" && checkCollision(ladderReach, obj));
+  if (clothesRack) {
+    interactionPrompt.textContent = "E · Probar otro cambio de ropa";
+    interactionPrompt.hidden = false;
+    return;
+  }
   const typewriter = room.interactables.find((obj) => obj.type === "typewriter" && checkCollision(ladderReach, obj));
   if (typewriter) {
     interactionPrompt.textContent = "E · Usar máquina de escribir";
@@ -2525,6 +2721,11 @@ function updateInteractionPrompt() {
   }
   const door = nearbyDoor();
   if (door) {
+    if (currentRoom === "trapRoom" && room.rescueActive) {
+      interactionPrompt.textContent = "La puerta no abre";
+      interactionPrompt.hidden = false;
+      return;
+    }
     if (isBossEncounterActive(room)) {
       interactionPrompt.textContent = "No puedo irme ahora. Hay algo más urgente.";
       interactionPrompt.hidden = false;
@@ -2540,6 +2741,8 @@ function updateInteractionPrompt() {
     const crestsLocked = missingCrests.length > 0 && !unlockedLocks.has(door.lockId);
     const sideLocked = door.unlockFromSide && !unlockedLocks.has(door.lockId);
     const switchLocked = door.switchRequired === "armsStorageUnlocked" && !armsStorageUnlocked;
+    const bookPuzzleLocked = door.bookPuzzleRequired === "plant42Shelf" && !ROOMS.room003.blankBookInserted;
+    const floorPuzzleLocked = door.floorPuzzleRequired === "undergroundEntryFloor" && !ROOMS.undergroundEntry.floorTurned;
     const ladderBlocked = door.stepLadderTarget && !isStepLadderInPlace(ROOMS[currentRoom], door.stepLadderTarget);
     const gasPuzzleBlocked = currentRoom === "operatingRoom" && door.id === "ventDropToMorgue" && !room.interactables.some((obj) => obj.type === "gasValveControl" && obj.activated);
     if (gasPuzzleBlocked) {
@@ -2567,6 +2770,10 @@ function updateInteractionPrompt() {
         ? door.unlockFromSide === currentRoom ? "E · Destrabar desde acá" : "E · Cerrada del otro lado"
       : switchLocked
         ? "E · Cerrada: activá el switch en Control Room B1"
+      : bookPuzzleLocked
+        ? "E · La estantería de Room 003 requiere el Blank Book"
+      : floorPuzzleLocked
+        ? "E · El piso está separado por un pozo. Usá la Hex Crank junto a él"
       : ladderBlocked
         ? "E · Mové la escalerita bajo el conducto"
         : `E · Abrir: ${ROOMS[door.targetRoom].name}`;
@@ -2600,9 +2807,11 @@ function updateInteractionPrompt() {
     interactionPrompt.hidden = false;
     return;
   }
-  const floorHole = room.interactables.find((obj) => obj.type === "floorHole" && obj.revealed && checkCollision(reach, obj));
+  const floorHole = room.interactables.find((obj) => obj.type === "floorHole" && ((obj.coverable && !obj.covered) || obj.revealed) && checkCollision(reach, obj));
   if (floorHole) {
-    interactionPrompt.textContent = STATUS.hasItem("rope") ? "E · Bajar usando la Rope" : "Necesitás la Rope para bajar";
+    interactionPrompt.textContent = floorHole.coverable
+      ? floorHole.covered ? "Grieta cubierta" : "E · Tapar la grieta"
+      : STATUS.hasItem("rope") ? "E · Bajar usando la Rope" : "Necesitás la Rope para bajar";
     interactionPrompt.hidden = false;
     return;
   }
@@ -2621,6 +2830,14 @@ function updateInteractionPrompt() {
   const chest = room.interactables.find((obj) => obj.type === "itemChest" && checkCollision(reach, obj));
   if (chest) {
     interactionPrompt.textContent = "E · Abrir baúl de objetos";
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const floorCrankSocket = currentRoom === "undergroundEntry" && room.interactables.find((obj) => obj.type === "crankSocket" && obj.floorPuzzle && checkCollision(reach, obj));
+  if (floorCrankSocket) {
+    interactionPrompt.textContent = room.floorTurned
+      ? "El piso ya está girado sobre el pozo"
+      : STATUS.hasItem("hexCrank") ? "E · Usar Hex Crank para girar el piso" : "Necesitás la Hex Crank";
     interactionPrompt.hidden = false;
     return;
   }
@@ -2712,22 +2929,28 @@ function updateInteractionPrompt() {
     obj.requiresLadder && STATUS.getItemName(obj.type) && obj.revealed !== false && !isStepLadderInPlace(room, obj.requiresLadder) && checkCollision(itemReach, obj)
   );
   if (itemNeedsLadder) {
-    interactionPrompt.textContent = "Acercá la escalerita al estante";
+    interactionPrompt.textContent = `Acercá la escalerita para alcanzar ${STATUS.getItemName(itemNeedsLadder.type)}`;
     interactionPrompt.hidden = false;
     return;
   }
   const item = room.interactables.find((obj) => STATUS.getItemName(obj.type) && obj.revealed !== false && (!obj.pickupAfter || gameFrame >= obj.pickupAfter) && (!obj.requiresDark || !trophyLightsOn) && (!obj.requiresLadder || isStepLadderInPlace(room, obj.requiresLadder)) && checkCollision(itemReach, obj));
   const inspectableBody = room.interactables.find((obj) => ["kenneth", "spencerBody"].includes(obj.type) && checkCollision(itemReach, obj));
+  const readableNote = room.interactables.find((obj) => obj.type === "barrySupplyNote" && checkCollision(itemReach, obj));
   interactionPrompt.textContent = item
     ? item.type === "goldEmblem" && !STATUS.hasItem("mansionEmblem")
       ? "Primero necesitás el Emblem del Dining Room"
       : `E · Recoger: ${STATUS.getItemName(item.type)}`
-    : inspectableBody ? "E · Inspeccionar" : "";
-  interactionPrompt.hidden = !item && !inspectableBody;
+    : inspectableBody ? "E · Inspeccionar"
+      : readableNote ? "E · Leer nota" : "";
+  interactionPrompt.hidden = !item && !inspectableBody && !readableNote;
 }
 
 function transitionThroughDoor(door) {
   const sourceRoom = currentRoom;
+  if (currentRoom === "trapRoom" && ROOMS.trapRoom.rescueActive) {
+    STATUS.setPickupHint("La puerta no cede. El techo se está cerrando.");
+    return;
+  }
   if (isBossEncounterActive(ROOMS[currentRoom])) {
     STATUS.setPickupHint("No puedo irme ahora. Hay algo más urgente.");
     return;
@@ -2737,10 +2960,12 @@ function transitionThroughDoor(door) {
     const trapRoom = ROOMS.trapRoom;
     if (livingRoom.shotgunTaken && !livingRoom.brokenShotgunPlaced && !trapRoom.trapTriggered) {
       trapRoom.trapTriggered = true;
+      trapRoom.rescuePending = true;
+      trapRoom.rescueActive = true;
+      trapRoom.rescueStartedAt = gameFrame;
       const ceiling = trapRoom.interactables.find((obj) => obj.type === "ceilingTrap");
       if (ceiling) ceiling.revealed = true;
-      STATUS.setHealth(0);
-      STATUS.setPickupHint("El mecanismo se activó. El techo cayó y te aplastó.");
+      STATUS.setPickupHint("¡El techo se activa! Las puertas no responden.");
     }
   }
   if (currentRoom === "operatingRoom") {
@@ -2857,6 +3082,41 @@ function interactNearby() {
   if (currentRoom === "mainLab" && room.tyrantSceneRunning) return;
   const movableLadder = room.interactables.find((obj) => obj.type === "stepLadder" && obj.resettable);
   const ladderReach = { x: player.x - 14, y: player.y - 14, w: PLAYER_WIDTH + 28, h: PLAYER_HEIGHT + 28 };
+  const lockedNightstand = room.interactables.find((obj) => obj.type === "lockedNightstand" && !obj.opened && checkCollision(ladderReach, obj));
+  if (lockedNightstand) {
+    if (!STATUS.hasItem("lockpick")) {
+      STATUS.setPickupHint("La mesita está cerrada. Necesitás el Lockpick.");
+    } else {
+      lockedNightstand.opened = true;
+      const contents = room.interactables.filter((obj) => obj.containerId === lockedNightstand.contents);
+      contents.forEach((obj) => { obj.revealed = true; });
+      const contentNames = contents.map((obj) => STATUS.getItemName(obj.type)).filter(Boolean);
+      STATUS.setPickupHint(`Abriste la mesita con el Lockpick. ${contentNames.length ? `Encontraste: ${contentNames.join(", ")}.` : "Está vacía."}`);
+    }
+    updateInteractionPrompt();
+    return;
+  }
+  const bookPuzzleShelf = currentRoom === "room003" && room.interactables.find((obj) => obj.bookPuzzleShelf && room.vJoltReportRemoved && !room.blankBookInserted && checkCollision(ladderReach, obj));
+  if (bookPuzzleShelf) {
+    if (!STATUS.consumeItem("blankBook")) {
+      STATUS.setPickupHint("El espacio vacío tiene el tamaño justo para el Blank Book de Room 001.");
+    } else {
+      room.blankBookInserted = true;
+      const plantDoor = room.doors.find((door) => door.bookPuzzleRequired === "plant42Shelf");
+      if (plantDoor) plantDoor.puzzleUnlocked = true;
+      STATUS.setPickupHint("Colocaste el Blank Book en la estantería. Se abrió el acceso a Plant 42.");
+    }
+    updateInteractionPrompt();
+    return;
+  }
+  const clothesRack = currentRoom === "wardrobeCloset" && room.interactables.find((obj) => obj.type === "clothesRack" && checkCollision(ladderReach, obj));
+  if (clothesRack) {
+    player.outfitIndex = ((player.outfitIndex || 0) + 1) % 3;
+    const outfitNames = ["azul", "bordó", "verde"];
+    STATUS.setPickupHint(`Elegiste el cambio de ropa ${outfitNames[player.outfitIndex]}.`);
+    updateInteractionPrompt();
+    return;
+  }
   const typewriter = room.interactables.find((obj) => obj.type === "typewriter" && checkCollision(ladderReach, obj));
   if (typewriter) {
     openSaveMenu();
@@ -2993,11 +3253,14 @@ function interactNearby() {
       if (elevatorDoor) elevatorDoor.disabled = false;
       const pairedDoor = ROOMS[batterySocket.pairedRoomId]?.doors.find((obj) => obj.id === batterySocket.pairedDoorId);
       if (pairedDoor) pairedDoor.disabled = false;
-      const elevator = room.interactables.find((obj) => obj.type === "elevator");
+      const elevatorRoom = batterySocket.elevatorRoomId ? ROOMS[batterySocket.elevatorRoomId] : room;
+      const elevator = elevatorRoom?.interactables.find((obj) => obj.type === "elevator" && (!batterySocket.elevatorObjectId || obj.id === batterySocket.elevatorObjectId));
       if (elevator) elevator.powered = true;
       STATUS.setPickupHint(currentRoom === "emergencyTunnel"
         ? "Instalaste la batería. El ascensor ya tiene corriente; subí al heliport."
-        : "Instalaste la batería. El ascensor del Courtyard Garden quedó activo y la puerta de Falls se desbloqueó.");
+        : currentRoom === "falls"
+          ? "Instalaste la batería en Falls. El ascensor de Courtyard Garden quedó activo."
+          : "Instalaste la batería. El ascensor quedó activo.");
     }
     updateInteractionPrompt();
     return;
@@ -3069,6 +3332,14 @@ function interactNearby() {
     }
     if (door.switchRequired === "armsStorageUnlocked" && !armsStorageUnlocked) {
       STATUS.setPickupHint("La puerta de Arms Storage sigue cerrada. Activá el switch en Control Room B1.");
+      return;
+    }
+    if (door.bookPuzzleRequired === "plant42Shelf" && !ROOMS.room003.blankBookInserted) {
+      STATUS.setPickupHint("La puerta no se mueve. Necesitás colocar el Blank Book en el espacio vacío de la estantería de Room 003.");
+      return;
+    }
+    if (door.floorPuzzleRequired === "undergroundEntryFloor" && !ROOMS.undergroundEntry.floorTurned) {
+      STATUS.setPickupHint("El piso está separado por un pozo. Usá la Hex Crank en el mecanismo junto al pozo.");
       return;
     }
     if (door.codeRequired && !unlockedLocks.has(door.lockId)) {
@@ -3224,8 +3495,15 @@ function interactNearby() {
     updateInteractionPrompt();
     return;
   }
-  const floorHole = room.interactables.find((obj) => obj.type === "floorHole" && obj.revealed && checkCollision(reach, obj));
+  const floorHole = room.interactables.find((obj) => obj.type === "floorHole" && ((obj.coverable && !obj.covered) || obj.revealed) && checkCollision(reach, obj));
   if (floorHole) {
+    if (floorHole.coverable) {
+      floorHole.covered = true;
+      floorHole.rootActive = false;
+      STATUS.setPickupHint("Tapaste la grieta con una tabla. La raíz ya no podrá alcanzarte.");
+      updateInteractionPrompt();
+      return;
+    }
     if (!STATUS.hasItem("rope")) {
       STATUS.setPickupHint("El agujero es demasiado profundo. Necesitás la Rope de Barry para bajar.");
       return;
@@ -3267,6 +3545,25 @@ function interactNearby() {
   }
   if (room.interactables.some((obj) => obj.type === "itemChest" && checkCollision(reach, obj))) {
     STATUS.openChest();
+    return;
+  }
+  const floorCrankSocket = currentRoom === "undergroundEntry" && room.interactables.find((obj) => obj.type === "crankSocket" && obj.floorPuzzle && checkCollision(reach, obj));
+  if (floorCrankSocket) {
+    if (room.floorTurned) {
+      STATUS.setPickupHint("El piso ya está girado y cubre el pozo.");
+    } else if (!STATUS.consumeItem("hexCrank")) {
+      STATUS.setPickupHint("Necesitás la Hex Crank para girar el piso.");
+    } else {
+      floorCrankSocket.crankInserted = true;
+      room.floorTurned = true;
+      const pit = room.interactables.find((obj) => obj.type === "floorPit");
+      if (pit) {
+        pit.covered = true;
+        pit.solid = false;
+      }
+      STATUS.setPickupHint("La Hex Crank giró el piso. El pozo quedó cubierto y el acceso a Boulder Passage se abrió.");
+    }
+    updateInteractionPrompt();
     return;
   }
   const moDiskTerminal = room.interactables.find((obj) => obj.type === "moDiskTerminal" && obj.outputFile && checkCollision(reach, obj));
@@ -3426,6 +3723,14 @@ function interactNearby() {
     collectNearbyItem();
     return;
   }
+  const readableNote = room.interactables.find((obj) => obj.type === "barrySupplyNote" && checkCollision(pickupReach, obj));
+  if (readableNote) {
+    beginDialogue([{
+      speaker: "Barry's Note",
+      text: "Jill,\nI've left some ammunition and supplies inside for you.\nTake whatever you need.\n\n-- Barry"
+    }]);
+    return;
+  }
   const inspectableBody = room.interactables.find((obj) => ["kenneth", "spencerBody"].includes(obj.type) && checkCollision(pickupReach, obj));
   if (inspectableBody) {
     beginDialogue([{
@@ -3440,6 +3745,15 @@ function interactNearby() {
 }
 
 function update() {
+  const now = performance.now();
+  const clockPaused = (!gameStarted && !introCutsceneActive) || endingCutsceneActive || STATUS.isOpen() ||
+    doorCodeDialog.open || labComputerDialog.open || vJoltDialog.open || saveGameDialog.open;
+  if (clockPaused) {
+    lastPlayTick = null;
+  } else {
+    if (lastPlayTick !== null) playtimeMs += Math.min(now - lastPlayTick, 100);
+    lastPlayTick = now;
+  }
   if (!gameStarted || introCutsceneActive || endingCutsceneActive || dialogueState || STATUS.isOpen() || doorCodeDialog.open || labComputerDialog.open || vJoltDialog.open || saveGameDialog.open) return;
   gameFrame++;
   if (playerDamageCooldown > 0) playerDamageCooldown--;
@@ -3452,6 +3766,7 @@ function update() {
   updateWeskerLabEntryScene(room);
   updateChrisRescueScene(room);
   updateRichardScene(room);
+  updateTrapBarryRescue(room);
   updatePostPlantWeskerScene(room);
   updateEmergencyTunnelScene(room);
   updateRoofedHunterAmbush(room);
@@ -3463,6 +3778,7 @@ function update() {
   const weskerEntrySceneLocked = currentRoom === "mainLabEntryB4" && room.weskerEntrySceneActive;
   const chrisRescueLocked = currentRoom === "cellRoom" && room.chrisRescueActive;
   const richardSceneLocked = currentRoom === "pillarPassage" && room.richardSceneActive;
+  const trapRescueLocked = currentRoom === "trapRoom" && room.rescueActive;
   const roofedHunterSceneLocked = currentRoom === "roofedPassage" && room.roofedHunterSceneActive;
   const postPlantWeskerSceneLocked = currentRoom === "centralCorridorGH" && room.postPlantWeskerSceneActive;
   const emergencySceneLocked = currentRoom === "emergencyTunnel" && room.emergencySceneActive;
@@ -3471,7 +3787,7 @@ function update() {
   player.dx = 0;
   player.dy = 0;
 
-  if (!plant42Locked && !tyrantSceneLocked && !enricoSceneLocked && !weskerEntrySceneLocked && !chrisRescueLocked && !richardSceneLocked && !roofedHunterSceneLocked && !postPlantWeskerSceneLocked && !emergencySceneLocked && !endingSequenceLocked && !barryDiningShotsLocked) {
+  if (!plant42Locked && !tyrantSceneLocked && !enricoSceneLocked && !weskerEntrySceneLocked && !chrisRescueLocked && !richardSceneLocked && !trapRescueLocked && !roofedHunterSceneLocked && !postPlantWeskerSceneLocked && !emergencySceneLocked && !endingSequenceLocked && !barryDiningShotsLocked) {
     if (keys.has("ArrowLeft") || keys.has("a")) player.dx -= WALK_SPEED;
     if (keys.has("ArrowRight") || keys.has("d")) player.dx += WALK_SPEED;
     if (keys.has("ArrowUp") || keys.has("w")) player.dy -= WALK_SPEED;
@@ -3529,6 +3845,7 @@ function update() {
     });
   }
 
+  player.isMoving = (canMoveX && nextX !== player.x) || (canMoveY && nextY !== player.y);
   if (canMoveX) player.x = nextX;
   if (canMoveY) player.y = nextY;
 
@@ -3946,6 +4263,36 @@ function drawRoom() {
       ctx.moveTo(obj.x + obj.w - 42, obj.y + obj.h - 24);
       ctx.lineTo(obj.x + obj.w - 27, obj.y + obj.h - 31);
       ctx.stroke();
+
+    } else if (obj.type === "floorPit") {
+      if (obj.covered) {
+        ctx.fillStyle = "#372619";
+        ctx.fillRect(obj.x - 2, obj.y - 2, obj.w + 4, obj.h + 4);
+        ctx.fillStyle = "#805a34";
+        ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+        ctx.fillStyle = "#bd8b51";
+        ctx.fillRect(obj.x + 3, obj.y + 3, obj.w - 6, 3);
+        ctx.fillRect(obj.x + 3, obj.y + obj.h - 6, obj.w - 6, 3);
+        ctx.fillRect(obj.x + obj.w / 2 - 2, obj.y + 2, 4, obj.h - 4);
+      } else {
+        ctx.fillStyle = "#32251b";
+        ctx.fillRect(obj.x - 2, obj.y - 2, obj.w + 4, obj.h + 4);
+        ctx.fillStyle = "#030404";
+        ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+        ctx.fillStyle = "#75624b";
+        ctx.fillRect(obj.x, obj.y, obj.w, 2);
+        ctx.fillRect(obj.x, obj.y + obj.h - 2, obj.w, 2);
+      }
+
+    } else if (obj.type === "caveBarrier") {
+      ctx.fillStyle = "#292922";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#514b3e";
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, 5);
+      ctx.fillStyle = "#39382f";
+      ctx.fillRect(obj.x + 6, obj.y + 10, obj.w - 12, 4);
+      ctx.fillStyle = "#69604d";
+      ctx.fillRect(obj.x + 4, obj.y + obj.h - 5, obj.w - 8, 2);
 
     } else if (obj.type === "waterPond" && obj.drained) {
       ctx.fillStyle = "#595b52";
@@ -4607,17 +4954,33 @@ function drawRoom() {
       ctx.fillStyle = "#8a5b2e";
       ctx.fillRect(obj.x + 12, obj.y + 8, obj.w - 24, obj.h - 16);
     } else if (obj.type === "floorHole") {
-      ctx.fillStyle = "#21140b";
-      ctx.fillRect(obj.x - 2, obj.y + 2, obj.w + 4, obj.h);
-      ctx.fillStyle = "#080907";
-      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
-      ctx.fillStyle = "#77502b";
-      ctx.fillRect(obj.x, obj.y, obj.w, 3);
-      ctx.fillRect(obj.x, obj.y + obj.h - 3, obj.w, 3);
-      ctx.fillRect(obj.x, obj.y + 3, 3, obj.h - 6);
-      ctx.fillRect(obj.x + obj.w - 3, obj.y + 3, 3, obj.h - 6);
-      ctx.fillStyle = "#a3723e";
-      ctx.fillRect(obj.x + 4, obj.y + 3, obj.w - 8, 1);
+      if (obj.covered) {
+        ctx.fillStyle = "#68482c";
+        ctx.fillRect(obj.x - 2, obj.y + 2, obj.w + 4, obj.h - 1);
+        ctx.fillStyle = "#9b7046";
+        ctx.fillRect(obj.x, obj.y + 4, obj.w, 3);
+        ctx.fillRect(obj.x + 2, obj.y + 11, obj.w - 4, 3);
+      } else {
+        ctx.fillStyle = "#21140b";
+        ctx.fillRect(obj.x - 2, obj.y + 2, obj.w + 4, obj.h);
+        ctx.fillStyle = "#080907";
+        ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+        ctx.fillStyle = "#77502b";
+        ctx.fillRect(obj.x, obj.y, obj.w, 3);
+        ctx.fillRect(obj.x, obj.y + obj.h - 3, obj.w, 3);
+        ctx.fillRect(obj.x, obj.y + 3, 3, obj.h - 6);
+        ctx.fillRect(obj.x + obj.w - 3, obj.y + 3, 3, obj.h - 6);
+        ctx.fillStyle = "#a3723e";
+        ctx.fillRect(obj.x + 4, obj.y + 3, obj.w - 8, 1);
+        if (obj.rootActive) {
+          ctx.strokeStyle = "#456d25";
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(obj.x + obj.w / 2, obj.y + obj.h - 1);
+          ctx.lineTo(obj.x + obj.w / 2 + (Math.floor(gameFrame / 12) % 2 ? 5 : -3), obj.y + 7);
+          ctx.stroke();
+        }
+      }
 
     } else if (obj.type === "passageTomb") {
       ctx.fillStyle = "#20211e";
@@ -5017,6 +5380,15 @@ function drawRoom() {
       ctx.fillStyle = "#f2d36b";
       ctx.fillRect(obj.x + 1, obj.y + 2, 3, 3);
       ctx.fillStyle = "#b88225";
+      ctx.fillRect(obj.x + 4, obj.y + 3, obj.w - 4, 2);
+      ctx.fillRect(obj.x + obj.w - 3, obj.y + 5, 2, 2);
+
+    } else if (obj.type === "specialKey") {
+      ctx.fillStyle = "#b88337";
+      ctx.fillRect(obj.x, obj.y + 1, 5, 5);
+      ctx.fillStyle = "#f0d17a";
+      ctx.fillRect(obj.x + 1, obj.y + 2, 3, 3);
+      ctx.fillStyle = "#b88337";
       ctx.fillRect(obj.x + 4, obj.y + 3, obj.w - 4, 2);
       ctx.fillRect(obj.x + obj.w - 3, obj.y + 5, 2, 2);
 
@@ -5749,6 +6121,16 @@ function drawRoom() {
       ctx.fillRect(obj.x + 2, obj.y + 6, obj.w - 5, 1);
       ctx.fillRect(obj.x + 2, obj.y + 8, obj.w - 7, 1);
 
+    } else if (obj.type === "barrySupplyNote") {
+      ctx.fillStyle = "#382717";
+      ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
+      ctx.fillStyle = "#e1d1a6";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#766143";
+      ctx.fillRect(obj.x + 3, obj.y + 3, obj.w - 6, 1);
+      ctx.fillRect(obj.x + 3, obj.y + 6, obj.w - 5, 1);
+      ctx.fillRect(obj.x + 3, obj.y + 9, obj.w - 8, 1);
+
     } else if (obj.type === "orders") {
       ctx.fillStyle = "#eee2bd";
       ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
@@ -6244,11 +6626,34 @@ function drawRoom() {
       // Libros variados de colores alineados en el estante
       const bookColors = ["#8b0000", "#1e90ff", "#228b22", "#ffd700", "#4b0082"];
       for (let i = 0; i < obj.w - 8; i += 5) {
+        const bookX = obj.x + 4 + i;
+        const reportSlotEmpty = obj.bookPuzzleShelf && ROOMS.room003.vJoltReportRemoved && bookX >= obj.x + 14 && bookX < obj.x + 32;
+        if (reportSlotEmpty) continue;
         ctx.fillStyle = bookColors[(i / 5) % bookColors.length];
-        ctx.fillRect(obj.x + 4 + i, obj.y + 3, 4, obj.h - 6);
+        ctx.fillRect(bookX, obj.y + 3, 4, obj.h - 6);
+      }
+      if (obj.bookPuzzleShelf && ROOMS.room003.blankBookInserted) {
+        ctx.fillStyle = "#170b0b";
+        ctx.fillRect(obj.x + 15, obj.y + 7, 14, 20);
+        ctx.fillStyle = "#8b161d";
+        ctx.fillRect(obj.x + 16, obj.y + 8, 12, 18);
+        ctx.fillStyle = "#c49b54";
+        ctx.fillRect(obj.x + 18, obj.y + 11, 8, 2);
       }
 
-      } else if (obj.type === "smallTable") {
+    } else if (obj.type === "lockedNightstand") {
+      ctx.fillStyle = obj.opened ? "#120b07" : "#281408";
+      ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+      ctx.fillStyle = "#68401f";
+      ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+      ctx.fillStyle = obj.opened ? "#120b07" : "#38200f";
+      ctx.fillRect(obj.x + 3, obj.y + 8, obj.w - 6, 5);
+      if (!obj.opened) {
+        ctx.fillStyle = "#d1ad53";
+        ctx.fillRect(obj.x + obj.w / 2 - 1, obj.y + 9, 3, 2);
+      }
+
+    } else if (obj.type === "smallTable") {
       // Mesita de madera con detalle
       ctx.fillStyle = "#3a1e0b";
       ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
@@ -6259,15 +6664,16 @@ function drawRoom() {
       // Perchero / Cambios de ropa colgados en la pared
       ctx.fillStyle = "#221108"; // Barra / Estructura
       ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-      
-      // Prendas colgadas de varios colores (Rojo, Azul, Verde, Blanco)
-      const clothes = ["#8b0000", "#1e3d59", "#2e5a1c", "#d9d9d9"];
+
+      const clothes = ["#31516a", "#7d343b", "#426344"];
       for (let i = 0; i < obj.h - 10; i += 14) {
         ctx.fillStyle = clothes[(i / 14) % clothes.length];
         ctx.fillRect(obj.x + 3, obj.y + 5 + i, obj.w - 6, 10);
       }
+      ctx.strokeStyle = "#e0c27a";
+      ctx.strokeRect(obj.x + 2, obj.y + 5 + (player.outfitIndex || 0) * 14, obj.w - 4, 10);
 
-      } else if (obj.type === "mapStatue") {
+    } else if (obj.type === "mapStatue") {
       // Estatua de mármol/piedra con jarrón arriba
       ctx.fillStyle = "#a8a8a8"; // Pedestal
       ctx.fillRect(obj.x, obj.y + 8, obj.w, obj.h - 8);
@@ -6540,6 +6946,24 @@ function drawRoom() {
       ctx.fillStyle = "#e34b35";
       ctx.fillRect(obj.x + 9, obj.y + 8, 2, 2);
       ctx.fillRect(obj.x + 14, obj.y + 8, 2, 2);
+
+    } else if (obj.type === "spiderling") {
+      ctx.strokeStyle = "#231611";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(obj.x + 3, obj.y + 3);
+      ctx.lineTo(obj.x, obj.y + 1);
+      ctx.moveTo(obj.x + 3, obj.y + 4);
+      ctx.lineTo(obj.x, obj.y + 6);
+      ctx.moveTo(obj.x + 5, obj.y + 3);
+      ctx.lineTo(obj.x + 8, obj.y + 1);
+      ctx.moveTo(obj.x + 5, obj.y + 4);
+      ctx.lineTo(obj.x + 8, obj.y + 6);
+      ctx.stroke();
+      ctx.fillStyle = "#241713";
+      ctx.fillRect(obj.x + 2, obj.y + 1, 4, 5);
+      ctx.fillStyle = "#9b3326";
+      ctx.fillRect(obj.x + 3, obj.y + 2, 2, 2);
 
     } else if (obj.type === "enrico") {
       if (obj.dead) {
@@ -6908,10 +7332,16 @@ function drawStaticCharacter(obj) {
 function drawPlayer() {
   const x = Math.round(player.x);
   const y = Math.round(player.y);
+  const outfitColors = [
+    { vest: "#31516a", shirt: "#42647c" },
+    { vest: "#69353b", shirt: "#8c4c4b" },
+    { vest: "#36583c", shirt: "#52734b" }
+  ];
+  const outfit = outfitColors[player.outfitIndex || 0] || outfitColors[0];
 
   ctx.fillStyle = "#171b1d";
   ctx.fillRect(x + 2, y, 8, 2);
-  ctx.fillStyle = "#31516a";
+  ctx.fillStyle = outfit.vest;
   ctx.fillRect(x + 2, y + 1, 8, 3);
   ctx.fillStyle = "#d5c4a0";
   ctx.fillRect(x + 7, y + 1, 2, 2);
@@ -6919,7 +7349,7 @@ function drawPlayer() {
   ctx.fillRect(x + 3, y + 4, 6, 3);
   ctx.fillStyle = "#15202a";
   ctx.fillRect(x + 2, y + 6, 8, 2);
-  ctx.fillStyle = "#42647c";
+  ctx.fillStyle = outfit.shirt;
   ctx.fillRect(x + 1, y + 7, 10, 5);
   ctx.fillStyle = "#9ba5a0";
   ctx.fillRect(x, y + 7, 2, 4);

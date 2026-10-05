@@ -83,6 +83,38 @@ body {
   cursor: pointer;
 }
 
+.gallery-screen {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: clamp(12px, 3vw, 30px);
+  background: #050607;
+  color: #eee8d9;
+}
+
+.gallery-screen[hidden] { display: none; }
+.gallery-screen header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; border-bottom: 1px solid #66573d; }
+.gallery-screen h2 { margin: 0 0 8px; color: #d6b878; font: bold 20px Georgia, "Times New Roman", serif; text-transform: uppercase; }
+.gallery-screen header span { color: #a9a99b; font: 12px monospace; }
+.gallery-screen img { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+.gallery-screen nav { display: flex; justify-content: space-between; align-items: center; }
+.gallery-screen nav div { display: flex; gap: 8px; }
+.gallery-screen button {
+  min-width: 42px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid #766344;
+  background: #111513;
+  color: #e8d8bd;
+  font: bold 14px Georgia, "Times New Roman", serif;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.gallery-screen button:hover, .gallery-screen button:focus-visible { border-color: #c59b53; color: #fff1d0; }
+
 .intro-sequence {
   position: fixed;
   z-index: 20;
@@ -272,6 +304,7 @@ canvas {
   background: rgba(5, 7, 6, 0.88);
   color: #f1f0e7;
   font: bold 11px/1.25 monospace;
+  white-space: pre-line;
 }
 .ending-cutscene span { position: absolute; right: 9px; top: 7px; color: #f1f0e7; font: 10px monospace; }
 .ending-cutscene button {

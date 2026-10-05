@@ -16,13 +16,24 @@
       <nav id="title-extras-menu" aria-label="Extras menu" hidden>
         <button id="extras-characters" type="button">Characters</button>
         <button type="button">Enemies</button>
-        <button type="button">Gallery</button>
+        <button id="extras-gallery" type="button">Gallery</button>
         <button id="extras-back" type="button">Back</button>
       </nav>
     </div>
     <section id="characters-screen" class="characters-screen" aria-label="Characters" hidden>
       <img src="Assets/character-select.png" alt="Character select: Jill Valentine, Chris Redfield, Barry Burton, Rebecca Chambers, Albert Wesker, Joseph Frost, Brad Vickers, Kenneth J. Sullivan, Forest Speyer, Richard Aiken and Enrico Marini">
       <button id="characters-back" type="button">Back</button>
+    </section>
+    <section id="gallery-screen" class="gallery-screen" aria-label="Fan Project gallery" hidden>
+      <header><h2>Fan Project</h2><span id="gallery-count"></span></header>
+      <img id="gallery-image" alt="Fan Project artwork">
+      <nav aria-label="Gallery controls">
+        <button id="gallery-back" type="button">Back</button>
+        <div>
+          <button id="gallery-previous" type="button" aria-label="Previous image">‹</button>
+          <button id="gallery-next" type="button" aria-label="Next image">›</button>
+        </div>
+      </nav>
     </section>
   </section>
   <main class="layout">

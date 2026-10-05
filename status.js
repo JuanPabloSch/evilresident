@@ -11,6 +11,7 @@ const STATUS_ITEMS = {
   armorKey: "Llave de la armadura",
   helmetKey: "Helmet Key",
   shieldKey: "Shield Key",
+  specialKey: "Special Key",
   lockpick: "Lockpick",
   rope: "Rope",
   controlRoomKey: "Control Room Key",
@@ -272,7 +273,7 @@ const FILE_CONTENTS = {
     ]
   }
 };
-const STATUS_KEY_ITEMS = new Set(["lockpick", "rope", "brokenShotgun", "eagleMedal", "wolfMedal", "radio"]);
+const STATUS_KEY_ITEMS = new Set(["lockpick", "rope", "brokenShotgun", "eagleMedal", "wolfMedal", "radio", "specialKey"]);
 const AMMO_PICKUP_QUANTITIES = {
   handgunAmmo: 15,
   shotgunShells: 7,
@@ -284,7 +285,11 @@ const AMMO_PICKUP_QUANTITIES = {
 };
 
 const STATUS = (() => {
-  const items = new Map([[STATUS_ITEMS.handgun, 1]]);
+  const items = new Map([
+    [STATUS_ITEMS.handgun, 1],
+    [STATUS_ITEMS.combatKnife, 1],
+    [STATUS_ITEMS.firstAidSpray, 1]
+  ]);
   const panel = document.getElementById("status-panel");
   const toggle = document.getElementById("status-toggle");
   const close = document.getElementById("status-close");
@@ -316,7 +321,7 @@ const STATUS = (() => {
   let poisonFrames = 0;
   let combineSelection = null;
   let weaponHandlers = { equip() {}, selectAmmo() {} };
-  let handgunReserve = 36;
+  let handgunReserve = 0;
   let rocketReserve = 0;
   let storedHandgunReserve = 0;
   const storedItems = new Map();
@@ -687,7 +692,7 @@ const STATUS = (() => {
     getItemName(type) { return STATUS_ITEMS[type] || null; },
     hasItem(type) { return keyItems.has(type) || (items.get(STATUS_ITEMS[type]) || 0) > 0; },
     hasFile(type) { return fileIds.has(type); },
-    addItem(type) {
+    addItem(type, amountOverride) {
       const name = STATUS_ITEMS[type];
       if (!name) return false;
       if (STATUS_FILES.has(type)) {
@@ -708,7 +713,7 @@ const STATUS = (() => {
         hint.textContent = "Inventario lleno. Guardá algo en un baúl primero.";
         return false;
       }
-      const amount = AMMO_PICKUP_QUANTITIES[type] || 1;
+      const amount = amountOverride ?? AMMO_PICKUP_QUANTITIES[type] ?? 1;
       if (type === "handgunAmmo") handgunReserve += amount;
       else {
         items.set(name, (items.get(name) || 0) + amount);
