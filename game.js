@@ -1010,19 +1010,32 @@ function fireWeapon() {
     return along > 0 && along <= 34 && across < 9;
   });
   if (doorWeb) {
-    if (equippedWeapon !== "knife") {
-      STATUS.setPickupHint("La telaraña es demasiado gruesa. Usá el Cuchillo de supervivencia.");
-      return;
-    }
-    doorWeb.hits++;
-    weaponCooldown = 14;
-    weapon.shotFlash = 4;
-    if (doorWeb.hits >= 6) {
+    const launcherWithFlame = ["bazooka", "grenadeLauncher"].includes(equippedWeapon)
+      && selectedLauncherAmmo === "flameRounds";
+    if (launcherWithFlame && STATUS.getItemCount("flameRounds") > 0) {
+      STATUS.consumeItem("flameRounds");
       room.interactables.splice(room.interactables.indexOf(doorWeb), 1);
       unlockedLocks.add(doorWeb.lockId);
-      STATUS.setPickupHint("Cortaste la telaraña. El paso a Straight Passage quedó libre.");
+      weaponCooldown = 14;
+      weapon.shotFlash = 4;
+      STATUS.setPickupHint("La telaraña ardió. El paso a Straight Passage quedó libre.");
+      updateAmmoDisplay();
+    } else if (equippedWeapon !== "knife") {
+      STATUS.setPickupHint(launcherWithFlame
+        ? "No te quedan Flame Rounds. Usá el Cuchillo de supervivencia para cortar la telaraña."
+        : "La telaraña es demasiado gruesa. Usá el Cuchillo de supervivencia o Flame Rounds.");
+      return;
     } else {
-      STATUS.setPickupHint(`Cortando telaraña: ${doorWeb.hits}/6 cuchillazos.`);
+      doorWeb.hits++;
+      weaponCooldown = 14;
+      weapon.shotFlash = 4;
+      if (doorWeb.hits >= 6) {
+        room.interactables.splice(room.interactables.indexOf(doorWeb), 1);
+        unlockedLocks.add(doorWeb.lockId);
+        STATUS.setPickupHint("Cortaste la telaraña. El paso a Straight Passage quedó libre.");
+      } else {
+        STATUS.setPickupHint(`Cortando telaraña: ${doorWeb.hits}/6 cuchillazos.`);
+      }
     }
     updateInteractionPrompt();
     return;
@@ -1090,8 +1103,7 @@ function fireWeapon() {
           : equippedWeapon === "colt" ? 75
             : ["bazooka", "grenadeLauncher"].includes(equippedWeapon)
               ? ammo.type === "flameRounds" ? 110
-                : ammo.type === "fireRounds" ? 90
-                  : ["acidRounds", "explosiveRounds"].includes(ammo.type) ? 60 : 0
+                : ["acidRounds", "explosiveRounds"].includes(ammo.type) ? 60 : 0
               : equippedWeapon === "rocketLauncher" ? 900 : 0
       : null;
     const tyrantDamage = target.type === "tyrant"
@@ -1790,20 +1802,36 @@ function updateEmergencyTunnelScene(room) {
   room.emergencySceneStarted = true;
   room.emergencySceneActive = true;
   emergencyCountdownStartFrame ??= gameFrame;
-  room.interactables.push(
-    { type: "staticCharacter", character: "greenSoldier", x: 113, y: 80, w: 15, h: 25, emergencyChris: true },
-    { type: "staticCharacter", character: "redVest", x: 137, y: 80, w: 17, h: 25, emergencyBarry: true }
-  );
+  const chrisRescued = Boolean(ROOMS.cellRoom.chrisRescueComplete);
+  if (chrisRescued) {
+    room.interactables.push(
+      { type: "staticCharacter", character: "greenSoldier", x: 113, y: 80, w: 15, h: 25, emergencyChris: true },
+      { type: "staticCharacter", character: "redVest", x: 137, y: 80, w: 17, h: 25, emergencyBarry: true }
+    );
+  } else {
+    room.interactables.push(
+      { type: "staticCharacter", character: "redVest", x: 124, y: 80, w: 17, h: 25, emergencyBarry: true }
+    );
+  }
   STATUS.setPickupHint("Un rugido resuena en el túnel. ¡El sistema de autodestrucción se activó!");
-  beginDialogue([
+  const dialogue = chrisRescued ? [
     { speaker: "Chris", text: "Go on, Jill! I'll take care of this!" },
     { speaker: "Barry", text: "I'll assist you!" },
     { speaker: "Jill", text: "Chris... Barry..." },
     { speaker: "Chris", text: "Just go!" }
-  ], () => {
+  ] : [
+    { speaker: "Barry", text: "Jill, we have to go! The mansion is going to explode!" },
+    { speaker: "Jill", text: "What about Chris?" },
+    { speaker: "Barry", text: "We never found him. There's no time left. I'll hold the monsters off! Get to the elevator!" },
+    { speaker: "Jill", text: "Barry!" },
+    { speaker: "Barry", text: "Go, Jill! I'll be right behind you!" }
+  ];
+  beginDialogue(dialogue, () => {
     room.emergencySceneActive = false;
     room.emergencySceneComplete = true;
-    STATUS.setPickupHint("Chris y Barry se quedaron conteniendo a la criatura. Recogé la batería junto al ascensor.");
+    STATUS.setPickupHint(chrisRescued
+      ? "Chris y Barry se quedaron conteniendo a la criatura. Recogé la batería junto al ascensor."
+      : "Barry se quedó frenando a los monstruos. Recogé la batería junto al ascensor y escapá.");
   });
 }
 
@@ -1953,6 +1981,12 @@ const ENDING_SLIDES = [
   { image: "Assets/ending-2.jfif", caption: "They escape by helicopter before the mansion explodes." },
   { image: "Assets/ending-3.jfif", caption: "At last, they see the daylight." }
 ];
+const ENDING_SLIDES_WITHOUT_CHRIS = [
+  { image: "Assets/ending-1.jfif", caption: "Brad picks up Jill and Barry." },
+  { image: "Assets/ending-2.jfif", caption: "They escape by helicopter before the mansion explodes." },
+  { image: "Assets/ending-3.jfif", caption: "At last, they see the daylight." }
+];
+let activeEndingSlides = ENDING_SLIDES;
 
 function formatPlaytime(milliseconds) {
   const totalSeconds = Math.floor(milliseconds / 1000);
@@ -1966,16 +2000,16 @@ function formatPlaytime(milliseconds) {
 
 function showEndingSlide(index) {
   endingCutsceneSlide = index;
-  const slide = ENDING_SLIDES[index];
+  const slide = activeEndingSlides[index];
   endingCutsceneImage.src = slide.image;
   endingCutsceneImage.alt = `Ending scene ${index + 1}`;
-  endingCutsceneCaption.textContent = index === ENDING_SLIDES.length - 1
+  endingCutsceneCaption.textContent = index === activeEndingSlides.length - 1
     ? `${slide.caption}\n\nTime: ${formatPlaytime(playtimeMs)}  ·  Times saved: ${runSaveCount}`
     : slide.caption;
-  endingCutsceneCount.textContent = `${index + 1} / ${ENDING_SLIDES.length}`;
-  endingCutsceneNext.textContent = index === ENDING_SLIDES.length - 1 ? "The End" : "Next";
+  endingCutsceneCount.textContent = `${index + 1} / ${activeEndingSlides.length}`;
+  endingCutsceneNext.textContent = index === activeEndingSlides.length - 1 ? "The End" : "Next";
   if (endingCutsceneTimer) clearTimeout(endingCutsceneTimer);
-  endingCutsceneTimer = index < ENDING_SLIDES.length - 1
+  endingCutsceneTimer = index < activeEndingSlides.length - 1
     ? setTimeout(() => advanceEndingCutscene(), 4200)
     : null;
 }
@@ -1983,6 +2017,7 @@ function showEndingSlide(index) {
 function beginEndingCutscene() {
   if (endingCutsceneActive) return;
   endingCutsceneActive = true;
+  activeEndingSlides = ROOMS.cellRoom.chrisRescueComplete ? ENDING_SLIDES : ENDING_SLIDES_WITHOUT_CHRIS;
   endingCutscene.hidden = false;
   showEndingSlide(0);
   endingCutsceneNext.focus();
@@ -1992,7 +2027,7 @@ function advanceEndingCutscene() {
   if (!endingCutsceneActive) return;
   if (endingCutsceneTimer) clearTimeout(endingCutsceneTimer);
   endingCutsceneTimer = null;
-  if (endingCutsceneSlide < ENDING_SLIDES.length - 1) {
+  if (endingCutsceneSlide < activeEndingSlides.length - 1) {
     showEndingSlide(endingCutsceneSlide + 1);
     return;
   }
@@ -2188,8 +2223,27 @@ function updateEnemies(room) {
         !room.walls?.some((wall) => checkCollision(box, wall)) &&
         !obstacles.some((obstacle) => checkCollision(box, obstacle));
     };
+    const startX = enemy.x;
+    const startY = enemy.y;
     if (canOccupy(enemy.x + stepX, enemy.y)) enemy.x += stepX;
     if (canOccupy(enemy.x, enemy.y + stepY)) enemy.y += stepY;
+    if (enemy.type === "tyrant" && enemy.x === startX && enemy.y === startY) {
+      const detours = [
+        [-movementSpeed, 0], [movementSpeed, 0],
+        [0, -movementSpeed], [0, movementSpeed]
+      ].filter(([dx, dy]) => canOccupy(enemy.x + dx, enemy.y + dy));
+      detours.sort((a, b) => {
+        const distanceAfter = ([dx, dy]) => Math.hypot(
+          playerX - (enemy.x + dx + enemy.w / 2),
+          playerY - (enemy.y + dy + enemy.h / 2)
+        );
+        return distanceAfter(a) - distanceAfter(b);
+      });
+      if (detours.length) {
+        enemy.x += detours[0][0];
+        enemy.y += detours[0][1];
+      }
+    }
     enemy.animFrame = Math.floor(gameFrame / 12) % 2;
   });
 }
@@ -2222,7 +2276,7 @@ function updateHeliportFinale(room) {
     STATUS.setPickupHint("¡El Tyrant va por vos! Esquivá sus embestidas y atacalo.");
   }
   if (tyrant?.phase === "downed" && gameFrame - tyrant.downedAt >= 90 && !launcher && !room.finalRocketLauncherSpawned) {
-    room.interactables.push({ type: "rocketLauncher", x: 138, y: 82, w: 30, h: 10, finalDrop: true, revealed: true, falling: true, pickupAfter: gameFrame + 25 });
+    room.interactables.push({ type: "rocketLauncher", x: 138, y: 82, w: 30, h: 10, quantity: 4, finalDrop: true, revealed: true, falling: true, pickupAfter: gameFrame + 25 });
     room.finalRocketLauncherSpawned = true;
     STATUS.setPickupHint("Brad te lanzó el Rocket Launcher. Recogelo, equipalo y terminá con el Tyrant.");
   }
@@ -2346,7 +2400,11 @@ function updateBoulderEncounter(room) {
     if (exit) exit.disabled = false;
     const hunter = room.interactables.find((obj) => obj.type === (boulder.revealEnemyType ?? "hunter") && obj.revealed === false);
     if (hunter) hunter.revealed = true;
-    STATUS.setPickupHint("La piedra pasó. El pasaje quedó abierto.");
+    const reward = room.interactables.find((obj) => obj.type === boulder.revealItemType && obj.revealed === false);
+    if (reward) reward.revealed = true;
+    STATUS.setPickupHint(reward
+      ? "La piedra pasó y dejó al descubierto un MO Disk."
+      : "La piedra pasó. El pasaje quedó abierto.");
   }
 }
 
@@ -2833,7 +2891,15 @@ function updateInteractionPrompt() {
     interactionPrompt.hidden = false;
     return;
   }
-  const floorCrankSocket = currentRoom === "undergroundEntry" && room.interactables.find((obj) => obj.type === "crankSocket" && obj.floorPuzzle && checkCollision(reach, obj));
+  const statueCrankSocket = currentRoom === "itemChamber" && room.interactables.find((obj) => obj.type === "crankSocket" && obj.crankPuzzle === "itemChamberStatue" && checkCollision(reach, obj));
+  if (statueCrankSocket) {
+    interactionPrompt.textContent = statueCrankSocket.crankInserted
+      ? "La estatua ya fue desplazada"
+      : STATUS.hasItem("hexCrank") ? "E · Usar Hex Crank para mover la estatua" : "Necesitás la Hex Crank";
+    interactionPrompt.hidden = false;
+    return;
+  }
+  const floorCrankSocket = room.interactables.find((obj) => obj.type === "crankSocket" && obj.floorPuzzle && checkCollision(reach, obj));
   if (floorCrankSocket) {
     interactionPrompt.textContent = room.floorTurned
       ? "El piso ya está girado sobre el pozo"
@@ -3481,9 +3547,10 @@ function interactNearby() {
   if (shotgunMount) {
     if (shotgunMount.hasShotgun) {
       if (STATUS.addItem("shotgunWall")) {
+        STATUS.addItem("shotgunShells", 7);
         shotgunMount.hasShotgun = false;
         room.shotgunTaken = true;
-        STATUS.setPickupHint("Tomaste la Escopeta de la pared. El mecanismo de Trap Room quedó armado.");
+        STATUS.setPickupHint("Tomaste la Escopeta de la pared con 7 cartuchos. El mecanismo de Trap Room quedó armado.");
       }
     } else if (STATUS.hasItem("brokenShotgun") && STATUS.consumeItem("brokenShotgun")) {
       shotgunMount.hasBrokenShotgun = true;
@@ -3547,11 +3614,11 @@ function interactNearby() {
     STATUS.openChest();
     return;
   }
-  const floorCrankSocket = currentRoom === "undergroundEntry" && room.interactables.find((obj) => obj.type === "crankSocket" && obj.floorPuzzle && checkCollision(reach, obj));
+  const floorCrankSocket = room.interactables.find((obj) => obj.type === "crankSocket" && obj.floorPuzzle && checkCollision(reach, obj));
   if (floorCrankSocket) {
     if (room.floorTurned) {
       STATUS.setPickupHint("El piso ya está girado y cubre el pozo.");
-    } else if (!STATUS.consumeItem("hexCrank")) {
+    } else if (!STATUS.hasItem("hexCrank")) {
       STATUS.setPickupHint("Necesitás la Hex Crank para girar el piso.");
     } else {
       floorCrankSocket.crankInserted = true;
@@ -3561,7 +3628,29 @@ function interactNearby() {
         pit.covered = true;
         pit.solid = false;
       }
-      STATUS.setPickupHint("La Hex Crank giró el piso. El pozo quedó cubierto y el acceso a Boulder Passage se abrió.");
+      STATUS.setPickupHint(currentRoom === "boulderPassage2"
+        ? "La Hex Crank giró el piso. El pozo quedó cubierto y el corredor hacia Item Chamber está habilitado."
+        : "La Hex Crank giró el piso. El pozo quedó cubierto y el acceso a Boulder Passage se abrió.");
+    }
+    updateInteractionPrompt();
+    return;
+  }
+  const statueCrankSocket = currentRoom === "itemChamber" && room.interactables.find((obj) => obj.type === "crankSocket" && obj.crankPuzzle === "itemChamberStatue" && checkCollision(reach, obj));
+  if (statueCrankSocket) {
+    if (statueCrankSocket.crankInserted) {
+      STATUS.setPickupHint("La estatua ya fue desplazada y el libro quedó al descubierto.");
+    } else if (!STATUS.hasItem("hexCrank")) {
+      STATUS.setPickupHint("Necesitás la Hex Crank para mover la estatua.");
+    } else {
+      statueCrankSocket.crankInserted = true;
+      const statue = room.interactables.find((obj) => obj.type === "statue");
+      const book = room.interactables.find((obj) => obj.type === "doomBook2");
+      if (statue) {
+        statue.x = 188;
+        statue.y = 63;
+      }
+      if (book) book.revealed = true;
+      STATUS.setPickupHint("La Hex Crank movió la estatua. Encontraste un libro oculto detrás.");
     }
     updateInteractionPrompt();
     return;
@@ -4515,8 +4604,7 @@ function drawRoom() {
       ctx.fillRect(obj.x, obj.y, obj.w, 5);
       ctx.fillRect(obj.x, obj.y, 5, obj.h);
       ctx.fillRect(obj.x + obj.w - 5, obj.y, 5, obj.h);
-      ctx.fillRect(obj.x, obj.y + obj.h - 5, 97, 5);
-      ctx.fillRect(obj.x + 125, obj.y + obj.h - 5, obj.w - 125, 5);
+      ctx.fillRect(obj.x, obj.y + obj.h - 5, obj.w, 5);
       ctx.fillStyle = "#707674";
       ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, 2);
       ctx.fillRect(obj.x + 2, obj.y + 2, 2, obj.h - 4);
@@ -5881,15 +5969,6 @@ function drawRoom() {
     ctx.fillStyle = "#d6c18c";
     ctx.fillRect(obj.x + 2, obj.y + 2, 2, obj.h - 4);
     ctx.fillRect(obj.x + 6, obj.y + 2, 2, obj.h - 4);
-
-  } else if (obj.type === "fireRounds") {
-    ctx.fillStyle = "#080808";
-    ctx.fillRect(obj.x - 1, obj.y - 1, obj.w + 2, obj.h + 2);
-    ctx.fillStyle = "#e4a22d";
-    ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-    ctx.fillStyle = "#f4dc8a";
-    ctx.fillRect(obj.x + 2, obj.y + 2, 2, obj.h - 4);
-    ctx.fillRect(obj.x + 7, obj.y + 2, 2, obj.h - 4);
 
   } else if (obj.type === "flameRounds") {
     ctx.fillStyle = "#080808";

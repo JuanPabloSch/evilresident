@@ -49,7 +49,6 @@ const STATUS_ITEMS = {
   rocketLauncher: "Rocket Launcher",
   acidRounds: "Acid Rounds",
   explosiveRounds: "Explosive Rounds",
-  fireRounds: "Fire Rounds",
   flameRounds: "Flame Rounds",
   scrapbook: "Scrapbook",
   moDisk: "MO Disk",
@@ -273,12 +272,11 @@ const FILE_CONTENTS = {
     ]
   }
 };
-const STATUS_KEY_ITEMS = new Set(["lockpick", "rope", "brokenShotgun", "eagleMedal", "wolfMedal", "radio", "specialKey"]);
+const STATUS_KEY_ITEMS = new Set(["lockpick", "rope", "brokenShotgun", "radio", "specialKey"]);
 const AMMO_PICKUP_QUANTITIES = {
   handgunAmmo: 15,
   shotgunShells: 7,
   magnumRounds: 6,
-  fireRounds: 6,
   flameRounds: 6,
   acidRounds: 6,
   explosiveRounds: 6
@@ -434,12 +432,12 @@ const STATUS = (() => {
       : name === STATUS_ITEMS.doomBook2 ? "wolfMedal" : null;
     if (bookMedal) {
       if (!consumeItem(name)) return;
-      keyItems.add(bookMedal);
-      renderKeyItems();
+      const medalName = STATUS_ITEMS[bookMedal];
+      items.set(medalName, (items.get(medalName) || 0) + 1);
       renderInventory();
       hint.textContent = bookMedal === "eagleMedal"
-        ? "Abriste el libro y encontraste la Eagle Medal. El Doom Book 1 se descartó."
-        : "Abriste el libro y encontraste la Wolf Medal. El Doom Book 2 se descartó.";
+        ? "Abriste el libro y encontraste la Eagle Medal. El libro se descartó y la medalla ocupa un espacio del inventario."
+        : "Abriste el libro y encontraste la Wolf Medal. El libro se descartó y la medalla ocupa un espacio del inventario.";
       if (!chestPanel.hidden) renderChest();
       return;
     }
@@ -653,11 +651,26 @@ const STATUS = (() => {
       };
     },
     restore(data) {
-      items.clear(); (data.items || []).forEach(([key, value]) => items.set(key, value));
-      keyItems.clear(); (data.keyItems || []).forEach((value) => keyItems.add(value));
+      const restoreItems = (target, entries = []) => {
+        target.clear();
+        entries.forEach(([key, value]) => {
+          const name = key === "Fire Rounds" ? "Flame Rounds" : key;
+          target.set(name, (target.get(name) || 0) + value);
+        });
+      };
+      restoreItems(items, data.items || []);
+      keyItems.clear();
+      (data.keyItems || []).forEach((value) => {
+        if (value === "eagleMedal" || value === "wolfMedal") {
+          const name = STATUS_ITEMS[value];
+          items.set(name, (items.get(name) || 0) + 1);
+        } else {
+          keyItems.add(value);
+        }
+      });
       files.clear(); (data.files || []).forEach(([key, value]) => files.set(key, value));
       fileIds.clear(); (data.fileIds || []).forEach((value) => fileIds.add(value));
-      storedItems.clear(); (data.storedItems || []).forEach(([key, value]) => storedItems.set(key, value));
+      restoreItems(storedItems, data.storedItems || []);
       health = data.health ?? 100;
       poisoned = Boolean(data.poisoned);
       poisonFrames = data.poisonFrames || 0;
@@ -716,8 +729,8 @@ const STATUS = (() => {
       const amount = amountOverride ?? AMMO_PICKUP_QUANTITIES[type] ?? 1;
       if (type === "handgunAmmo") handgunReserve += amount;
       else {
-        items.set(name, (items.get(name) || 0) + amount);
-        if (type === "rocketLauncher") rocketReserve++;
+        items.set(name, (items.get(name) || 0) + (type === "rocketLauncher" ? 1 : amount));
+        if (type === "rocketLauncher") rocketReserve += amount;
       }
       renderInventory();
       if (!chestPanel.hidden) renderChest();

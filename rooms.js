@@ -1116,7 +1116,7 @@ outsideBoiler: {
       { id: "door2ToBlackTigerRoom", x: 267, y: 182, w: 28, h: 8, targetRoom: "blackTigerRoom", spawnX: 145, spawnY: 24, disabled: true, blockedMessage: "La piedra todavía bloquea el pasaje." }
     ],
     interactables: [
-      { type: "fireRounds", x: 34, y: 91, w: 12, h: 9 },
+      { type: "flameRounds", x: 34, y: 91, w: 12, h: 9 },
       { type: "rollingBoulder", x: 241, y: 12, w: 58, h: 60, solid: true, rollSpeed: 1.6 },
       { type: "hunter", x: 255, y: 126, w: 26, h: 30, revealed: false }
     ]
@@ -1169,23 +1169,24 @@ outsideBoiler: {
       { x: 270, y: 190 },
       { x: 220, y: 190 },
       { x: 220, y: 100 },
-      { x: 165, y: 100 },
-      { x: 165, y: 160 },
-      { x: 90, y: 160 },
-      { x: 90, y: 80 },
+      { x: 155, y: 80 },
+      { x: 155, y: 160 },
+      { x: 102, y: 160 },
+      { x: 102, y: 80 },
       { x: 20, y: 80 }
     ],
     constrainToWalkablePolygon: true,
     doors: [
-      { id: "door1ToStraightPassage", x: 278, y: 105, w: 8, h: 28, targetRoom: "straightPassage", spawnX: 35, spawnY: 95 },
+      { id: "door1ToStraightPassage", x: 278, y: 105, w: 8, h: 28, targetRoom: "straightPassage", spawnX: 230, spawnY: 95 },
       { id: "door2ToItemChamber", x: 108, y: 152, w: 28, h: 8, targetRoom: "itemChamber", spawnX: 116, spawnY: 62 },
       { id: "elevatorToFountain", x: 278, y: 148, w: 8, h: 28, targetRoom: "fountain", spawnX: 35, spawnY: 148 }
     ],
     interactables: [
-      { type: "crankSocket", x: 147, y: 13, w: 23, h: 19, solid: true, crankType: "hexCrank" },
+      { type: "crankSocket", x: 147, y: 13, w: 23, h: 19, solid: true, crankType: "hexCrank", floorPuzzle: "boulderPassage2Pit" },
+      { type: "floorPit", x: 108, y: 10, w: 38, h: 74, solid: true, covered: false },
       { type: "elevator", x: 240, y: 148, w: 30, h: 28, solid: false },
-      { type: "rollingBoulder", x: 22, y: 12, w: 58, h: 56, solid: true, rollSpeed: 1.6, direction: 1, stopX: 242, triggerRadius: 60, refugeX: 105, refugeY: 120 },
-      { type: "moDisk", x: 130, y: 138, w: 10, h: 8 }
+      { type: "rollingBoulder", x: 22, y: 12, w: 58, h: 56, solid: true, rollSpeed: 0.8, direction: 1, stopX: 242, triggerRadius: 60, refugeX: 110, refugeY: 112, revealItemType: "moDisk" },
+      { type: "moDisk", x: 48, y: 62, w: 10, h: 8, revealed: false }
     ],
   },
   itemChamber: {
@@ -1197,9 +1198,9 @@ outsideBoiler: {
       { id: "doorToBoulderPassage2", x: 108, y: 45, w: 28, h: 8, targetRoom: "boulderPassage2", spawnX: 116, spawnY: 130 }
     ],
     interactables: [
-      { type: "crankSocket", x: 88, y: 88, w: 23, h: 19, solid: true, crankType: "hexCrank" },
+      { type: "crankSocket", x: 88, y: 88, w: 23, h: 19, solid: true, crankType: "hexCrank", crankPuzzle: "itemChamberStatue" },
       { type: "statue", x: 151, y: 63, w: 34, h: 48, solid: true },
-      { type: "doomBook2", x: 202, y: 119, w: 12, h: 14 }
+      { type: "doomBook2", x: 161, y: 80, w: 12, h: 14, revealed: false }
     ]
   },
   fountain: {
@@ -1374,15 +1375,14 @@ outsideBoiler: {
     doors: [
       { id: "stairsToStairwayB2", x: 47, y: 10, w: 30, h: 8, targetRoom: "stairway", spawnX: 265, spawnY: 45 },
       { id: "door1ToPrivateCorridor", x: 20, y: 48, w: 8, h: 28, targetRoom: "privateCorridor", spawnX: 250, spawnY: 100 },
-      { id: "door2ToMorgue", x: 181, y: 143, w: 28, h: 8, targetRoom: "morgue", spawnX: 150, spawnY: 138 },
-      { id: "door3ToElevatorEntry", x: 292, y: 132, w: 8, h: 28, targetRoom: "elevatorEntry", spawnX: 48, spawnY: 98 },
+      { id: "door3ToElevatorEntry", x: 292, y: 132, w: 8, h: 28, targetRoom: "elevatorEntry", spawnX: 48, spawnY: 98, keyRequired: "powerRoomKey", lockId: "lab-elevator-entry-key" },
       { id: "door4ToSmallLab", x: 258, y: 28, w: 28, h: 8, targetRoom: "smallLab", spawnX: 150, spawnY: 100 }
     ],
     walls: [
       { x: 84, y: 77, w: 162, h: 5 },
       { x: 84, y: 77, w: 5, h: 71 },
       { x: 241, y: 77, w: 5, h: 71 },
-      { x: 84, y: 143, w: 97, h: 5 },
+      { x: 84, y: 143, w: 125, h: 5 },
       { x: 209, y: 143, w: 37, h: 5 }
     ],
     interactables: [
@@ -1705,7 +1705,6 @@ outsideBoiler: {
       { type: "smallTable", x: 178, y: 112, w: 50, h: 26, solid: false },
       { type: "moDiskTerminal", x: 186, y: 115, w: 22, h: 15, outputFile: "passCode02" },
       { type: "magnumRounds", x: 216, y: 121, w: 9, h: 8 },
-      { type: "colt", x: 232, y: 126, w: 18, h: 12 }
     ]
   },
   undergroundSaveRoom: {
