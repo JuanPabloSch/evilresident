@@ -231,6 +231,145 @@ const WEAPON_NAMES = {
   bazooka: "Bazooka",
   rocketLauncher: "Rocket Launcher"
 };
+let weaponAudioContext = null;
+let ambientAudio = null;
+let ambientAudioActive = false;
+let playerStepAudioTicks = 0;
+const WEAPON_SOUND_PROFILES = {
+  handgun: { start: 520, end: 170, duration: 0.075, wave: "square", volume: 0.045, noise: 0.018 },
+  shotgun: { start: 210, end: 65, duration: 0.15, wave: "sawtooth", volume: 0.065, noise: 0.035 },
+  colt: { start: 390, end: 90, duration: 0.12, wave: "square", volume: 0.06, noise: 0.025 },
+  grenadeLauncher: { start: 145, end: 55, duration: 0.19, wave: "triangle", volume: 0.055, noise: 0.025 },
+  bazooka: { start: 105, end: 42, duration: 0.24, wave: "sawtooth", volume: 0.06, noise: 0.03 },
+  rocketLauncher: { start: 80, end: 30, duration: 0.32, wave: "triangle", volume: 0.075, noise: 0.04 }
+};
+const FOLEY_SOUND_PROFILES = {
+  door: { start: 190, end: 95, duration: 0.18, wave: "triangle", volume: 0.035, noise: 0.025 },
+  playerStep: { start: 125, end: 78, duration: 0.045, wave: "square", volume: 0.018, noise: 0.014 },
+  zombieGroan: { start: 105, end: 53, duration: 0.38, wave: "sawtooth", volume: 0.022, noise: 0.018, pulse: true },
+  hunterCry: { start: 980, end: 620, duration: 0.11, wave: "square", volume: 0.016, noise: 0.009 },
+  typewriter: { start: 1850, end: 1050, duration: 0.018, wave: "square", volume: 0.009, noise: 0.006 }
+};
+
+function ensureAudioContext() {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return null;
+    weaponAudioContext ??= new AudioContextClass();
+    if (weaponAudioContext.state === "suspended") weaponAudioContext.resume();
+    return weaponAudioContext;
+  } catch (error) {
+    return null;
+  }
+}
+
+function startAmbientAudio() {
+  const audio = ensureAudioContext();
+  if (!audio || ambientAudio) return;
+  const output = audio.createGain();
+  output.gain.value = 0.0001;
+  output.connect(audio.destination);
+  for (const [frequency, type, level] of [[54, "sine", 0.55], [56.4, "triangle", 0.2]]) {
+    const oscillator = audio.createOscillator();
+    const gain = audio.createGain();
+    oscillator.type = type;
+    oscillator.frequency.value = frequency;
+    gain.gain.value = level;
+    oscillator.connect(gain).connect(output);
+    oscillator.start();
+  }
+  const motif = audio.createOscillator();
+  const motifGain = audio.createGain();
+  const motifPhrases = [
+    [
+      { frequency: 146.83, duration: 850 }, { rest: true, duration: 260 },
+      { frequency: 220, duration: 560 }, { frequency: 174.61, duration: 980 },
+      { rest: true, duration: 430 }, { frequency: 196, duration: 620 },
+      { frequency: 130.81, duration: 1120 }, { rest: true, duration: 620 }
+    ],
+    [
+      { frequency: 164.81, duration: 700 }, { frequency: 246.94, duration: 440 },
+      { rest: true, duration: 360 }, { frequency: 196, duration: 900 },
+      { frequency: 146.83, duration: 520 }, { rest: true, duration: 500 },
+      { frequency: 220, duration: 760 }, { frequency: 130.81, duration: 1250 }
+    ]
+  ];
+  let phraseIndex = 0;
+  let noteIndex = 0;
+  motif.type = "triangle";
+  motif.frequency.value = 146.83;
+  motifGain.gain.value = 0;
+  motif.connect(motifGain).connect(output);
+  motif.start();
+  const playNextMotifNote = () => {
+    const phrase = motifPhrases[phraseIndex];
+    const note = phrase[noteIndex];
+    const now = audio.currentTime;
+    if (note.frequency) motif.frequency.setTargetAtTime(note.frequency, now, 0.12);
+    motifGain.gain.setTargetAtTime(note.rest ? 0 : 0.3, now, note.rest ? 0.07 : 0.12);
+    noteIndex++;
+    if (noteIndex >= phrase.length) {
+      noteIndex = 0;
+      phraseIndex = (phraseIndex + 1) % motifPhrases.length;
+    }
+    window.setTimeout(playNextMotifNote, note.duration);
+  };
+  playNextMotifNote();
+  ambientAudio = { output };
+}
+
+function updateAmbientAudio() {
+  if (!ambientAudio) return;
+  const shouldPlay = gameStarted && !introCutsceneActive && !endingCutsceneActive && !dialogueState;
+  if (shouldPlay === ambientAudioActive) return;
+  ambientAudioActive = shouldPlay;
+  const param = ambientAudio.output.gain;
+  const now = weaponAudioContext.currentTime;
+  param.cancelScheduledValues(now);
+  param.setTargetAtTime(shouldPlay ? 0.0245 : 0.0001, now, shouldPlay ? 0.8 : 0.1);
+}
+
+function playRetroSound(profile) {
+  if (!profile) return;
+  const audio = ensureAudioContext();
+  if (!audio) return;
+  try {
+    const now = audio.currentTime;
+    const oscillator = audio.createOscillator();
+    const gain = audio.createGain();
+    oscillator.type = profile.wave;
+    oscillator.frequency.setValueAtTime(profile.start, now);
+    oscillator.frequency.exponentialRampToValueAtTime(profile.end, now + profile.duration);
+    gain.gain.setValueAtTime(profile.volume, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + profile.duration);
+    if (profile.pulse) {
+      for (const [offset, level] of [[0.08, 0.35], [0.15, 1], [0.25, 0.3], [0.31, 0.8]]) {
+        gain.gain.setValueAtTime(profile.volume * level, now + offset);
+      }
+    }
+    oscillator.connect(gain).connect(audio.destination);
+    oscillator.start(now);
+    oscillator.stop(now + profile.duration);
+
+    const buffer = audio.createBuffer(1, Math.ceil(audio.sampleRate * 0.045), audio.sampleRate);
+    const samples = buffer.getChannelData(0);
+    for (let i = 0; i < samples.length; i++) samples[i] = Math.random() * 2 - 1;
+    const noise = audio.createBufferSource();
+    const noiseGain = audio.createGain();
+    noise.buffer = buffer;
+    noiseGain.gain.setValueAtTime(profile.noise, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+    noise.connect(noiseGain).connect(audio.destination);
+    noise.start(now);
+  } catch (error) {
+    // Audio is optional; gameplay should continue if the browser blocks it.
+  }
+}
+
+function playWeaponSound(weaponId) {
+  playRetroSound(WEAPON_SOUND_PROFILES[weaponId]);
+}
+
 const AMMO_INFO = {
   shotgun: { type: "shotgunShells", label: "CARTUCHOS" },
   colt: { type: "magnumRounds", label: "MAGNUM" },
@@ -263,6 +402,9 @@ const charactersScreen = document.getElementById("characters-screen");
 const extrasBack = document.getElementById("extras-back");
 const extrasCharacters = document.getElementById("extras-characters");
 const charactersBack = document.getElementById("characters-back");
+const extrasEnemies = document.getElementById("extras-enemies");
+const enemiesScreen = document.getElementById("enemies-screen");
+const enemiesBack = document.getElementById("enemies-back");
 const extrasGallery = document.getElementById("extras-gallery");
 const galleryScreen = document.getElementById("gallery-screen");
 const galleryImage = document.getElementById("gallery-image");
@@ -275,7 +417,9 @@ const GALLERY_IMAGES = [
   { src: "Assets/gallery-ev1.png", alt: "Pixel-art zombie with the Evil Resident title" },
   { src: "Assets/gallery-ev2.jfif", alt: "Evil Resident title artwork" },
   { src: "Assets/gallery-ev3.jfif", alt: "Pixel-art portraits of Barry, Chris, Jill, Wesker and Rebecca" },
-  { src: "Assets/gallery-ev4.png", alt: "Golden Resident Evil-inspired emblem and project credit" }
+  { src: "Assets/gallery-ev4.png", alt: "Golden Resident Evil-inspired emblem and project credit" },
+  { src: "Assets/gallery-umb.jfif", alt: "Umbrella Corporation artwork" },
+  { src: "Assets/gallery-stars.jfif", alt: "S.T.A.R.S. team artwork" }
 ];
 const introSequence = document.getElementById("intro-sequence");
 const introSequenceImage = document.getElementById("intro-sequence-image");
@@ -797,6 +941,7 @@ function activateSaveSlot(index) {
     try {
       restoreGameSnapshot(existing.snapshot);
       gameStarted = true;
+      startAmbientAudio();
       startScreen.hidden = true;
       saveGameDialog.close();
       STATUS.setPickupHint("Partida cargada.");
@@ -859,6 +1004,7 @@ function startNewGameFlow() {
   playtimeMs = 0;
   lastPlayTick = null;
   runSaveCount = 0;
+  startAmbientAudio();
   startScreen.hidden = true;
   introSequence.hidden = false;
   introCutsceneActive = true;
@@ -893,6 +1039,16 @@ charactersBack.addEventListener("click", () => {
   charactersScreen.hidden = true;
   titleExtrasMenu.hidden = false;
   extrasCharacters.focus();
+});
+extrasEnemies.addEventListener("click", () => {
+  titleExtrasMenu.hidden = true;
+  enemiesScreen.hidden = false;
+  enemiesBack.focus();
+});
+enemiesBack.addEventListener("click", () => {
+  enemiesScreen.hidden = true;
+  titleExtrasMenu.hidden = false;
+  extrasEnemies.focus();
 });
 function showGalleryImage(index) {
   galleryIndex = (index + GALLERY_IMAGES.length) % GALLERY_IMAGES.length;
@@ -1014,6 +1170,7 @@ function fireWeapon() {
       && selectedLauncherAmmo === "flameRounds";
     if (launcherWithFlame && STATUS.getItemCount("flameRounds") > 0) {
       STATUS.consumeItem("flameRounds");
+      playWeaponSound(equippedWeapon);
       room.interactables.splice(room.interactables.indexOf(doorWeb), 1);
       unlockedLocks.add(doorWeb.lockId);
       weaponCooldown = 14;
@@ -1067,6 +1224,7 @@ function fireWeapon() {
   if (equippedWeapon === "handgun") weapon.loaded--;
   else if (["shotgun", "colt", "grenadeLauncher", "bazooka"].includes(equippedWeapon)) STATUS.consumeItem(ammo.type);
   else if (equippedWeapon === "rocketLauncher") STATUS.consumeRocket();
+  if (equippedWeapon !== "knife") playWeaponSound(equippedWeapon);
   weaponCooldown = equippedWeapon === "knife" ? 14 : 8;
   weapon.shotFlash = 4;
   const range = equippedWeapon === "knife" ? 28 : ["rocketLauncher", "bazooka"].includes(equippedWeapon) ? 220 : 150;
@@ -1351,6 +1509,7 @@ function updateOpeningMansionScene() {
     ], () => {
       hall.openingReturnComplete = true;
       hall.interactables = hall.interactables.filter((obj) => !obj.openingBarry && !obj.openingWesker);
+      dining.interactables = dining.interactables.filter((obj) => !obj.openingBarry);
       STATUS.addItem("lockpick");
       STATUS.setPickupHint("Barry te dio el Lockpick.");
       updateInteractionPrompt();
@@ -1372,7 +1531,11 @@ function updateDialogue() {
   dialogueState.tick++;
   if (dialogueState.tick % 2 === 0) {
     const line = dialogueState.lines[dialogueState.index];
+    const previousShown = dialogueState.shown;
     dialogueState.shown = Math.min(line.text.length, dialogueState.shown + 2);
+    if (dialogueState.shown > previousShown && dialogueState.tick % 6 === 0 && /\S/.test(line.text.slice(previousShown, dialogueState.shown))) {
+      playRetroSound(FOLEY_SOUND_PROFILES.typewriter);
+    }
     refreshDialogue();
   }
 }
@@ -2244,6 +2407,20 @@ function updateEnemies(room) {
         enemy.y += detours[0][1];
       }
     }
+    if (enemy.type === "zombie" && (enemy.x !== startX || enemy.y !== startY)) {
+      enemy.nextGroanAt ??= gameFrame + 25 + Math.random() * 35;
+      if (gameFrame >= enemy.nextGroanAt) {
+        playRetroSound(FOLEY_SOUND_PROFILES.zombieGroan);
+        enemy.nextGroanAt = gameFrame + 105 + Math.random() * 55;
+      }
+    }
+    if (enemy.type === "hunter" && (enemy.x !== startX || enemy.y !== startY)) {
+      enemy.nextCryAt ??= gameFrame + 35 + Math.random() * 45;
+      if (gameFrame >= enemy.nextCryAt) {
+        playRetroSound(FOLEY_SOUND_PROFILES.hunterCry);
+        enemy.nextCryAt = gameFrame + 90 + Math.random() * 60;
+      }
+    }
     enemy.animFrame = Math.floor(gameFrame / 12) % 2;
   });
 }
@@ -2450,6 +2627,23 @@ function collectNearbyItem() {
     updateAmmoDisplay();
     updateInteractionPrompt();
   }
+}
+
+function laboratoryEmergencySystemsReady() {
+  return labBlackoutRestored && labElevatorCircuitConnected && Boolean(ROOMS.mainLab.tyrantPhaseComplete);
+}
+
+function laboratoryGateMessage(door) {
+  if (!door.labEmergencyGate && !door.labPassCodeGate) return "";
+  if (laboratoryEmergencySystemsReady()) return "";
+  const missing = [];
+  if (!labBlackoutRestored) missing.push("restaurá la energía en Power Maze 1");
+  if (!labElevatorCircuitConnected) missing.push("conectá el circuito en Power Room");
+  if (!ROOMS.mainLab.tyrantPhaseComplete) missing.push("derrotá al Tyrant en Main Lab");
+  if (!missing.length) return "";
+  return door.labPassCodeGate
+    ? `Los Pass Codes todavía no son aceptados: ${missing.join(", y ")}.`
+    : `El Emergency Tunnel sigue cerrado: ${missing.join(", y ")}.`;
 }
 
 function isBossEncounterActive(room) {
@@ -2789,6 +2983,12 @@ function updateInteractionPrompt() {
       interactionPrompt.hidden = false;
       return;
     }
+    const laboratoryLockMessage = laboratoryGateMessage(door);
+    if (laboratoryLockMessage) {
+      interactionPrompt.textContent = laboratoryLockMessage;
+      interactionPrompt.hidden = false;
+      return;
+    }
     const locked = door.keyRequired && !unlockedLocks.has(door.lockId);
     const electronicLocked = door.electronicLock && !unlockedLocks.has(door.lockId);
     const fileLocked = door.fileRequired && !unlockedLocks.has(door.lockId);
@@ -3060,6 +3260,7 @@ function transitionThroughDoor(door) {
     STATUS.setPickupHint("Wesker te apunta con su arma. Te ordena que lo acompañes a Main Lab.");
   }
   currentRoom = door.targetRoom;
+  playRetroSound(FOLEY_SOUND_PROFILES.door);
   player.x = door.spawnX;
   player.y = door.spawnY;
   const titleElem = document.getElementById("room-title");
@@ -3078,8 +3279,15 @@ function transitionThroughDoor(door) {
     }
   }
   if (sourceRoom === "diningRoom" && currentRoom === "mainHall" && ROOMS.diningRoom.openingPhase === "returnToHall") {
-    const barry = ROOMS.mainHall.interactables.find((obj) => obj.type === "staticCharacter" && obj.openingBarry);
-    if (!barry) ROOMS.mainHall.interactables.push({ type: "staticCharacter", character: "redVest", x: 82, y: 138, w: 18, h: 22, openingBarry: true });
+    const dining = ROOMS.diningRoom;
+    const hall = ROOMS.mainHall;
+    const barry = dining.interactables.find((obj) => obj.type === "staticCharacter" && obj.openingBarry);
+    dining.interactables = dining.interactables.filter((obj) => !obj.openingBarry);
+    hall.interactables = hall.interactables.filter((obj) => !obj.openingBarry);
+    hall.interactables.push(barry || { type: "staticCharacter", character: "redVest", w: 18, h: 22, openingBarry: true });
+    const hallBarry = hall.interactables.find((obj) => obj.type === "staticCharacter" && obj.openingBarry);
+    hallBarry.x = 82;
+    hallBarry.y = 138;
   }
 }
 
@@ -3378,6 +3586,11 @@ function interactNearby() {
     }
     if (door.disabled || !ROOMS[door.targetRoom]) {
       STATUS.setPickupHint(door.blockedMessage || "Destino todavía no disponible.");
+      return;
+    }
+    const laboratoryLockMessage = laboratoryGateMessage(door);
+    if (laboratoryLockMessage) {
+      STATUS.setPickupHint(laboratoryLockMessage);
       return;
     }
     if (door.electronicLock && !unlockedLocks.has(door.lockId)) {
@@ -3937,6 +4150,15 @@ function update() {
   player.isMoving = (canMoveX && nextX !== player.x) || (canMoveY && nextY !== player.y);
   if (canMoveX) player.x = nextX;
   if (canMoveY) player.y = nextY;
+  if (player.isMoving) {
+    playerStepAudioTicks++;
+    if (playerStepAudioTicks >= 12) {
+      playRetroSound(FOLEY_SOUND_PROFILES.playerStep);
+      playerStepAudioTicks = 0;
+    }
+  } else {
+    playerStepAudioTicks = 0;
+  }
 
   updateArmorRoomPuzzle(room);
   updateEnemies(room);
@@ -4604,7 +4826,8 @@ function drawRoom() {
       ctx.fillRect(obj.x, obj.y, obj.w, 5);
       ctx.fillRect(obj.x, obj.y, 5, obj.h);
       ctx.fillRect(obj.x + obj.w - 5, obj.y, 5, obj.h);
-      ctx.fillRect(obj.x, obj.y + obj.h - 5, obj.w, 5);
+      ctx.fillRect(obj.x, obj.y + obj.h - 5, 97, 5);
+      ctx.fillRect(obj.x + 125, obj.y + obj.h - 5, obj.w - 125, 5);
       ctx.fillStyle = "#707674";
       ctx.fillRect(obj.x + 2, obj.y + 2, obj.w - 4, 2);
       ctx.fillRect(obj.x + 2, obj.y + 2, 2, obj.h - 4);
@@ -5487,15 +5710,6 @@ function drawRoom() {
       ctx.fillRect(obj.x + 8, obj.y + 4, 2, 3);
       ctx.fillStyle = "#858678";
       ctx.fillRect(obj.x + 2, obj.y + 2, 2, 2);
-
-    } else if (obj.type === "masterKey") {
-      ctx.fillStyle = "#d5d7d1";
-      ctx.fillRect(obj.x, obj.y + 1, 5, 5);
-      ctx.fillStyle = "#e4c75d";
-      ctx.fillRect(obj.x + 1, obj.y + 2, 3, 3);
-      ctx.fillStyle = "#b9b9aa";
-      ctx.fillRect(obj.x + 4, obj.y + 3, 8, 2);
-      ctx.fillRect(obj.x + 9, obj.y + 5, 2, 3);
 
     } else if (obj.type === "powerRoomKey") {
       ctx.fillStyle = "#d6d1bc";
@@ -7514,6 +7728,7 @@ function loop() {
   STATUS.tick();
   updateDialogue();
   update();
+  updateAmbientAudio();
   updateEmergencyCountdown();
   drawRoom();
   drawPlayer();

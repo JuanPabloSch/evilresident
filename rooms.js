@@ -1235,7 +1235,7 @@ outsideBoiler: {
     corridorPoly: [{ x: 90, y: 30, w: 140, h: 140 }],
     doors: [
       { id: "stairsToFountain", x: 145, y: 30, w: 30, h: 32, targetRoom: "fountain", spawnX: 150, spawnY: 138 },
-      { id: "doorToEmergencyTunnel", x: 90, y: 88, w: 8, h: 28, targetRoom: "emergencyTunnel", spawnX: 105, spawnY: 95 },
+      { id: "doorToEmergencyTunnel", x: 90, y: 88, w: 8, h: 28, targetRoom: "emergencyTunnel", spawnX: 105, spawnY: 95, labEmergencyGate: true },
       { id: "stairsToLadderRoom", x: 145, y: 137, w: 30, h: 28, targetRoom: "ladderRoom", spawnX: 150, spawnY: 70 }
     ],
     interactables: [
@@ -1375,6 +1375,7 @@ outsideBoiler: {
     doors: [
       { id: "stairsToStairwayB2", x: 47, y: 10, w: 30, h: 8, targetRoom: "stairway", spawnX: 265, spawnY: 45 },
       { id: "door1ToPrivateCorridor", x: 20, y: 48, w: 8, h: 28, targetRoom: "privateCorridor", spawnX: 250, spawnY: 100 },
+      { id: "door2ToMorgue", x: 181, y: 143, w: 28, h: 8, targetRoom: "morgue", spawnX: 150, spawnY: 138, unlockFromSide: "morgue", lockId: "morgue-door-from-inside" },
       { id: "door3ToElevatorEntry", x: 292, y: 132, w: 8, h: 28, targetRoom: "elevatorEntry", spawnX: 48, spawnY: 98, keyRequired: "powerRoomKey", lockId: "lab-elevator-entry-key" },
       { id: "door4ToSmallLab", x: 258, y: 28, w: 28, h: 8, targetRoom: "smallLab", spawnX: 150, spawnY: 100 }
     ],
@@ -1382,7 +1383,7 @@ outsideBoiler: {
       { x: 84, y: 77, w: 162, h: 5 },
       { x: 84, y: 77, w: 5, h: 71 },
       { x: 241, y: 77, w: 5, h: 71 },
-      { x: 84, y: 143, w: 125, h: 5 },
+      { x: 84, y: 143, w: 97, h: 5 },
       { x: 209, y: 143, w: 37, h: 5 }
     ],
     interactables: [
@@ -1427,7 +1428,7 @@ outsideBoiler: {
     constrainToWalkablePolygon: true,
     doors: [
       { id: "door1ToPrivateCorridor", x: 58, y: 182, w: 30, h: 8, targetRoom: "privateCorridor", spawnX: 30, spawnY: 92 },
-      { id: "door2ToCellRoom", x: 212, y: 42, w: 8, h: 28, targetRoom: "cellRoom", spawnX: 78, spawnY: 94, filesRequired: ["passCode01", "passCode02", "passCode03"], lockId: "laboratory-cell-lock" }
+      { id: "door2ToCellRoom", x: 212, y: 42, w: 8, h: 28, targetRoom: "cellRoom", spawnX: 78, spawnY: 94, filesRequired: ["passCode01", "passCode02", "passCode03"], lockId: "laboratory-cell-lock", labPassCodeGate: true }
     ],
     interactables: [
       { type: "keypadPanel", x: 182, y: 14, w: 28, h: 12, solid: false }
@@ -1537,7 +1538,6 @@ outsideBoiler: {
     interactables: [
       { type: "tyrantTube", x: 22, y: 53, w: 38, h: 55, solid: true },
       { type: "tyrantReleaseConsole", x: 62, y: 73, w: 24, h: 16, solid: false },
-      { type: "masterKey", x: 31, y: 126, w: 12, h: 8 },
       { type: "specimenTube", x: 91, y: 49, w: 40, h: 38, solid: true },
       { type: "specimenTube", x: 133, y: 49, w: 40, h: 38, solid: true },
       { type: "specimenTube", x: 175, y: 49, w: 40, h: 38, solid: true },
@@ -1696,7 +1696,7 @@ outsideBoiler: {
     bounds: { minX: 60, maxX: 260, minY: 30, maxY: 170 },
     corridorPoly: [{ x: 60, y: 30, w: 200, h: 140 }],
     doors: [
-      { id: "doorToORoom", x: 145, y: 152, w: 30, h: 8, targetRoom: "oRoom", spawnX: 190, spawnY: 154 }
+      { id: "doorToORoom", x: 145, y: 152, w: 30, h: 8, targetRoom: "oRoom", spawnX: 190, spawnY: 154, unlockFromSide: "morgue", lockId: "morgue-door-from-inside" }
     ],
     interactables: [
       { type: "morgueStretcher", x: 76, y: 53, w: 48, h: 20, solid: true },
@@ -2475,7 +2475,7 @@ outsideBoiler: {
     bounds: { minX: 20, maxX: 300, minY: 10, maxY: 190 },
     corridorPoly: [{ x: 20, y: 10, w: 280, h: 180 }],
     doors: [
-      { id: "elevatorToEmergencyTunnel", x: 292, y: 20, w: 8, h: 28, targetRoom: "emergencyTunnel", spawnX: 56, spawnY: 24 }
+      { id: "elevatorToEmergencyTunnel", x: 292, y: 20, w: 8, h: 28, targetRoom: "emergencyTunnel", spawnX: 56, spawnY: 24, labEmergencyGate: true }
     ],
     interactables: [
       { type: "elevator", x: 258, y: 20, w: 30, h: 28, solid: false },

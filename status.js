@@ -16,7 +16,6 @@ const STATUS_ITEMS = {
   rope: "Rope",
   controlRoomKey: "Control Room Key",
   powerRoomKey: "Power Room Key",
-  masterKey: "Master Key",
   mansionEmblem: "Emblem",
   goldEmblem: "Gold Emblem",
   combatKnife: "Cuchillo de supervivencia",
@@ -654,6 +653,7 @@ const STATUS = (() => {
       const restoreItems = (target, entries = []) => {
         target.clear();
         entries.forEach(([key, value]) => {
+          if (key === "Master Key") return;
           const name = key === "Fire Rounds" ? "Flame Rounds" : key;
           target.set(name, (target.get(name) || 0) + value);
         });
