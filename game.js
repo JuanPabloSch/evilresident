@@ -235,6 +235,8 @@ let weaponAudioContext = null;
 let ambientAudio = null;
 let ambientAudioActive = false;
 let playerStepAudioTicks = 0;
+const menuSelectAudio = new Audio("Assets/BIO04.WAV");
+menuSelectAudio.volume = 0.36;
 const WEAPON_SOUND_PROFILES = {
   handgun: { start: 520, end: 170, duration: 0.075, wave: "square", volume: 0.045, noise: 0.018 },
   shotgun: { start: 210, end: 65, duration: 0.15, wave: "sawtooth", volume: 0.065, noise: 0.035 },
@@ -369,6 +371,16 @@ function playRetroSound(profile) {
 function playWeaponSound(weaponId) {
   playRetroSound(WEAPON_SOUND_PROFILES[weaponId]);
 }
+
+function playMenuSelectSound() {
+  try {
+    menuSelectAudio.currentTime = 0;
+    menuSelectAudio.play();
+  } catch (error) {
+    // Sound effects are optional if the browser blocks playback.
+  }
+}
+window.playMenuSelectSound = playMenuSelectSound;
 
 const AMMO_INFO = {
   shotgun: { type: "shotgunShells", label: "CARTUCHOS" },
@@ -938,6 +950,7 @@ function activateSaveSlot(index) {
   const data = readSaveData();
   const existing = data.slots[index];
   if (saveMenuMode === "load") {
+    playMenuSelectSound();
     try {
       restoreGameSnapshot(existing.snapshot);
       gameStarted = true;
@@ -1001,6 +1014,7 @@ function playIntroCutsceneScene(index) {
 }
 
 function startNewGameFlow() {
+  playMenuSelectSound();
   playtimeMs = 0;
   lastPlayTick = null;
   runSaveCount = 0;
@@ -1012,6 +1026,7 @@ function startNewGameFlow() {
 }
 
 function openTitleLoadMenu() {
+  playMenuSelectSound();
   saveMenuMode = "load";
   saveGameMessage.textContent = "Elegí una partida guardada.";
   renderSaveMenu();
@@ -1414,10 +1429,29 @@ function movePlayerToRoom(roomId, x, y) {
   MANSION_MAP.setCurrentRoom(roomId);
 }
 
+function clearOpeningSceneCharacters() {
+  const hall = ROOMS.mainHall;
+  const dining = ROOMS.diningRoom;
+  hall.interactables = hall.interactables.filter((obj) =>
+    !obj.openingBarry &&
+    !obj.openingWesker &&
+    !(obj.type === "staticCharacter" && (obj.character === "redVest" || obj.character === "sunglasses"))
+  );
+  dining.interactables = dining.interactables.filter((obj) =>
+    !obj.openingBarry &&
+    !(obj.type === "staticCharacter" && obj.character === "redVest")
+  );
+}
+
 function updateOpeningMansionScene() {
   const hall = ROOMS.mainHall;
   const dining = ROOMS.diningRoom;
   const teaRoom = ROOMS.teaRoom;
+
+  if (hall.openingReturnComplete) {
+    clearOpeningSceneCharacters();
+    return;
+  }
 
   if (currentRoom === "mainHall" && !hall.openingIntroStarted && !hall.openingIntroComplete) {
     hall.openingIntroStarted = true;
@@ -1437,7 +1471,7 @@ function updateOpeningMansionScene() {
       { speaker: "Wesker", text: "Okay. Let me handle this. Stay alert!" }
     ], () => {
       hall.openingIntroComplete = true;
-      hall.interactables = hall.interactables.filter((obj) => !obj.openingBarry && !obj.openingWesker);
+      clearOpeningSceneCharacters();
       dining.openingPhase = "arrival";
       if (!dining.interactables.some((obj) => obj.openingBarry)) {
         dining.interactables.push({ type: "staticCharacter", character: "redVest", x: 28, y: 92, w: 18, h: 22, openingBarry: true });
@@ -1508,8 +1542,7 @@ function updateOpeningMansionScene() {
       { speaker: "Jill", text: "Thanks, Barry." }
     ], () => {
       hall.openingReturnComplete = true;
-      hall.interactables = hall.interactables.filter((obj) => !obj.openingBarry && !obj.openingWesker);
-      dining.interactables = dining.interactables.filter((obj) => !obj.openingBarry);
+      clearOpeningSceneCharacters();
       STATUS.addItem("lockpick");
       STATUS.setPickupHint("Barry te dio el Lockpick.");
       updateInteractionPrompt();

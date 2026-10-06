@@ -336,6 +336,7 @@ const STATUS = (() => {
   }
 
   function setOpen(open) {
+    if (open) window.playMenuSelectSound?.();
     panel.hidden = !open;
     toggle.setAttribute("aria-expanded", String(open));
     if (open) close.focus();

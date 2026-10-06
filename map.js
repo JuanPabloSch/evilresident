@@ -207,6 +207,7 @@ const MANSION_MAP = (() => {
   }
 
   function setOpen(isOpen) {
+    if (isOpen) window.playMenuSelectSound?.();
     panel.hidden = !isOpen;
     toggleButton.setAttribute("aria-expanded", String(isOpen));
     if (isOpen) closeButton.focus();
