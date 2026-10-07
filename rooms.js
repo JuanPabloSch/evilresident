@@ -16,7 +16,7 @@ const ROOMS = {
     { type: "balconyRight", x: 200, y: 24, w: 102, h: 30, solid: true },
       { type: "typewriter", x: 80, y: 54, w: 26, h: 20, solid: true },
       { type: "inkRibbon", x: 68, y: 58, w: 8, h: 8 },
-      { type: "inkRibbon", x: 110, y: 58, w: 8, h: 8 }
+      { type: "inkRibbon", x: 40, y: 58, w: 8, h: 8 }
     ]
   },
 
@@ -319,15 +319,15 @@ tigerStatueRoom: {
       { type: "itemChest", x: 132, y: 60, w: 30, h: 18, solid: true },
 
       // Estantería 's' (vertical a la derecha)
-      { type: "shelfVertical", x: 180, y: 85, w: 20, h: 50, solid: true },
+      { type: "shelfVertical", x: 185, y: 85, w: 20, h: 50, solid: true },
 
-      { type: "typewriter", x: 148, y: 105, w: 22, h: 18 },
+      { type: "typewriter", x: 170, y: 52, w: 22, h: 18 },
 
       // Suero 'se'
-      { type: "serum", x: 185, y: 90, w: 8, h: 10 },
+      { type: "serum", x: 190, y: 90, w: 8, h: 10 },
 
       // Ink Ribbon 'i'
-      { type: "inkRibbon", x: 185, y: 120, w: 8, h: 8 }
+      { type: "inkRibbon", x: 190, y: 128, w: 8, h: 8 }
     ]
   },
 dressingRoom: {
